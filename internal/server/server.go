@@ -1,23 +1,23 @@
 package server
+
 import (
-    "fmt"
-    "net/http"
+	"net/http"
+	"golang/internal/router" 
 )
 
 type Server struct {
-    *http.Server
+	*http.Server
 }
 
 func NewServer() *Server {
-    mux := http.NewServeMux()
-    mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-        fmt.Fprint(w, "Hello World")
-    })
+	// 1. Gọi sang package router để lấy mux về
+	mux := router.NewRouter()
 
-    return &Server{
-        Server: &http.Server{
-            Addr:    ":8081",
-            Handler: mux,
-        },
-    }
+	// 2. Gắn mux vào server
+	return &Server{
+		Server: &http.Server{
+			Addr:    ":8081",
+			Handler: mux,
+		},
+	}
 }
