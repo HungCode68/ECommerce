@@ -16,7 +16,7 @@ type DBConfig struct {
 }
 
 func NewDatabaseConnection() *DBConfig {
-	if err := godotenv.Load(); err != nil {
+	if err := godotenv.Load("internal/configs/.env"); err != nil {
 		log.Fatalf("Lỗi trong file .env: %v", err)
 	}
 
@@ -34,7 +34,7 @@ func NewDatabaseConnection() *DBConfig {
 	switch driver {
 	case "mysql":
 		// MySQL connection string format: user:password@tcp(host:port)/dbname
-		connStr = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s",
+		connStr = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true&loc=Local",
 			os.Getenv("DB_USER_MYSQL"),
 			os.Getenv("DB_PASSWORD_MYSQL"),
 			os.Getenv("DB_HOST_MYSQL"),
