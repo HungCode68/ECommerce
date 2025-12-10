@@ -1,0 +1,412 @@
+-- ECommerce - MySQL 8.x version
+DROP DATABASE IF EXISTS ECommerce;
+CREATE DATABASE ECommerce CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE ECommerce;
+
+----------------------------------------------------
+-- PHẦN 1: TẠO BẢNG
+----------------------------------------------------
+drop table users;
+-- Bảng users (Người dùng)
+CREATE TABLE users (
+  id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  username VARCHAR(100) NOT NULL UNIQUE,
+  email VARCHAR(255) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  role VARCHAR(10) NOT NULL DEFAULT 'user',
+  is_active TINYINT NOT NULL DEFAULT 1,
+  refresh_token LONGTEXT DEFAULT NULL,
+  refresh_token_expiry DATETIME DEFAULT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted_at DATETIME DEFAULT NULL,
+  CONSTRAINT CHK_UserRole CHECK (role IN ('user','admin'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Bảng addresses
+CREATE TABLE addresses (
+  id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  label VARCHAR(50) DEFAULT NULL,
+  recipient_name VARCHAR(150) NOT NULL,
+  phone VARCHAR(30) NOT NULL,
+  line1 VARCHAR(255) NOT NULL,
+  line2 VARCHAR(255) DEFAULT NULL,
+  city VARCHAR(100) NOT NULL,
+  state VARCHAR(100) DEFAULT NULL,
+  country VARCHAR(100) NOT NULL,
+  is_default_shipping TINYINT NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE NO ACTION
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- Bảng categories
+CREATE TABLE categories (
+  id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  slug VARCHAR(255) NOT NULL,
+  description LONGTEXT DEFAULT NULL,
+  is_active TINYINT NOT NULL DEFAULT 1,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+
+-- Bảng products
+CREATE TABLE products (
+  id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  slug VARCHAR(255) NOT NULL,
+  short_description VARCHAR(500),
+  description LONGTEXT,
+  brand VARCHAR(100),
+  status VARCHAR(10) NOT NULL DEFAULT 'draft',
+  is_published TINYINT NOT NULL DEFAULT 0,
+  published_at DATETIME,
+  min_price DECIMAL(12,2) NOT NULL,
+  avg_rating DECIMAL(3,2) DEFAULT 0,
+  rating_count INT DEFAULT 0,
+  created_by INT,
+  updated_by INT,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted_at DATETIME,
+  CONSTRAINT CHK_ProductStatus CHECK (status IN ('draft','active','inactive','archived'))
+)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE INDEX idx_products_slug ON products(slug);
+CREATE INDEX idx_products_name ON products(name);
+
+-- Bảng product_categories (N-N)
+CREATE TABLE product_categories (
+  product_id BIGINT NOT NULL,
+  category_id INT NOT NULL,
+  PRIMARY KEY(product_id, category_id),
+  FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+  FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Bảng product_variants
+CREATE TABLE product_variants (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  product_id BIGINT NOT NULL,
+  sku VARCHAR(100) UNIQUE,
+  title VARCHAR(255),
+  option_values LONGTEXT,
+  price_override DECIMAL(12,2),
+  cost_price DECIMAL(12,2),
+  stock_quantity INT NOT NULL DEFAULT 0,
+  allow_backorder TINYINT DEFAULT 0,
+  is_active TINYINT DEFAULT 1,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+  CONSTRAINT CHK_VariantOptionsIsJSON CHECK (JSON_VALID(option_values) OR option_values IS NULL)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE INDEX idx_variants_product ON product_variants(product_id);
+CREATE INDEX idx_variants_sku ON product_variants(sku);
+
+-- Bảng inventory_transactions
+CREATE TABLE inventory_transactions (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  variant_id BIGINT NOT NULL,
+  `change` INT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  reference_type VARCHAR(50),
+  reference_id BIGINT,
+  performed_by INT,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (variant_id) REFERENCES product_variants(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE INDEX idx_inventory_variant ON inventory_transactions(variant_id);
+
+-- Bảng product_history
+CREATE TABLE product_history (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  product_id BIGINT NOT NULL,
+  variant_id BIGINT,
+  admin_id INT,
+  changed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  changes LONGTEXT NOT NULL,
+  note VARCHAR(1024),
+  FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+  FOREIGN KEY (variant_id) REFERENCES product_variants(id),
+  CONSTRAINT CHK_HistoryChangesIsJSON CHECK (JSON_VALID(changes))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE INDEX idx_product_history_pid ON product_history(product_id);
+CREATE INDEX idx_history_variant ON product_history(variant_id);
+
+-- Bảng product_reviews
+CREATE TABLE product_reviews (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  product_id BIGINT NOT NULL,
+  user_id INT NOT NULL,
+  rating TINYINT NOT NULL,
+  body LONGTEXT,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE INDEX idx_reviews_product ON product_reviews(product_id);
+
+-- Bảng carts
+CREATE TABLE carts (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL UNIQUE,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Bảng cart_items
+CREATE TABLE cart_items (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  cart_id BIGINT NOT NULL,
+  variant_id BIGINT NOT NULL,
+  product_id BIGINT NOT NULL,
+  quantity INT NOT NULL DEFAULT 1,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (cart_id) REFERENCES carts(id) ON DELETE CASCADE,
+  FOREIGN KEY (variant_id) REFERENCES product_variants(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE INDEX idx_cartitems_cart ON cart_items(cart_id);
+CREATE INDEX idx_cartitems_variant ON cart_items(variant_id);
+
+-- Bảng orders
+CREATE TABLE orders (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  order_number VARCHAR(64) NOT NULL UNIQUE,
+  user_id INT NOT NULL,
+  status VARCHAR(15) NOT NULL DEFAULT 'pending',
+  total_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+  payment_status VARCHAR(20) DEFAULT 'unpaid',
+  placed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  paid_at DATETIME,
+  completed_at DATETIME,
+  cancelled_at DATETIME,
+  note VARCHAR(1024),
+  address_id INT,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id),
+  CONSTRAINT CHK_OrderStatus CHECK (status IN ('pending','processing','paid','shipped','completed','cancelled','refunded')),
+  CONSTRAINT CHK_OrderPaymentStatus CHECK (payment_status IN ('unpaid','paid','partially_refunded','refunded'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Bảng order_addresses (snapshot)
+CREATE TABLE order_addresses (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  order_id BIGINT NOT NULL,
+  type VARCHAR(8) NOT NULL,
+  recipient_name VARCHAR(150) NOT NULL,
+  phone VARCHAR(30) NOT NULL,
+  line1 VARCHAR(255) NOT NULL,
+  line2 VARCHAR(255) DEFAULT NULL,
+  city VARCHAR(100) NOT NULL,
+  state VARCHAR(100) DEFAULT NULL,
+  country VARCHAR(100) NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+  CONSTRAINT CHK_AddressType CHECK (type IN ('billing','shipping'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Bảng order_items (snapshot)
+CREATE TABLE order_items (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  order_id BIGINT NOT NULL,
+  product_id BIGINT NOT NULL,
+  variant_id BIGINT DEFAULT NULL,
+  sku VARCHAR(100) DEFAULT NULL,
+  title VARCHAR(255) DEFAULT NULL,
+  option_values LONGTEXT DEFAULT NULL,
+  unit_price DECIMAL(12,2) NOT NULL,
+  quantity INT NOT NULL DEFAULT 1,
+  line_subtotal DECIMAL(12,2) NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+  FOREIGN KEY (variant_id) REFERENCES product_variants(id),
+  CONSTRAINT CHK_OrderItemOptionsIsJSON CHECK (JSON_VALID(option_values) OR option_values IS NULL)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Bảng order_payments
+CREATE TABLE order_payments (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  order_id BIGINT NOT NULL,
+  method VARCHAR(100) NOT NULL,
+  amount DECIMAL(12,2) NOT NULL,
+  status VARCHAR(10) NOT NULL DEFAULT 'pending',
+  paid_at DATETIME DEFAULT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+  CONSTRAINT CHK_PaymentStatus CHECK (status IN ('pending','completed','failed','refunded'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Bảng order_status_history
+CREATE TABLE order_status_history (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  order_id BIGINT NOT NULL,
+  from_status VARCHAR(50) DEFAULT NULL,
+  to_status VARCHAR(50) DEFAULT NULL,
+  changed_by INT DEFAULT NULL,
+  note VARCHAR(512) DEFAULT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Indexes
+CREATE INDEX idx_orders_user ON orders(user_id);
+CREATE INDEX idx_orders_number ON orders(order_number);
+CREATE INDEX idx_order_items_order ON order_items(order_id);
+CREATE INDEX idx_order_payments_order ON order_payments(order_id);
+
+----------------------------------------------------
+-- PHẦN 2: BẢNG TỔNG HỢP
+----------------------------------------------------
+
+CREATE TABLE sales_summary_daily (
+  summary_date DATE NOT NULL PRIMARY KEY,
+  total_orders INT NOT NULL DEFAULT 0,
+  total_quantity INT NOT NULL DEFAULT 0,
+  total_revenue DECIMAL(18,2) NOT NULL DEFAULT 0,
+  total_discount DECIMAL(18,2) NOT NULL DEFAULT 0,
+  real_orders INT NOT NULL DEFAULT 0,
+  real_revenue DECIMAL(18,2) NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE product_sales_daily (
+  product_id BIGINT NOT NULL,
+  variant_id BIGINT NOT NULL DEFAULT 0,
+  summary_date DATE NOT NULL,
+  units_sold INT NOT NULL DEFAULT 0,
+  revenue DECIMAL(18,2) NOT NULL DEFAULT 0,
+  order_count INT NOT NULL DEFAULT 0,
+  PRIMARY KEY (product_id, variant_id, summary_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE INDEX idx_psd_date ON product_sales_daily(summary_date);
+CREATE INDEX idx_psd_product ON product_sales_daily(product_id);
+
+----------------------------------------------------
+-- PHẦN 3: TRIGGERS
+-- (Chúng ta đã dùng ON UPDATE CURRENT_TIMESTAMP cho updated_at,
+--  nhưng nếu em muốn trigger phức tạp hơn, anh có thể thêm sau)
+----------------------------------------------------
+
+-- (Không cần triggers để cập nhật updated_at nhờ ON UPDATE CURRENT_TIMESTAMP)
+
+----------------------------------------------------
+-- PHẦN 4: PROCEDURES (Chạy job hàng ngày)
+----------------------------------------------------
+
+DELIMITER $$
+
+CREATE PROCEDURE sp_Job_UpdateDailyStats()
+BEGIN
+    DECLARE report_date DATE;
+    SET report_date = DATE_SUB(CURDATE(), INTERVAL 1 DAY);
+
+    -- BƯỚC 1: TÍNH GMV (Dựa trên placed_at)
+    INSERT INTO sales_summary_daily (summary_date, total_orders, total_quantity, total_revenue, total_discount, real_orders, real_revenue, created_at)
+    SELECT
+      DATE(o.placed_at) AS summary_date,
+      COUNT(DISTINCT o.id) AS total_orders,
+      IFNULL(SUM(oi.quantity),0) AS total_quantity,
+      IFNULL(SUM(oi.line_subtotal),0) AS total_revenue,
+      0 AS total_discount,
+      0 AS real_orders,
+      0 AS real_revenue,
+      NOW()
+    FROM orders o
+    JOIN order_items oi ON oi.order_id = o.id
+    WHERE DATE(o.placed_at) = report_date
+      AND o.status NOT IN ('cancelled','refunded')
+    GROUP BY DATE(o.placed_at)
+    ON DUPLICATE KEY UPDATE
+      total_orders = VALUES(total_orders),
+      total_quantity = VALUES(total_quantity),
+      total_revenue = VALUES(total_revenue),
+      created_at = NOW();
+
+    -- BƯỚC 2: TÍNH REAL REVENUE (Dựa trên completed_at)
+    INSERT INTO sales_summary_daily (summary_date, total_orders, total_quantity, total_revenue, total_discount, real_orders, real_revenue, created_at)
+    SELECT
+      DATE(o.completed_at) AS summary_date,
+      0 AS total_orders,
+      0 AS total_quantity,
+      0 AS total_revenue,
+      0 AS total_discount,
+      COUNT(DISTINCT o.id) AS real_orders,
+      IFNULL(SUM(oi.line_subtotal),0) AS real_revenue,
+      NOW()
+    FROM orders o
+    JOIN order_items oi ON oi.order_id = o.id
+    WHERE DATE(o.completed_at) = report_date
+      AND o.status = 'completed'
+    GROUP BY DATE(o.completed_at)
+    ON DUPLICATE KEY UPDATE
+      real_orders = VALUES(real_orders),
+      real_revenue = VALUES(real_revenue),
+      created_at = NOW();
+
+    -- BƯỚC 3: TÍNH CHI TIẾT SẢN PHẨM (Product Sales)
+    -- Lấy dữ liệu tổng theo product_id, variant_id
+    INSERT INTO product_sales_daily (product_id, variant_id, summary_date, units_sold, revenue, order_count)
+    SELECT
+      oi.product_id,
+      oi.variant_id,
+      DATE(o.placed_at) AS summary_date,
+      IFNULL(SUM(oi.quantity),0) AS units_sold,
+      IFNULL(SUM(oi.line_subtotal),0) AS revenue,
+      COUNT(DISTINCT o.id) AS order_count
+    FROM orders o
+    JOIN order_items oi ON oi.order_id = o.id
+    WHERE DATE(o.placed_at) = report_date
+      AND o.status NOT IN ('cancelled','refunded')
+    GROUP BY oi.product_id, oi.variant_id, DATE(o.placed_at)
+    ON DUPLICATE KEY UPDATE
+      units_sold = VALUES(units_sold),
+      revenue = VALUES(revenue),
+      order_count = VALUES(order_count);
+
+END $$
+DELIMITER ;
+
+----------------------------------------------------
+-- PHẦN 5: PROCEDURES TRUY VẤN BÁO CÁO
+----------------------------------------------------
+
+DELIMITER $$
+CREATE PROCEDURE sp_GetRevenueReport(IN startDate DATE, IN endDate DATE)
+BEGIN
+    SELECT 
+        SUM(total_orders) AS total_orders_gmv,
+        SUM(total_revenue) AS total_revenue_gmv,
+        SUM(real_orders) AS total_orders_real,
+        SUM(real_revenue) AS total_revenue_real
+    FROM sales_summary_daily
+    WHERE summary_date BETWEEN startDate AND endDate;
+END $$
+DELIMITER ;
+
+DELIMITER $$
+CREATE PROCEDURE sp_GetTopProducts(IN startDate DATE, IN endDate DATE, IN _limit INT)
+BEGIN
+    SELECT
+        p.name AS product_name,
+        v.sku,
+        SUM(d.units_sold) AS total_sold,
+        SUM(d.revenue) AS total_revenue
+    FROM product_sales_daily d
+    JOIN products p ON d.product_id = p.id
+    LEFT JOIN product_variants v ON d.variant_id = v.id
+    WHERE d.summary_date BETWEEN startDate AND endDate
+    GROUP BY p.id, p.name, v.id, v.sku
+    ORDER BY total_sold DESC
+    LIMIT _limit;
+END $$
+DELIMITER ;
+
+-- Kết thúc script

@@ -1,19 +1,22 @@
 package server
 
 import (
+	"golang/internal/handler"
+	"golang/internal/router"
 	"net/http"
-	"golang/internal/router" 
 )
 
 type Server struct {
 	*http.Server
 }
 
-func NewServer() *Server {
-	// 1. Gọi sang package router để lấy mux về
+func NewServer(productHandler *handler.ProductHandler) *Server {
+
 	mux := router.NewRouter()
 
-	// 2. Gắn mux vào server
+	// Đăng ký route product
+	router.RegisterProductRoutes(mux, productHandler)
+
 	return &Server{
 		Server: &http.Server{
 			Addr:    ":8081",

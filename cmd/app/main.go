@@ -2,11 +2,15 @@ package main
 
 import (
 	config "golang/internal/configs/database"
+	"golang/internal/controller"
+	"golang/internal/handler"
+	"golang/internal/repository"
 	"golang/internal/server"
 	"log"
 )
 
 func main() {
+
 	//Khoi tao database
 	db := config.NewDatabaseConnection()
 	if db == nil {
@@ -14,10 +18,16 @@ func main() {
 	}
 	defer db.Connection.Close()
 	log.Println("Kết nối database thành công")
-	//Khoi tao server
-	srv := server.NewServer()
-	log.Println("Server đang chạy trên cổng 8081")
+
+	productRepo := repository.NewProductRepo(db.Connection)
+
+	productController := controller.NewProductController(productRepo)
+
+	productHandler := handler.NewProductHandler(productController)
+
+	srv := server.NewServer(productHandler)
+	log.Println("Starting server on :8081")
 	if err := srv.ListenAndServe(); err != nil {
-		log.Fatalf("Lỗi khi chạy server: %v", err)
+		log.Fatalf("Lỗi khi khởi động server: %v", err)
 	}
 }
