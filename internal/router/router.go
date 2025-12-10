@@ -1,6 +1,7 @@
 package router
 
 import (
+<<<<<<< HEAD
 	"golang/internal/handler"
 	"net/http"
 )
@@ -25,3 +26,12 @@ func NewRouter(
 
 	return mux
 }
+=======
+	"net/http"
+)
+
+func NewRouter() *http.ServeMux {
+	return http.NewServeMux()
+
+}
+>>>>>>> df8a219 (up)
