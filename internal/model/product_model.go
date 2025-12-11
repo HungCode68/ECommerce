@@ -43,7 +43,7 @@ type GetProductRequest struct {
 type CreateProductRequest struct {
 	Name             string  `json:"name" validate:"required,min=3,max=255"`
 	Slug             string  `json:"slug" validate:"required,min=3,max=255"`
-	MinPrice         float64 `json:"min_price" validate:"required,min=0"`
+	MinPrice         float64 `json:"min_price" validate:"required,gt=0"`
 	ShortDescription string  `json:"short_description" validate:"omitempty,max=500"`
 	Description      string  `json:"description" validate:"omitempty"`
 	Brand            string  `json:"brand" validate:"omitempty,max=100"`
@@ -54,7 +54,6 @@ type CreateProductRequest struct {
 
 // UpdateProductRequest dùng cho việc cập nhật sản phẩm (Admin)
 type UpdateProductRequest struct {
-	ID               int64    `json:"id" validate:"required,min=1"`
 	Name             string   `json:"name" validate:"omitempty,min=3,max=255"`
 	Slug             string   `json:"slug" validate:"omitempty,min=3,max=255"`
 	MinPrice         *float64 `json:"min_price" validate:"omitempty,min=0"`
@@ -81,22 +80,19 @@ type GetManyProductsRequest struct {
 	IDs []int64 `json:"ids" validate:"required,min=1,max=100,dive,min=1"`
 }
 
-// ListProductsRequest - Request để lấy danh sách sản phẩm có phân trang và filter
-type ListProductsRequest struct {
-	Page     int    `json:"page" validate:"omitempty,min=1"`
-	PageSize int    `json:"page_size" validate:"omitempty,min=1,max=100"`
-	Status   string `json:"status" validate:"omitempty,oneof=draft active inactive archived"`
-	Brand    string `json:"brand" validate:"omitempty,max=100"`
-	Search   string `json:"search" validate:"omitempty,max=255"`
-	SortBy   string `json:"sort_by" validate:"omitempty,oneof=name price rating created_at"`
-	SortDesc bool   `json:"sort_desc"`
+// SearchProductsRequest - Tìm kiếm sản phẩm đơn giản
+type SearchProductsRequest struct {
+	Search string `json:"search" validate:"omitempty,max=255"`
+	
+	Brand  string `json:"brand" validate:"omitempty,max=100"`
 }
 
-// 3. RESPONSE DTOs - USER (Trả về cho khách hàng/người dùng thông thường)
+// =================================================================
+// 3. RESPONSE DTOs - USER (Trả về cho khách hàng)
+// =================================================================
 
-// UserProductResponse - Thông tin sản phẩm cho User (chỉ hiển thị các trường cần thiết)
+// UserProductResponse - Thông tin sản phẩm cho User
 type UserProductResponse struct {
-	Message  string  `json:"message,omitempty"`
 	ID       int64   `json:"id"`
 	Name     string  `json:"name"`
 	Brand    string  `json:"brand,omitempty"`
@@ -105,10 +101,8 @@ type UserProductResponse struct {
 
 // UserProductListResponse - Danh sách sản phẩm cho User
 type UserProductListResponse struct {
-	Products   []UserProductResponse `json:"products"`
-	TotalCount int                   `json:"total_count"`
-	Page       int                   `json:"page,omitempty"`
-	PageSize   int                   `json:"page_size,omitempty"`
+	Message  string                `json:"message,omitempty"`
+	Products []UserProductResponse `json:"products"`
 }
 
 // UserProductDetailResponse - Chi tiết sản phẩm cho User
@@ -150,13 +144,10 @@ type AdminProductResponse struct {
 	DeletedAt        *time.Time `json:"deleted_at,omitempty"`
 }
 
-// AdminProductListResponse - Danh sách sản phẩm cho Admin (có phân trang và filter)
+// AdminProductListResponse - Danh sách sản phẩm cho Admin
 type AdminProductListResponse struct {
-	Products   []AdminProductResponse `json:"products"`
-	TotalCount int                    `json:"total_count"`
-	Page       int                    `json:"page,omitempty"`
-	PageSize   int                    `json:"page_size,omitempty"`
-	Message    string                 `json:"message,omitempty"`
+	Message  string                 `json:"message,omitempty"`
+	Products []AdminProductResponse `json:"products"`
 }
 
 // AdminProductDetailResponse - Chi tiết sản phẩm cho Admin
@@ -191,9 +182,8 @@ type AdminBulkDeleteProductResponse struct {
 	Success      bool    `json:"success"`
 }
 
-// GetManyProductsResponse - Response trả về nhiều sản phẩm (dùng cho cả User và Admin)
+// GetManyProductsResponse - Response trả về nhiều sản phẩm
 type GetManyProductsResponse struct {
-	Products   []UserProductResponse `json:"products"`
-	NotFound   []int64               `json:"not_found,omitempty"`
-	TotalFound int                   `json:"total_found"`
+	Message  string                `json:"message,omitempty"`
+	Products []UserProductResponse `json:"products"`
 }
