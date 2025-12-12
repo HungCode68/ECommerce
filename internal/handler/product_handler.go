@@ -10,26 +10,38 @@ import (
 	"strconv"
 )
 
+// ProductHandler - Struct xử lý các HTTP request liên quan đến sản phẩm
 type ProductHandler struct {
 	PrtController *controller.ProductController
 }
 
+// NewProductHandler - Constructor tạo handler mới với controller
 func NewProductHandler(prtController *controller.ProductController) *ProductHandler {
 	return &ProductHandler{PrtController: prtController}
 }
 
-// Helper functions
+// =================================================================
+// HELPER FUNCTIONS - Hàm hỗ trợ
+// =================================================================
+
+// writeJson - Ghi response JSON với status code và data
 func (h *ProductHandler) writeJson(w http.ResponseWriter, status int, data any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(data)
 }
+
+// errJson - Ghi response JSON lỗi với status code và message
 func (h *ProductHandler) errJson(w http.ResponseWriter, status int, message string) {
 	h.writeJson(w, status, map[string]string{"error": message})
 }
 
-//CreateProduct
+// =================================================================
+// ADMIN HANDLERS - Xử lý request từ Admin
+// =================================================================
 
+// CreateProductHandler - Xử lý request tạo sản phẩm mới
+// Validate dữ liệu đầu vào, kiểm tra trùng lặp tên/slug, tạo sản phẩm vào DB
 func (h *ProductHandler) CreateProductHandler(w http.ResponseWriter, r *http.Request) {
 	var req model.CreateProductRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -52,7 +64,8 @@ func (h *ProductHandler) CreateProductHandler(w http.ResponseWriter, r *http.Req
 	h.writeJson(w, http.StatusCreated, productResponse)
 }
 
-// Get Product
+// AdminGetProductHandler - Lấy chi tiết sản phẩm cho Admin theo ID/Name/Slug
+// Hỗ trợ tìm kiếm qua path parameter (id, slug) hoặc query parameter (name)
 func (h *ProductHandler) AdminGetProductHandler(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	slugStr := r.PathValue("slug")
@@ -82,6 +95,8 @@ func (h *ProductHandler) AdminGetProductHandler(w http.ResponseWriter, r *http.R
 
 }
 
+// UserGetProductHandlerDetail - Lấy chi tiết đầy đủ sản phẩm cho User
+// Chỉ trả về sản phẩm đã published (is_published = true)
 func (h *ProductHandler) UserGetProductHandlerDetail(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	slugStr := r.PathValue("slug")
@@ -110,6 +125,8 @@ func (h *ProductHandler) UserGetProductHandlerDetail(w http.ResponseWriter, r *h
 	h.writeJson(w, http.StatusAccepted, userProductDetailResponse)
 }
 
+// UserGetProductHandler - Lấy thông tin rút gọn sản phẩm cho User
+// Chỉ trả về sản phẩm published với thông tin cơ bản (name, slug, price, rating)
 func (h *ProductHandler) UserGetProductHandler(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	slugStr := r.PathValue("slug")
@@ -138,6 +155,8 @@ func (h *ProductHandler) UserGetProductHandler(w http.ResponseWriter, r *http.Re
 	h.writeJson(w, http.StatusAccepted, userProductDetailResponse)
 }
 
+// AdminGetManyProductController - Lấy nhiều sản phẩm theo danh sách IDs
+// Nhận body JSON {"ids": [1,2,3]}, validate và trả về danh sách sản phẩm
 func (h *ProductHandler) AdminGetManyProductController(w http.ResponseWriter, r *http.Request) {
 	var req model.GetManyProductsRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -156,6 +175,9 @@ func (h *ProductHandler) AdminGetManyProductController(w http.ResponseWriter, r 
 	h.writeJson(w, http.StatusOK, productsResponse)
 }
 
+// UserSearchProductHandler - Tìm kiếm sản phẩm cho User
+// Tìm kiếm theo tên (LIKE) hoặc thương hiệu, chỉ trả về sản phẩm published
+// Validate nghiêm ngặt: DisallowUnknownFields, yêu cầu ít nhất 1 tham số
 func (h *ProductHandler) UserSearchProductHandler(w http.ResponseWriter, r *http.Request) {
 	var req model.SearchProductsRequest
 
@@ -191,6 +213,7 @@ func (h *ProductHandler) UserSearchProductHandler(w http.ResponseWriter, r *http
 }
 
 // AdminSearchProductsHandler - Tìm kiếm sản phẩm cho Admin
+// Tương tự UserSearchProductHandler nhưng không lọc theo is_published
 func (h *ProductHandler) AdminSearchProductsHandler(w http.ResponseWriter, r *http.Request) {
 	var req model.SearchProductsRequest
 
@@ -224,10 +247,14 @@ func (h *ProductHandler) AdminSearchProductsHandler(w http.ResponseWriter, r *ht
 
 	h.writeJson(w, http.StatusOK, productsResponse)
 }
+
+// UpdateProductHandler - Cập nhật thông tin sản phẩm
+// Lấy ID từ path, validate dữ liệu, gọi controller để update
 func (h *ProductHandler) UpdateProductHandler(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
+
 		h.errJson(w, http.StatusBadRequest, "Invalid product ID in path")
 		return
 	}
@@ -251,6 +278,8 @@ func (h *ProductHandler) UpdateProductHandler(w http.ResponseWriter, r *http.Req
 	}
 	h.writeJson(w, http.StatusOK, adminReponse)
 }
+
+// AdminGetAllProductHandler - Lấy tất cả sản phẩm (không bao gồm đã xóa mềm)
 func (h *ProductHandler) AdminGetAllProductHandler(w http.ResponseWriter, r *http.Request) {
 	productsResponse, err := h.PrtController.AdminGetAllProductsController()
 	if err != nil {
@@ -259,6 +288,9 @@ func (h *ProductHandler) AdminGetAllProductHandler(w http.ResponseWriter, r *htt
 	}
 	h.writeJson(w, http.StatusOK, productsResponse)
 }
+
+// AdminDeleteSoftProductHandler - Xóa mềm sản phẩm đơn theo ID
+// Set deleted_at và status = 'archived' cho sản phẩm
 func (h *ProductHandler) AdminDeleteSoftProductHandler(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -274,6 +306,8 @@ func (h *ProductHandler) AdminDeleteSoftProductHandler(w http.ResponseWriter, r 
 	h.writeJson(w, http.StatusOK, map[string]string{"message": "Product deleted softly successfully"})
 }
 
+// AdminGetAllSoftDeletedProductsHandler - Lấy danh sách tất cả sản phẩm đã xóa mềm
+// Trả về các sản phẩm có deleted_at IS NOT NULL và status = 'archived'
 func (h *ProductHandler) AdminGetAllSoftDeletedProductsHandler(w http.ResponseWriter, r *http.Request) {
 	productsResponse, err := h.PrtController.AdminGetAllSoftDeletedProductsController()
 	if err != nil {
@@ -282,6 +316,9 @@ func (h *ProductHandler) AdminGetAllSoftDeletedProductsHandler(w http.ResponseWr
 	}
 	h.writeJson(w, http.StatusOK, productsResponse)
 }
+
+// AdminBulkDeleteSoftProductsHandler - Xóa mềm tất cả sản phẩm đang active
+// Set deleted_at cho tất cả sản phẩm có status = 'active'
 func (h *ProductHandler) AdminBulkDeleteSoftProductsHandler(w http.ResponseWriter, r *http.Request) {
 	err := h.PrtController.AdminDeleteAllSoftDeletedProductsController()
 	if err != nil {
@@ -289,4 +326,14 @@ func (h *ProductHandler) AdminBulkDeleteSoftProductsHandler(w http.ResponseWrite
 	}
 	h.writeJson(w, http.StatusOK, map[string]string{"message": "All products deleted softly successfully"})
 
+}
+
+// AdminDeleteAllProductsHandler - Xóa vĩnh viễn tất cả sản phẩm (hard delete)
+// CẢNH BÁO: Xóa hoàn toàn tất cả sản phẩm khỏi database
+func (h *ProductHandler) AdminDeleteAllProductsHandler(w http.ResponseWriter, r *http.Request) {
+	err := h.PrtController.AdminDeleteAllProductsController()
+	if err != nil {
+		h.errJson(w, http.StatusInternalServerError, "Cannot delete all products")
+	}
+	h.writeJson(w, http.StatusOK, map[string]string{"message": "All products deleted successfully"})
 }

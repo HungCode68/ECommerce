@@ -16,6 +16,18 @@ func NewProductController(repo repository.ProductResponsitory) *ProductControlle
 	return &ProductController{Repo: repo}
 }
 
+// =================================================================
+// HELPER FUNCTIONS
+// =================================================================
+
+// stringToPtr converts string to *string, returns nil if empty
+func stringToPtr(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
 // Create
 
 func (prt *ProductController) CreateProductController(product model.CreateProductRequest) (*model.AdminCreateProductResponse, error) {
@@ -44,9 +56,9 @@ func (prt *ProductController) CreateProductController(product model.CreateProduc
 	productToCreate := &model.Product{
 		Name:             product.Name,
 		Slug:             product.Slug,
-		ShortDescription: product.ShortDescription,
-		Description:      product.Description,
-		Brand:            product.Brand,
+		ShortDescription: stringToPtr(product.ShortDescription),
+		Description:      stringToPtr(product.Description),
+		Brand:            stringToPtr(product.Brand),
 		Status:           product.Status,
 		IsPublished:      product.IsPublished,
 		PublishedAt:      publishedAt,
@@ -299,9 +311,9 @@ func (prt *ProductController) UpdateProductController(product model.UpdateProduc
 		ID:               id,
 		Name:             product.Name,
 		Slug:             product.Slug,
-		ShortDescription: product.ShortDescription,
-		Description:      product.Description,
-		Brand:            product.Brand,
+		ShortDescription: stringToPtr(product.ShortDescription),
+		Description:      stringToPtr(product.Description),
+		Brand:            stringToPtr(product.Brand),
 		Status:           product.Status,
 		IsPublished:      *product.IsPublished,
 		PublishedAt:      publishedAt,
@@ -430,6 +442,13 @@ func (prt *ProductController) AdminGetAllSoftDeletedProductsController() (*model
 }
 func (prt *ProductController) AdminDeleteAllSoftDeletedProductsController() error {
 	err := prt.Repo.DeleteAllProductsSoftDeleted()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func (prt *ProductController) AdminDeleteAllProductsController() error {
+	err := prt.Repo.DeleteAllProducts()
 	if err != nil {
 		return err
 	}
