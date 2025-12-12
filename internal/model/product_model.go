@@ -8,26 +8,26 @@ import "time"
 
 // Product ánh xạ trực tiếp với bảng 'products' trong CSDL
 type Product struct {
-	ID               int64  `db:"id"`
-	Name             string `db:"name"`
-	Slug             string `db:"slug"`
-	ShortDescription string `db:"short_description"`
-	Description      string `db:"description"`
-	Brand            string `db:"brand"` // Brand có thể NULL
-	Status           string `db:"status"`
-	IsPublished      bool   `db:"is_published"`
+	ID               int64   `db:"id"`
+	Name             string  `db:"name"`
+	Slug             string  `db:"slug"`
+	ShortDescription *string `db:"short_description"` // Có thể NULL
+	Description      *string `db:"description"`       // Có thể NULL
+	Brand            *string `db:"brand"`             // Có thể NULL
+	Status           string  `db:"status"`
+	IsPublished      bool    `db:"is_published"`
 
-	PublishedAt *time.Time `db:"published_at"`
+	PublishedAt *time.Time `db:"published_at"` // Có thể NULL
 
 	MinPrice    float64 `db:"min_price"`
 	AvgRating   float64 `db:"avg_rating"`
 	RatingCount int     `db:"rating_count"`
-	CreatedBy   *int64  `db:"created_by"`
-	UpdatedBy   *int64  `db:"updated_by"`
+	CreatedBy   *int64  `db:"created_by"` // Có thể NULL
+	UpdatedBy   *int64  `db:"updated_by"` // Có thể NULL
 
 	CreatedAt time.Time  `db:"created_at"`
 	UpdatedAt time.Time  `db:"updated_at"`
-	DeletedAt *time.Time `db:"deleted_at"` // Đã đúng
+	DeletedAt *time.Time `db:"deleted_at"` // Có thể NULL
 }
 
 // 2. REQUEST DTOs (Data Transfer Objects - Nhận Input)
@@ -83,8 +83,8 @@ type GetManyProductsRequest struct {
 // SearchProductsRequest - Tìm kiếm sản phẩm đơn giản
 type SearchProductsRequest struct {
 	Search string `json:"search" validate:"omitempty,max=255"`
-	
-	Brand  string `json:"brand" validate:"omitempty,max=100"`
+
+	Brand string `json:"brand" validate:"omitempty,max=100"`
 }
 
 // =================================================================
@@ -95,7 +95,7 @@ type SearchProductsRequest struct {
 type UserProductResponse struct {
 	ID       int64   `json:"id"`
 	Name     string  `json:"name"`
-	Brand    string  `json:"brand,omitempty"`
+	Brand    *string `json:"brand,omitempty"`
 	MinPrice float64 `json:"min_price"`
 }
 
@@ -110,9 +110,9 @@ type UserProductDetailResponse struct {
 	Message          string     `json:"message,omitempty"`
 	ID               int64      `json:"id"`
 	Name             string     `json:"name"`
-	ShortDescription string     `json:"short_description,omitempty"`
-	Description      string     `json:"description,omitempty"`
-	Brand            string     `json:"brand,omitempty"`
+	ShortDescription *string    `json:"short_description,omitempty"`
+	Description      *string    `json:"description,omitempty"`
+	Brand            *string    `json:"brand,omitempty"`
 	MinPrice         float64    `json:"min_price"`
 	AvgRating        float64    `json:"avg_rating"`
 	RatingCount      int        `json:"rating_count"`
@@ -128,9 +128,9 @@ type AdminProductResponse struct {
 	ID               int64      `json:"id"`
 	Name             string     `json:"name"`
 	Slug             string     `json:"slug"`
-	ShortDescription string     `json:"short_description,omitempty"`
-	Description      string     `json:"description,omitempty"`
-	Brand            string     `json:"brand,omitempty"`
+	ShortDescription *string    `json:"short_description,omitempty"`
+	Description      *string    `json:"description,omitempty"`
+	Brand            *string    `json:"brand,omitempty"`
 	Status           string     `json:"status"`
 	IsPublished      bool       `json:"is_published"`
 	PublishedAt      *time.Time `json:"published_at,omitempty"`

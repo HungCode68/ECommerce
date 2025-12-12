@@ -1,0 +1,870 @@
+openapi: 3.0.3
+info:
+  title: ECommerce API
+  description: API quản lý sản phẩm cho hệ thống thương mại điện tử
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@ecommerce.com
+
+servers:
+  - url: http://localhost:8081
+    description: Development Server
+
+tags:
+  - name: Admin - Products
+    description: Các API quản lý sản phẩm dành cho Admin
+  - name: User - Products
+    description: Các API xem sản phẩm dành cho User
+
+paths:
+  # =================================================================
+  # ADMIN ENDPOINTS
+  # =================================================================
+  
+  /admin/product:
+    post:
+      tags:
+        - Admin - Products
+      summary: Tạo sản phẩm mới
+      description: Tạo một sản phẩm mới trong hệ thống. Tự động kiểm tra trùng lặp tên và slug.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProductRequest'
+            example:
+              name: "iPhone 15 Pro Max"
+              slug: "iphone-15-pro-max"
+              short_description: "Điện thoại cao cấp từ Apple"
+              description: "iPhone 15 Pro Max với chip A17 Pro, camera 48MP"
+              brand: "Apple"
+              status: "active"
+              is_published: true
+              min_price: 29990000
+      responses:
+        '201':
+          description: Tạo sản phẩm thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminCreateProductResponse'
+        '400':
+          description: Dữ liệu không hợp lệ hoặc trùng lặp
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /admin/product/{id}:
+    get:
+      tags:
+        - Admin - Products
+      summary: Lấy chi tiết sản phẩm theo ID
+      description: Lấy thông tin đầy đủ của sản phẩm bao gồm cả sản phẩm đã xóa mềm
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID của sản phẩm
+      responses:
+        '202':
+          description: Lấy sản phẩm thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminProductDetailResponse'
+        '404':
+          description: Không tìm thấy sản phẩm
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /admin/product/:
+    get:
+      tags:
+        - Admin - Products
+      summary: Lấy chi tiết sản phẩm theo tên
+      description: Tìm sản phẩm theo tên thông qua query parameter
+      parameters:
+        - name: name
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Tên sản phẩm cần tìm
+      responses:
+        '202':
+          description: Lấy sản phẩm thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminProductDetailResponse'
+        '404':
+          description: Không tìm thấy sản phẩm
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /admin/product/slug/{slug}:
+    get:
+      tags:
+        - Admin - Products
+      summary: Lấy chi tiết sản phẩm theo slug
+      description: Tìm sản phẩm theo đường dẫn thân thiện (slug)
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Slug của sản phẩm
+      responses:
+        '202':
+          description: Lấy sản phẩm thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminProductDetailResponse'
+        '404':
+          description: Không tìm thấy sản phẩm
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /admin/product/all:
+    get:
+      tags:
+        - Admin - Products
+      summary: Lấy tất cả sản phẩm
+      description: Lấy danh sách tất cả sản phẩm trong hệ thống (không bao gồm sản phẩm đã xóa mềm)
+      responses:
+        '200':
+          description: Lấy danh sách thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminProductListResponse'
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /admin/products/many:
+    post:
+      tags:
+        - Admin - Products
+      summary: Lấy nhiều sản phẩm theo danh sách ID
+      description: Lấy thông tin nhiều sản phẩm cùng lúc bằng cách cung cấp danh sách ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GetManyProductsRequest'
+            example:
+              ids: [1, 2, 3, 5, 10]
+      responses:
+        '200':
+          description: Lấy danh sách thành công
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminProductResponse'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /admin/products/search:
+    post:
+      tags:
+        - Admin - Products
+      summary: Tìm kiếm sản phẩm
+      description: Tìm kiếm sản phẩm theo tên (LIKE) hoặc thương hiệu (exact match)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchProductsRequest'
+            examples:
+              searchByName:
+                summary: Tìm theo tên
+                value:
+                  search: "iphone"
+              searchByBrand:
+                summary: Tìm theo thương hiệu
+                value:
+                  brand: "Apple"
+              searchBoth:
+                summary: Tìm theo cả tên và thương hiệu
+                value:
+                  search: "iphone"
+                  brand: "Apple"
+      responses:
+        '200':
+          description: Tìm kiếm thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminProductListResponse'
+        '400':
+          description: Thiếu tham số tìm kiếm
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /admin/product/update/{id}:
+    put:
+      tags:
+        - Admin - Products
+      summary: Cập nhật sản phẩm
+      description: Cập nhật thông tin sản phẩm đã tồn tại
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID của sản phẩm cần cập nhật
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProductRequest'
+            example:
+              name: "iPhone 15 Pro Max 256GB"
+              slug: "iphone-15-pro-max-256gb"
+              short_description: "Phiên bản 256GB"
+              description: "iPhone 15 Pro Max với dung lượng 256GB"
+              brand: "Apple"
+              status: "active"
+              is_published: true
+              min_price: 31990000
+      responses:
+        '200':
+          description: Cập nhật thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUpdateProductResponse'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Không tìm thấy sản phẩm
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /admin/product/delesoft/{id}:
+    delete:
+      tags:
+        - Admin - Products
+      summary: Xóa mềm sản phẩm
+      description: Đánh dấu sản phẩm là đã xóa (soft delete) bằng cách set deleted_at
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID của sản phẩm cần xóa
+      responses:
+        '200':
+          description: Xóa mềm thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Product deleted softly successfully"
+        '400':
+          description: ID không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Lỗi khi xóa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /admin/products/deleted:
+    get:
+      tags:
+        - Admin - Products
+      summary: Lấy danh sách sản phẩm đã xóa mềm
+      description: Lấy tất cả sản phẩm có deleted_at không NULL
+      responses:
+        '200':
+          description: Lấy danh sách thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminProductListResponse'
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /admin/products/delesoft/multi:
+    post:
+      tags:
+        - Admin - Products
+      summary: Xóa mềm nhiều sản phẩm
+      description: Xóa mềm nhiều sản phẩm cùng lúc bằng danh sách ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkDeleteProductRequest'
+            example:
+              ids: [1, 2, 3, 5, 8]
+      responses:
+        '200':
+          description: Xóa mềm thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Products deleted softly successfully"
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /admin/products/deleall:
+    delete:
+      tags:
+        - Admin - Products
+      summary: Xóa vĩnh viễn tất cả sản phẩm đã xóa mềm
+      description: Xóa vĩnh viễn (hard delete) tất cả sản phẩm có deleted_at không NULL
+      responses:
+        '200':
+          description: Xóa thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "All soft deleted products permanently deleted"
+        '500':
+          description: Lỗi khi xóa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # =================================================================
+  # USER ENDPOINTS
+  # =================================================================
+
+  /user/product/detail/{id}:
+    get:
+      tags:
+        - User - Products
+      summary: Xem chi tiết sản phẩm theo ID
+      description: Lấy thông tin đầy đủ của sản phẩm đã được publish
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID của sản phẩm
+      responses:
+        '202':
+          description: Lấy sản phẩm thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProductDetailResponse'
+        '403':
+          description: Sản phẩm chưa được publish
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Không tìm thấy sản phẩm
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /user/products/detail/:
+    get:
+      tags:
+        - User - Products
+      summary: Xem chi tiết sản phẩm theo tên
+      description: Tìm sản phẩm đã publish theo tên
+      parameters:
+        - name: name
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Tên sản phẩm
+      responses:
+        '202':
+          description: Lấy sản phẩm thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProductDetailResponse'
+        '403':
+          description: Sản phẩm chưa được publish
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /user/product/detail/slug/{slug}:
+    get:
+      tags:
+        - User - Products
+      summary: Xem chi tiết sản phẩm theo slug
+      description: Tìm sản phẩm đã publish theo slug
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Slug của sản phẩm
+      responses:
+        '202':
+          description: Lấy sản phẩm thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProductDetailResponse'
+        '403':
+          description: Sản phẩm chưa được publish
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /user/product/{id}:
+    get:
+      tags:
+        - User - Products
+      summary: Xem thông tin cơ bản sản phẩm theo ID
+      description: Lấy thông tin rút gọn của sản phẩm đã được publish
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID của sản phẩm
+      responses:
+        '202':
+          description: Lấy sản phẩm thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProductResponse'
+        '403':
+          description: Sản phẩm chưa được publish
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /user/products/:
+    get:
+      tags:
+        - User - Products
+      summary: Xem thông tin cơ bản sản phẩm theo tên
+      description: Tìm sản phẩm đã publish theo tên (thông tin rút gọn)
+      parameters:
+        - name: name
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Tên sản phẩm
+      responses:
+        '202':
+          description: Lấy sản phẩm thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProductResponse'
+
+  /user/product/slug/{slug}:
+    get:
+      tags:
+        - User - Products
+      summary: Xem thông tin cơ bản sản phẩm theo slug
+      description: Tìm sản phẩm đã publish theo slug (thông tin rút gọn)
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Slug của sản phẩm
+      responses:
+        '202':
+          description: Lấy sản phẩm thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProductResponse'
+
+  /user/products/search:
+    post:
+      tags:
+        - User - Products
+      summary: Tìm kiếm sản phẩm
+      description: Tìm kiếm sản phẩm đã publish theo tên hoặc thương hiệu
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchProductsRequest'
+            examples:
+              searchByName:
+                summary: Tìm theo tên
+                value:
+                  search: "samsung"
+              searchByBrand:
+                summary: Tìm theo thương hiệu
+                value:
+                  brand: "Samsung"
+      responses:
+        '200':
+          description: Tìm kiếm thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProductListResponse'
+        '400':
+          description: Thiếu tham số tìm kiếm
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+# =================================================================
+# COMPONENTS / SCHEMAS
+# =================================================================
+
+components:
+  schemas:
+    # Request Schemas
+    CreateProductRequest:
+      type: object
+      required:
+        - name
+        - slug
+        - status
+        - is_published
+        - min_price
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 255
+          description: Tên sản phẩm
+        slug:
+          type: string
+          minLength: 3
+          maxLength: 255
+          description: Đường dẫn thân thiện (URL-friendly)
+        short_description:
+          type: string
+          description: Mô tả ngắn gọn
+        description:
+          type: string
+          description: Mô tả chi tiết
+        brand:
+          type: string
+          description: Thương hiệu
+        status:
+          type: string
+          enum: [draft, active, inactive, archived]
+          description: Trạng thái sản phẩm
+        is_published:
+          type: boolean
+          description: Đã công khai hay chưa
+        min_price:
+          type: number
+          format: float
+          minimum: 0
+          description: Giá tối thiểu
+
+    UpdateProductRequest:
+      type: object
+      required:
+        - name
+        - slug
+        - status
+        - is_published
+        - min_price
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 255
+        slug:
+          type: string
+          minLength: 3
+          maxLength: 255
+        short_description:
+          type: string
+        description:
+          type: string
+        brand:
+          type: string
+        status:
+          type: string
+          enum: [draft, active, inactive, archived]
+        is_published:
+          type: boolean
+        min_price:
+          type: number
+          format: float
+          minimum: 0
+
+    GetManyProductsRequest:
+      type: object
+      required:
+        - ids
+      properties:
+        ids:
+          type: array
+          items:
+            type: integer
+          minItems: 1
+          description: Danh sách ID sản phẩm
+
+    SearchProductsRequest:
+      type: object
+      properties:
+        search:
+          type: string
+          description: Từ khóa tìm kiếm (tìm trong tên sản phẩm - LIKE)
+        brand:
+          type: string
+          description: Lọc theo thương hiệu (exact match)
+      description: Phải có ít nhất một trong hai tham số (search hoặc brand)
+
+    BulkDeleteProductRequest:
+      type: object
+      required:
+        - ids
+      properties:
+        ids:
+          type: array
+          items:
+            type: integer
+          minItems: 1
+          description: Danh sách ID sản phẩm cần xóa
+
+    # Response Schemas - Admin
+    AdminProductResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        short_description:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        brand:
+          type: string
+          nullable: true
+        status:
+          type: string
+        is_published:
+          type: boolean
+        published_at:
+          type: string
+          format: date-time
+          nullable: true
+        min_price:
+          type: number
+          format: float
+        avg_rating:
+          type: number
+          format: float
+        rating_count:
+          type: integer
+        created_by:
+          type: integer
+          nullable: true
+        updated_by:
+          type: integer
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    AdminProductListResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        products:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminProductResponse'
+
+    AdminProductDetailResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        product:
+          $ref: '#/components/schemas/AdminProductResponse'
+
+    AdminCreateProductResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        product:
+          $ref: '#/components/schemas/AdminProductResponse'
+
+    AdminUpdateProductResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        product:
+          $ref: '#/components/schemas/AdminProductResponse'
+
+    # Response Schemas - User
+    UserProductResponse:
+      type: object
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        min_price:
+          type: number
+          format: float
+        avg_rating:
+          type: number
+          format: float
+        rating_count:
+          type: integer
+
+    UserProductDetailResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        product:
+          type: object
+          properties:
+            name:
+              type: string
+            slug:
+              type: string
+            short_description:
+              type: string
+              nullable: true
+            description:
+              type: string
+              nullable: true
+            brand:
+              type: string
+              nullable: true
+            min_price:
+              type: number
+              format: float
+            avg_rating:
+              type: number
+              format: float
+            rating_count:
+              type: integer
+            created_at:
+              type: string
+              format: date-time
+            updated_at:
+              type: string
+              format: date-time
+
+    UserProductListResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        products:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserProductResponse'
+
+    # Error Schema
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Thông báo lỗi
