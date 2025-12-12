@@ -77,7 +77,7 @@ func NewDatabaseConnection() *DBConfig {
 	}
 }
 
-// Close đóng kết nối database
+
 func (config *DBConfig) Close() error {
 	if config.Connection != nil {
 		return config.Connection.Close()
