@@ -1,0 +1,5 @@
+# Bỏ qua file log cụ thể
+internal/logs/server.log
+
+# Hoặc bỏ qua tất cả các file đuôi .log trong toàn dự án (Khuyên dùng)
+*.log

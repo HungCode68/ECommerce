@@ -1,0 +1,640 @@
+openapi: 3.0.3
+info:
+  title: E-Commerce User API
+  description: |-
+    Tài liệu API cho module Quản lý Người dùng (Auth, User Profile, Admin Management).
+    
+  version: 1.0.1
+tags:
+  - name: Authentication
+    description: Các API xác thực (Public)
+  - name: User Self-Service
+    description: Các API dành cho người dùng tự quản lý tài khoản
+  - name: Admin Management
+    description: Các API dành cho Admin quản lý Users
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # --- Request Models ---
+    RegisterRequest:
+      type: object
+      required:
+        - username
+        - email
+        - password
+      properties:
+        username:
+          type: string
+          example: hungcode68
+          minLength: 3
+        email:
+          type: string
+          format: email
+          example: hungcode68@gmail.com
+        password:
+          type: string
+          format: password
+          example: password123
+          minLength: 6
+
+    LoginRequest:
+      type: object
+      required:
+        - identifier
+        - password
+      properties:
+        identifier:
+          type: string
+          example: hungcode68
+        password:
+          type: string
+          example: password123
+
+    RefreshTokenRequest:
+      type: object
+      required:
+        - refresh_token
+      properties:
+        refresh_token:
+          type: string
+          example: "eyJh..."
+
+    UpdateProfileRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          example: hungcode_new
+        email:
+          type: string
+          example: newemail@gmail.com
+        password:
+          type: string
+          example: newpassword123
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [user, admin]
+          example: admin
+        is_active:
+          type: boolean
+          example: true
+
+    DeleteManyRequest:
+      type: object
+      required:
+        - ids
+      properties:
+        ids:
+          type: array
+          items:
+            type: integer
+          example: [10, 15, 20]
+
+    # --- Response Models ---
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    LoginResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        user:
+          $ref: '#/components/schemas/UserResponse'
+
+    LogoutResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+
+    RefreshTokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+
+    # --- Wrapper Responses (Thành công & Lỗi) ---
+    SuccessResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 200
+        message:
+          type: string
+          example: Thành công
+        data:
+          type: object
+       
+
+    # Cấu trúc lỗi chung
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 400
+        message:
+          type: string
+          example: Lỗi dữ liệu
+        errors:
+          type: object
+          description: Chi tiết lỗi (String hoặc Object)
+          example: "Dữ liệu đầu vào không hợp lệ"
+
+paths:
+  # ================= AUTHENTICATION =================
+  /api/auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Đăng ký tài khoản mới
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Đăng ký thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - properties:
+                      data:
+                        $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: Lỗi Validate dữ liệu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 400
+                message: Dữ liệu đầu vào không hợp lệ
+                errors: "Key: 'RegisterRequest.Email' Error:Field validation for 'Email' failed on the 'email' tag"
+        '409':
+          description: Tài khoản đã tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 409
+                message: Lỗi đăng ký tài khoản
+                errors: "tên đăng nhập đã tồn tại"
+        '500':
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 500
+                message: Lỗi hệ thống
+                errors: "Database connection failed"
+  
+  /api/auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Đăng nhập
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - properties:
+                      data:
+                        $ref: '#/components/schemas/LoginResponse'
+        '400':
+          description: JSON không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Sai tài khoản hoặc mật khẩu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 401
+                message: Đăng nhập thất bại
+                errors: "tài khoản hoặc mật khẩu không đúng"
+
+  /api/auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh Token (Cấp mới Access Token)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: Cấp mới thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - properties:
+                      data:
+                        $ref: '#/components/schemas/RefreshTokenResponse'
+        '401':
+          description: Refresh Token hết hạn hoặc không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 401
+                message: Không thể làm mới token
+                errors: "refresh token không hợp lệ hoặc đã hết hạn"
+
+  /api/auth/logout:
+    post:
+      tags:
+        - User Self-Service
+      summary: Đăng xuất (Hủy Refresh Token)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Đăng xuất thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                code: 200
+                message: Đăng xuất thành công
+        '401':
+          description: Chưa đăng nhập (Thiếu Token)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 401
+                message: Yêu cầu không hợp lệ
+                errors: "thiếu token xác thực"
+
+  # ================= USER SELF-SERVICE =================
+  /api/users/me:
+    put:
+      tags:
+        - User Self-Service
+      summary: Cập nhật thông tin cá nhân
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileRequest'
+      responses:
+        '200':
+          description: Cập nhật thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - properties:
+                      data:
+                        $ref: '#/components/schemas/UserResponse'
+        '409':
+          description: Trùng Email hoặc Username
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 409
+                message: Dữ liệu trùng lặp
+                errors: "email đã được sử dụng"
+    delete:
+      tags:
+        - User Self-Service
+      summary: Tự xóa tài khoản (Xóa mềm)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Xóa tài khoản thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                code: 200
+                message: Tài khoản đã được xóa
+        '401':
+          description: Lỗi xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 401
+                message: Yêu cầu không hợp lệ
+                errors: "thiếu token xác thực"
+
+  # ================= ADMIN MANAGEMENT =================
+  /api/admin/users:
+    get:
+      tags:
+        - Admin Management
+      summary: Lấy danh sách tất cả users
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lấy danh sách thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/UserResponse'
+        '403':
+          description: Không có quyền Admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 403
+                message: Forbidden
+                errors: "Bạn không có quyền thực hiện chức năng này (Admin only)"
+    post:
+      tags:
+        - Admin Management
+      summary: Tạo tài khoản Admin mới
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Tạo Admin thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - properties:
+                      data:
+                        $ref: '#/components/schemas/UserResponse'
+        '403':
+          description: Không có quyền Admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 403
+                message: Forbidden
+                errors: "Bạn không có quyền thực hiện chức năng này (Admin only)"
+    delete:
+      tags:
+        - Admin Management
+      summary: Xóa nhiều User cùng lúc
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteManyRequest'
+      responses:
+        '200':
+          description: Xóa nhiều User thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                code: 200
+                message: Xóa nhiều User thành công
+        '400':
+          description: Lỗi Validate ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 400
+                message: Dữ liệu đầu vào không hợp lệ
+                errors: "Danh sách IDs không được để trống"
+        '403':
+          description: Không có quyền Admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 403
+                message: Forbidden
+                errors: "Bạn không có quyền thực hiện chức năng này (Admin only)"
+
+  /api/admin/users/search:
+    get:
+      tags:
+        - Admin Management
+      summary: Tìm kiếm User theo từ khóa
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          description: Từ khóa tìm kiếm (username hoặc email)
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Tìm kiếm thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: Thiếu từ khóa hoặc từ khóa quá ngắn
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 400
+                message: Thiếu từ khóa
+                data: null
+                errors: "Vui lòng nhập từ khóa tìm kiếm (?q=...)"
+
+  /api/admin/users/{id}:
+    get:
+      tags:
+        - Admin Management
+      summary: Xem chi tiết User theo ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Lấy chi tiết thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - properties:
+                      data:
+                        $ref: '#/components/schemas/UserResponse'
+        '404':
+          description: Không tìm thấy User
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 404
+                message: Không tìm thấy
+                data: null
+                errors: "User not found"
+    put:
+      tags:
+        - Admin Management
+      summary: Admin cập nhật thông tin User (Role, Active)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: Cập nhật thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - properties:
+                      data:
+                        $ref: '#/components/schemas/UserResponse'
+        '404':
+          description: User ID không tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 404
+                message: Không tìm thấy
+                errors: "User not found"
+    delete:
+      tags:
+        - Admin Management
+      summary: Xóa 1 User theo ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Xóa thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                code: 200
+                message: User đã được xóa
+        '404':
+          description: User ID không tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 404
+                message: Không tìm thấy
+                errors: "User not found"
