@@ -2,22 +2,21 @@ package server
 
 import (
 	"net/http"
-	"golang/internal/router" 
+	"time"
 )
 
 type Server struct {
 	*http.Server
 }
 
-func NewServer() *Server {
-	// 1. Gọi sang package router để lấy mux về
-	mux := router.NewRouter()
-
-	// 2. Gắn mux vào server
+// SỬA: Thêm tham số handler vào đây
+func NewServer(handler http.Handler) *Server {
 	return &Server{
 		Server: &http.Server{
-			Addr:    ":8081",
-			Handler: mux,
+			Addr:         ":8081",
+			Handler:      handler, // Gán router được truyền vào
+			ReadTimeout:  10 * time.Second,
+			WriteTimeout: 10 * time.Second,
 		},
 	}
 }

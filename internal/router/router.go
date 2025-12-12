@@ -1,21 +1,27 @@
 package router
 
 import (
-	"fmt"
+	"golang/internal/handler"
 	"net/http"
 )
 
+// NewRouter: Hàm khởi tạo Router tổng
+func NewRouter(
+	userHandler *handler.UserHandler,
+	addressHandler *handler.AddressHandler, 
+	
+) http.Handler {
 
-func NewRouter() *http.ServeMux {
 	mux := http.NewServeMux()
 
-	// Đăng ký route
-	mux.HandleFunc("/", handleHome)
+	NewUserRouter(mux, userHandler)
+
+	NewAddressRouter(mux, addressHandler)
+
+	// 3. Đăng ký Health Check (Optional - để check server sống hay chết)
+	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("OK"))
+	})
 
 	return mux
-}
-
-// Logic xử lý (Handler) nằm gọn trong package này
-func handleHome(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, "Hello World from Router Package!")
 }

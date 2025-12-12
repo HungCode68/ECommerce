@@ -20,10 +20,15 @@ func NewDatabaseConnection() *DBConfig {
 		log.Fatalf("Lỗi trong file .env: %v", err)
 	}
 
-	// Lấy driver từ biến môi trường
-	driver := os.Getenv("DB_DRIVER")
+	driver := os.Getenv("DB_DRIVER_FORCE")
+	
+	// Nếu không có force, mới lấy DB_DRIVER mặc định
 	if driver == "" {
-		log.Fatal("DB_DRIVER không được đặt trong .env")
+		driver = os.Getenv("DB_DRIVER")
+	}
+
+	if driver == "" {
+		log.Fatal("Chưa cấu hình DB_DRIVER hoặc DB_DRIVER_FORCE trong .env")
 	}
 
 	var connStr string

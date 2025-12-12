@@ -1,0 +1,349 @@
+openapi: 3.0.3
+info:
+  title: E-Commerce Address API
+  description: |-
+    Tài liệu API riêng cho module **Quản lý Địa chỉ (Address)**.
+    
+    Các API này cho phép người dùng thêm, sửa, xóa và quản lý sổ địa chỉ giao hàng của mình.
+    
+  version: 1.0.0
+tags:
+  - name: Address Management
+    description: Quản lý sổ địa chỉ giao hàng của người dùng
+
+# Định nghĩa bảo mật (JWT)
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # --- Request Models ---
+    CreateAddressRequest:
+      type: object
+      required:
+        - recipient_name
+        - phone
+        - line1
+        - city
+        - country
+      properties:
+        label:
+          type: string
+          example: "Văn phòng"
+          description: "Nhãn gợi nhớ (Nhà riêng, Công ty...)"
+        recipient_name:
+          type: string
+          example: "Nguyễn Văn A"
+          description: "Tên người nhận hàng"
+          minLength: 2
+        phone:
+          type: string
+          example: "0987654321"
+          description: "Số điện thoại liên lạc"
+          minLength: 9
+        line1:
+          type: string
+          example: "Tòa nhà Bitexco, Số 2 Hải Triều"
+          description: "Số nhà, tên đường"
+        line2:
+          type: string
+          example: "Tầng 5, Phòng 502"
+          description: "Thông tin bổ sung (Quận/Huyện, Tòa nhà...) - Optional"
+        city:
+          type: string
+          example: "Hồ Chí Minh"
+        state:
+          type: string
+          example: "Quận 1"
+          description: "Tỉnh/Bang - Optional"
+        country:
+          type: string
+          example: "Việt Nam"
+        is_default_shipping:
+          type: boolean
+          example: true
+          description: "Đặt làm địa chỉ mặc định ngay khi tạo"
+
+    UpdateAddressRequest:
+      type: object
+      description: "Gửi các trường cần sửa (Partial Update). Các trường không gửi sẽ giữ nguyên."
+      properties:
+        label:
+          type: string
+          example: "Nhà mới"
+        recipient_name:
+          type: string
+          example: "Trần Thị B"
+        phone:
+          type: string
+          example: "0123456789"
+        line1:
+          type: string
+        line2:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        country:
+          type: string
+        is_default_shipping:
+          type: boolean
+
+    # --- Response Models ---
+    AddressResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 10
+        user_id:
+          type: integer
+          example: 1
+        label:
+          type: string
+          example: "Văn phòng"
+        recipient_name:
+          type: string
+          example: "Nguyễn Văn A"
+        phone:
+          type: string
+          example: "0987654321"
+        line1:
+          type: string
+          example: "Tòa nhà Bitexco, Số 2 Hải Triều"
+        line2:
+          type: string
+          example: "Tầng 5, Phòng 502"
+        city:
+          type: string
+          example: "Hồ Chí Minh"
+        state:
+          type: string
+          example: "Quận 1"
+        country:
+          type: string
+          example: "Việt Nam"
+        is_default_shipping:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    # --- Wrapper Responses (Cấu trúc trả về chuẩn) ---
+    SuccessResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 200
+        message:
+          type: string
+          example: Thành công
+        data:
+          type: object
+       
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 400
+        message:
+          type: string
+          example: Lỗi dữ liệu
+        errors:
+          type: object
+          description: Chi tiết lỗi (String hoặc Object)
+          example: "Dữ liệu đầu vào không hợp lệ"
+
+paths:
+  # ================= ADDRESS MANAGEMENT =================
+  /api/addresses:
+    get:
+      tags:
+        - Address Management
+      summary: Lấy danh sách địa chỉ của tôi
+      description: Trả về danh sách tất cả địa chỉ của user đang đăng nhập. Địa chỉ mặc định sẽ nằm đầu tiên.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lấy danh sách thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/AddressResponse'
+        '401':
+          description: Chưa đăng nhập
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - Address Management
+      summary: Tạo địa chỉ mới
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAddressRequest'
+      responses:
+        '201':
+          description: Tạo thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - properties:
+                      data:
+                        $ref: '#/components/schemas/AddressResponse'
+        '400':
+          description: Lỗi Validate (Thiếu trường bắt buộc)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/addresses/{id}:
+    get:
+      tags:
+        - Address Management
+      summary: Xem chi tiết 1 địa chỉ
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID của địa chỉ cần xem
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Lấy chi tiết thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - properties:
+                      data:
+                        $ref: '#/components/schemas/AddressResponse'
+        '404':
+          description: Không tìm thấy địa chỉ (hoặc không thuộc về user này)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 404
+                message: Không tìm thấy dữ liệu
+                errors: "địa chỉ không tồn tại"
+    put:
+      tags:
+        - Address Management
+      summary: Cập nhật địa chỉ
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID của địa chỉ cần sửa
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAddressRequest'
+      responses:
+        '200':
+          description: Cập nhật thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - properties:
+                      data:
+                        $ref: '#/components/schemas/AddressResponse'
+        '404':
+          description: Không tìm thấy địa chỉ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Address Management
+      summary: Xóa địa chỉ
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Xóa thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: Không tìm thấy địa chỉ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/addresses/{id}/default:
+    put:
+      tags:
+        - Address Management
+      summary: Đặt làm địa chỉ mặc định
+      description: Set địa chỉ này thành mặc định, các địa chỉ khác của user sẽ tự động bị bỏ mặc định.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Đặt mặc định thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: Không tìm thấy địa chỉ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
