@@ -1,7 +1,6 @@
 package router
 
 import (
-<<<<<<< HEAD
 	"golang/internal/handler"
 	"net/http"
 )
@@ -10,6 +9,7 @@ import (
 func NewRouter(
 	userHandler *handler.UserHandler,
 	addressHandler *handler.AddressHandler, 
+	productHandler *handler.ProductHandler,
 	
 ) http.Handler {
 
@@ -19,6 +19,8 @@ func NewRouter(
 
 	NewAddressRouter(mux, addressHandler)
 
+	RegisterProductRoutes(mux, productHandler)
+
 	// 3. Đăng ký Health Check (Optional - để check server sống hay chết)
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("OK"))
@@ -26,12 +28,3 @@ func NewRouter(
 
 	return mux
 }
-=======
-	"net/http"
-)
-
-func NewRouter() *http.ServeMux {
-	return http.NewServeMux()
-
-}
->>>>>>> df8a219 (up)

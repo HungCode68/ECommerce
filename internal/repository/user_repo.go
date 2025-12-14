@@ -36,9 +36,12 @@ func NewUserDb(db *sql.DB) UserRepo {
 // Hàm Login kiểm tra username/email và password
 func (u *UserDb) GetUserByIdentifier(identifier string) (model.User, error) {
 	logger.DebugLogger.Printf("Starting GetUserByIdentifier for: %s", identifier)
-	query := "SELECT id, username, email, password_hash, role, is_active, refresh_token, refresh_token_expiry, created_at, updated_at, deleted_at FROM users WHERE (username = @p1 OR email = @p1) "
+
+	query := "SELECT id, username, email, password_hash, role, is_active, refresh_token, refresh_token_expiry, created_at, updated_at, deleted_at FROM users WHERE (username = ? OR email = ?) "
+
 	var user model.User
-	err := u.db.QueryRow(query, identifier).Scan(
+
+	err := u.db.QueryRow(query, identifier, identifier).Scan(
 		&user.ID,
 		&user.Username,
 		&user.Email,
@@ -68,9 +71,10 @@ func (u *UserDb) GetUserByIdentifier(identifier string) (model.User, error) {
 // Hàm lấy tất cả Users
 func (u *UserDb) GetAllUser() ([]model.UserResponse, error) {
 	logger.DebugLogger.Println("Starting GetAllUser")
-	rows, err := u.db.Query("SELECT id, username, email, role, is_active, created_at, updated_at, deleted_at FROM users ")
+
+	rows, err := u.db.Query("SELECT id, username, email, role, is_active, created_at, updated_at, deleted_at FROM users")
 	if err != nil {
-		logger.ErrorLogger.Printf("Query GetAllUser Failed:", err)
+		logger.ErrorLogger.Printf("Query GetAllUser Failed: %v", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -80,7 +84,7 @@ func (u *UserDb) GetAllUser() ([]model.UserResponse, error) {
 		var user model.UserResponse
 		err := rows.Scan(&user.ID, &user.Username, &user.Email, &user.Role, &user.IsActive, &user.CreatedAt, &user.UpdatedAt, &user.DeletedAt)
 		if err != nil {
-			logger.ErrorLogger.Printf("Row Scan Failed:", err)
+			logger.ErrorLogger.Printf("Row Scan Failed: %v", err)
 			return nil, err
 		}
 		UserSlice = append(UserSlice, user)
@@ -93,9 +97,11 @@ func (u *UserDb) GetAllUser() ([]model.UserResponse, error) {
 func (u *UserDb) GetUserByID(id int64) (model.UserResponse, error) {
 	logger.DebugLogger.Printf("Starting GetUserByID for ID: %d\n", id)
 	var user model.UserResponse
-	err := u.db.QueryRow("SELECT id, username, email, role, is_active, created_at, updated_at, deleted_at FROM users WHERE id = @p1", id).Scan(&user.ID, &user.Username, &user.Email, &user.Role, &user.IsActive, &user.CreatedAt, &user.UpdatedAt, &user.DeletedAt)
+	query := "SELECT id, username, email, role, is_active, created_at, updated_at, deleted_at FROM users WHERE id = ?"
+
+	err := u.db.QueryRow(query, id).Scan(&user.ID, &user.Username, &user.Email, &user.Role, &user.IsActive, &user.CreatedAt, &user.UpdatedAt, &user.DeletedAt)
 	if err != nil {
-		logger.ErrorLogger.Printf("GetUserById failed:", err)
+		logger.ErrorLogger.Printf("GetUserById failed: %v", err)
 		return model.UserResponse{}, err
 	}
 	logger.InfoLogger.Printf("GetUserById success")
@@ -106,9 +112,10 @@ func (u *UserDb) GetUserByID(id int64) (model.UserResponse, error) {
 func (u *UserDb) SearchUsers(keyword string) ([]model.UserResponse, error) {
 	logger.DebugLogger.Printf("Starting SearchUsers with keyword: %s", keyword)
 	searchTerm := "%" + keyword + "%"
-	query := "SELECT id, username, email, role, is_active, created_at, updated_at, deleted_at FROM users WHERE (username LIKE @p1 OR email LIKE @p1)"
 
-	rows, err := u.db.Query(query, searchTerm)
+	query := "SELECT id, username, email, role, is_active, created_at, updated_at, deleted_at FROM users WHERE (username LIKE ? OR email LIKE ?)"
+
+	rows, err := u.db.Query(query, searchTerm, searchTerm)
 	if err != nil {
 		logger.ErrorLogger.Printf("SearchUsers Query Failed: %v", err)
 		return nil, err
@@ -118,7 +125,6 @@ func (u *UserDb) SearchUsers(keyword string) ([]model.UserResponse, error) {
 	var userSlice []model.UserResponse
 	for rows.Next() {
 		var user model.UserResponse
-
 		err := rows.Scan(&user.ID, &user.Username, &user.Email, &user.Role, &user.IsActive, &user.CreatedAt, &user.UpdatedAt, &user.DeletedAt)
 		if err != nil {
 			logger.ErrorLogger.Printf("SearchUsers Row Scan Failed: %v", err)
@@ -131,24 +137,34 @@ func (u *UserDb) SearchUsers(keyword string) ([]model.UserResponse, error) {
 	return userSlice, nil
 }
 
-// Hàm tạo mới User
+// Hàm CreateUser (Tạo mới User)
 func (u *UserDb) CreateUser(user model.User) (model.User, error) {
 	logger.DebugLogger.Println("Starting CreateUser")
-	var newId int64
-	query := "INSERT INTO users (username, email, password_hash, role, is_active, created_at, updated_at) OUTPUT INSERTED.id VALUES (@p1, @p2, @p3, @p4, @p5, @p6, @p7)"
-	err := u.db.QueryRow(query, user.Username, user.Email, user.PasswordHash, user.Role, true, time.Now(), time.Now()).Scan(&newId)
+
+	now := time.Now()
+
+	query := "INSERT INTO users (username, email, password_hash, role, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+
+	result, err := u.db.Exec(query, user.Username, user.Email, user.PasswordHash, user.Role, true, now, now)
 	if err != nil {
-		logger.ErrorLogger.Printf("CreateUser Failed:", err)
+		logger.ErrorLogger.Printf("CreateUser Failed: %v", err)
 		return model.User{}, err
 	}
+
+	newId, err := result.LastInsertId()
+	if err != nil {
+		logger.ErrorLogger.Printf("Get LastInsertId Failed: %v", err)
+		return model.User{}, err
+	}
+
 	createUser := model.User{
 		ID:        newId,
 		Username:  user.Username,
 		Email:     user.Email,
 		Role:      user.Role,
 		IsActive:  true,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		CreatedAt: now,
+		UpdatedAt: now,
 	}
 	logger.InfoLogger.Printf("CreateUser success with ID: %d", newId)
 	return createUser, nil
@@ -160,10 +176,10 @@ func (u *UserDb) UpdateUser(id int64, user model.UpdateUserRequest) (model.User,
 	now := time.Now()
 
 	queryUpdate := `UPDATE users 
-	                SET role = COALESCE(@p1, role), 
-	                    is_active = COALESCE(@p2, is_active), 
-	                    updated_at = @p3 
-	                WHERE id = @p4 AND deleted_at IS NULL`
+                    SET role = COALESCE(?, role), 
+                        is_active = COALESCE(?, is_active), 
+                        updated_at = ? 
+                    WHERE id = ? AND deleted_at IS NULL`
 
 	res, err := u.db.Exec(queryUpdate, user.Role, user.IsActive, now, id)
 	if err != nil {
@@ -171,15 +187,15 @@ func (u *UserDb) UpdateUser(id int64, user model.UpdateUserRequest) (model.User,
 		return model.User{}, err
 	}
 
-	// Kiểm tra xem có dòng nào được update không (Optional nhưng nên làm)
+	// Kiểm tra xem có dòng nào được update không
 	rowsAffected, _ := res.RowsAffected()
 	if rowsAffected == 0 {
-		logger.WarnLogger.Printf("No user found to update with ID: %d", id)
+		logger.WarnLogger.Printf("No user found to update (or no changes made) with ID: %d", id)
 		return model.User{}, sql.ErrNoRows
 	}
 
 	querySelect := `SELECT id, username, email, role, is_active, created_at, updated_at 
-	                FROM users WHERE id = @p1`
+                    FROM users WHERE id = ?`
 
 	var updatedUser model.User
 	err = u.db.QueryRow(querySelect, id).Scan(
@@ -211,18 +227,18 @@ func (u *UserDb) UpdateUserProfile(id int64, req model.UpdateProfileRequest) (mo
 	now := time.Now()
 
 	queryUpdate := `UPDATE users 
-	          SET username = COALESCE(@p1, username), 
-	              email = COALESCE(@p2, email), 
-	              password_hash = COALESCE(@p3, password_hash),
-	              updated_at = @p4 
-	          WHERE id = @p5 AND deleted_at IS NULL`
+                    SET username = COALESCE(?, username), 
+                        email = COALESCE(?, email), 
+                        password_hash = COALESCE(?, password_hash),
+                        updated_at = ? 
+                    WHERE id = ? AND deleted_at IS NULL`
 
 	_, err := u.db.Exec(queryUpdate,
-		req.Username, // @p1
-		req.Email,    // @p2
-		req.Password, // @p3
-		now,          // @p4
-		id,           // @p5
+		req.Username,
+		req.Email,
+		req.Password,
+		now,
+		id,
 	)
 
 	if err != nil {
@@ -230,10 +246,9 @@ func (u *UserDb) UpdateUserProfile(id int64, req model.UpdateProfileRequest) (mo
 		return model.User{}, err
 	}
 
-	// Lấy dữ liệu mới nhất sau khi sửa
 	querySelect := `SELECT id, username, email, role, is_active, created_at, updated_at 
-	                FROM users WHERE id = @p1`
-	
+                    FROM users WHERE id = ?`
+
 	var user model.User
 	err = u.db.QueryRow(querySelect, id).Scan(
 		&user.ID,
@@ -260,7 +275,8 @@ func (u *UserDb) UpdateUserProfile(id int64, req model.UpdateProfileRequest) (mo
 
 // Hàm cập nhật Refresh Token và Expiry
 func (u *UserDb) UpdateRefreshToken(id int64, token string, expiry time.Time) error {
-	query := `UPDATE users SET refresh_token = @p1, refresh_token_expiry = @p2 WHERE id = @p3`
+
+	query := `UPDATE users SET refresh_token = ?, refresh_token_expiry = ? WHERE id = ?`
 	_, err := u.db.Exec(query, token, expiry, id)
 	return err
 }
@@ -268,7 +284,8 @@ func (u *UserDb) UpdateRefreshToken(id int64, token string, expiry time.Time) er
 // Hàm xóa mềm User (soft delete)
 func (u *UserDb) DeleteUserById(id int64) error {
 	logger.DebugLogger.Println("Starting DeleteUser for ID:", id)
-	query := `UPDATE users SET deleted_at = @p1 WHERE id = @p2`
+
+	query := `UPDATE users SET deleted_at = ? WHERE id = ?`
 
 	result, err := u.db.Exec(query, time.Now(), id)
 	if err != nil {
@@ -289,19 +306,17 @@ func (u *UserDb) DeleteUserById(id int64) error {
 func (u *UserDb) DeleteManyUsers(ids []int64) error {
 	logger.DebugLogger.Printf("Starting DeleteManyUsers for %d users", len(ids))
 
-	// 1. Bắt đầu Transaction (Đảm bảo tính toàn vẹn: Xóa hết hoặc không xóa gì cả)
 	tx, err := u.db.Begin()
 	if err != nil {
 		logger.ErrorLogger.Printf("Failed to begin transaction: %v", err)
 		return err
 	}
 
-	// 2. Chuẩn bị câu lệnh SQL (Prepare Statement)
-	// Cách này giúp SQL Server compile câu lệnh 1 lần, chạy nhiều lần -> Rất nhanh
-	query := `UPDATE users SET deleted_at = @p1 WHERE id = @p2`
+	query := `UPDATE users SET deleted_at = ? WHERE id = ?`
+
 	stmt, err := tx.Prepare(query)
 	if err != nil {
-		tx.Rollback() // Lỗi thì hoàn tác
+		tx.Rollback()
 		logger.ErrorLogger.Printf("Failed to prepare statement: %v", err)
 		return err
 	}
@@ -309,7 +324,7 @@ func (u *UserDb) DeleteManyUsers(ids []int64) error {
 
 	now := time.Now()
 
-	// 3. Duyệt qua danh sách ID và thực thi
+	// Duyệt qua danh sách ID và thực thi
 	for _, id := range ids {
 		_, err := stmt.Exec(now, id)
 		if err != nil {
@@ -319,7 +334,7 @@ func (u *UserDb) DeleteManyUsers(ids []int64) error {
 		}
 	}
 
-	// 4. Commit (Lưu thay đổi)
+	//Commit (Lưu thay đổi)
 	if err := tx.Commit(); err != nil {
 		logger.ErrorLogger.Printf("Failed to commit transaction: %v", err)
 		return err
@@ -329,37 +344,36 @@ func (u *UserDb) DeleteManyUsers(ids []int64) error {
 	return nil
 }
 
-
 // Hàm Hủy Refresh Token (Dùng cho Logout)
 func (u *UserDb) RevokeRefreshToken(userID int64) error {
-    logger.DebugLogger.Printf("Revoking refresh token for User ID: %d", userID)
-    
-    // Set refresh_token và expiry về NULL
-    query := `UPDATE users SET refresh_token = NULL, refresh_token_expiry = NULL WHERE id = @p1`
-    
-    _, err := u.db.Exec(query, userID)
-    if err != nil {
-        logger.ErrorLogger.Printf("RevokeRefreshToken failed: %v", err)
-        return err
-    }
-    
-    return nil
-}
+	logger.DebugLogger.Printf("Revoking refresh token for User ID: %d", userID)
 
+	query := `UPDATE users SET refresh_token = NULL, refresh_token_expiry = NULL WHERE id = ?`
+
+	_, err := u.db.Exec(query, userID)
+	if err != nil {
+		logger.ErrorLogger.Printf("RevokeRefreshToken failed: %v", err)
+		return err
+	}
+
+	return nil
+}
 
 // Hàm tìm User bằng Refresh Token (để cấp lại Access Token)
 func (u *UserDb) GetUserByRefreshToken(refreshToken string) (model.User, error) {
-    query := `SELECT id, username, email, role, is_active FROM users 
-              WHERE refresh_token = @p1 AND refresh_token_expiry > GETDATE()`
-    
-    var user model.User
-    err := u.db.QueryRow(query, refreshToken).Scan(
-        &user.ID, &user.Username, &user.Email, &user.Role, &user.IsActive,
-    )
-    
-    if err != nil {
-        logger.WarnLogger.Printf("Refresh token invalid or expired: %v", err)
-        return model.User{}, err
-    }
-    return user, nil
+
+	query := `SELECT id, username, email, role, is_active FROM users 
+              WHERE refresh_token = ? AND refresh_token_expiry > NOW()`
+
+	var user model.User
+	err := u.db.QueryRow(query, refreshToken).Scan(
+		&user.ID, &user.Username, &user.Email, &user.Role, &user.IsActive,
+	)
+
+	if err != nil {
+		// Log warning khi không tìm thấy hoặc token hết hạn
+		logger.WarnLogger.Printf("Refresh token invalid or expired: %v", err)
+		return model.User{}, err
+	}
+	return user, nil
 }
