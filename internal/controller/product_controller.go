@@ -56,9 +56,9 @@ func (prt *ProductController) CreateProductController(product model.CreateProduc
 	productToCreate := &model.Product{
 		Name:             product.Name,
 		Slug:             product.Slug,
-		ShortDescription: stringToPtr(product.ShortDescription),
-		Description:      stringToPtr(product.Description),
-		Brand:            stringToPtr(product.Brand),
+		ShortDescription: &(product.ShortDescription),
+		Description:      &(product.Description),
+		Brand:            &(product.Brand),
 		Status:           product.Status,
 		IsPublished:      product.IsPublished,
 		PublishedAt:      publishedAt,
@@ -202,6 +202,7 @@ func (prt *ProductController) UserGetProductController(reqProduct *model.GetProd
 		Name:     pro.Name,
 		Brand:    pro.Brand,
 		MinPrice: pro.MinPrice,
+		VariantsPro: pro.,
 	}, nil
 }
 

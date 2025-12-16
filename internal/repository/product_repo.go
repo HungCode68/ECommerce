@@ -120,19 +120,16 @@ func (pr *ProductRepo) GetManyProduct(ids []int64) ([]model.Product, error) {
 		return []model.Product{}, nil
 	}
 
-	// 1. Tạo chuỗi placeholders (?, ?, ?, ...)
-	// Dùng strings.Repeat để tránh lặp code thủ công
-	placeholders := strings.Repeat("?,", len(ids))
-	placeholders = placeholders[:len(placeholders)-1] // Cắt bỏ dấu phẩy cuối
 
-	// 2. SỬA LỖI CÚ PHÁP SQL
-	// Dùng 'WHERE id IN (...)' và đảm bảo 'deleted_at IS NULL'
+	placeholders := strings.Repeat("?,", len(ids))
+	placeholders = placeholders[:len(placeholders)-1]
+
 	query := fmt.Sprintf(`
         SELECT id, name, slug, short_description, description, brand, status, is_published, published_at, min_price, avg_rating, rating_count, created_by, updated_by, created_at, updated_at, deleted_at 
         FROM products 
         WHERE id IN (%s) AND deleted_at IS NULL`, placeholders) // <-- ĐÃ SỬA
 
-	// 3. Chuẩn bị tham số cho truy vấn
+
 	params := make([]interface{}, len(ids))
 	for i, id := range ids {
 		params[i] = id
@@ -161,13 +158,12 @@ func (pr *ProductRepo) SearchProducts(req *model.SearchProductsRequest) ([]model
 	whereClause := "WHERE deleted_at IS NULL"
 	args := []interface{}{}
 
-	// Search by name (LIKE)
 	if req.Search != "" {
 		whereClause += " AND name LIKE ?"
 		args = append(args, "%"+req.Search+"%")
 	}
 
-	// Filter by brand
+
 	if req.Brand != "" {
 		whereClause += " AND brand = ?"
 		args = append(args, req.Brand)
@@ -212,11 +208,11 @@ func (pr *ProductRepo) GetConflictProductByName(name string) (bool, error) {
 	err := pr.DB.QueryRow("SELECT id FROM products WHERE name = ?", name).Scan(&id)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return false, nil // No conflict
+			return false, nil 
 		}
-		return false, err // Some other error
+		return false, err 
 	}
-	return true, nil // Conflict found
+	return true, nil
 }
 
 func (pr *ProductRepo) GetConflictProductBySlug(slug string) (bool, error) {
@@ -247,7 +243,7 @@ func (pr *ProductRepo) UpdateProduct(product *model.Product) (*model.Product, er
 }
 
 func (pr *ProductRepo) GetAllProducts() ([]model.Product, error) {
-	rows, err := pr.DB.Query("SELECT id, name, slug, short_description, description, brand, status, is_published, published_at, min_price, avg_rating, rating_count, created_by, updated_by, created_at, updated_at, deleted_at FROM products where deleted_at IS NOT NULL")
+	rows, err := pr.DB.Query("SELECT id, name, slug, short_description, description, brand, status, is_published, published_at, min_price, avg_rating, rating_count, created_by, updated_by, created_at, updated_at, deleted_at FROM products ")
 	if err != nil {
 		return nil, err
 	}

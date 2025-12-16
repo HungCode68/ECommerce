@@ -45,7 +45,7 @@ func (h *ProductHandler) errJson(w http.ResponseWriter, status int, message stri
 func (h *ProductHandler) CreateProductHandler(w http.ResponseWriter, r *http.Request) {
 	var req model.CreateProductRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.errJson(w, http.StatusBadRequest, "Invalid request payload")
+		h.errJson(w, http.StatusBadRequest, "Invalid request ")
 		return
 	}
 	if err := validator.NewCustomValidator().Validate(req); err != nil {

@@ -93,10 +93,11 @@ type SearchProductsRequest struct {
 
 // UserProductResponse - Thông tin sản phẩm cho User
 type UserProductResponse struct {
-	ID       int64   `json:"id"`
-	Name     string  `json:"name"`
-	Brand    *string `json:"brand,omitempty"`
-	MinPrice float64 `json:"min_price"`
+	ID       int64                 `json:"id"`
+	Name     string                `json:"name"`
+	Brand    *string               `json:"brand,omitempty"`
+	MinPrice float64               `json:"min_price"`
+	Variants []UserVariantResponse `json:"variants"`
 }
 
 // UserProductListResponse - Danh sách sản phẩm cho User
