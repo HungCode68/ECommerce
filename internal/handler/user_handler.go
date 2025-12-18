@@ -71,7 +71,7 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 	// Gọi Controller
 	res, err := h.UserController.Register(req)
 	if err != nil {
-		// Ở đây nếu muốn kỹ hơn có thể check lỗi "đã tồn tại" để trả 409 Conflict
+		
 		writeError(w, http.StatusInternalServerError, "Lỗi đăng ký tài khoản", err.Error())
 		return
 	}
@@ -79,7 +79,7 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, "Đăng ký thành công", res)
 }
 
-// 2. Đăng nhập (Login)
+//  Đăng nhập (Login)
 func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var req model.LoginRequest
 
@@ -124,7 +124,7 @@ func (h *UserHandler) Logout(w http.ResponseWriter, r *http.Request) {
     writeJSON(w, http.StatusOK, "Đăng xuất thành công", nil)
 }
 
-// 3. Tạo Admin (CreateAdmin - Dành cho Admin)
+//  Tạo Admin (CreateAdmin - Dành cho Admin)
 func (h *UserHandler) CreateAdmin(w http.ResponseWriter, r *http.Request) {
 	var req model.RegisterRequest
 
@@ -158,9 +158,9 @@ func (h *UserHandler) GetAllUsers(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, "Lấy danh sách thành công", users)
 }
 
-// 5. Lấy chi tiết (GetUserByID)
+//  Lấy chi tiết (GetUserByID)
 func (h *UserHandler) GetUserByID(w http.ResponseWriter, r *http.Request) {
-	// Lấy ID từ URL (Go 1.22+)
+	// Lấy ID từ URL 
 	idStr := r.PathValue("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
@@ -183,7 +183,7 @@ func (h *UserHandler) GetUserByID(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, "Lấy thông tin thành công", user)
 }
 
-// 6. Tìm kiếm (SearchUsers)
+// Tìm kiếm (SearchUsers)
 func (h *UserHandler) SearchUsers(w http.ResponseWriter, r *http.Request) {
 	//Lấy keyword và CẮT BỎ khoảng trắng thừa 2 đầu
 	rawKeyword := r.URL.Query().Get("q")
@@ -217,7 +217,7 @@ func (h *UserHandler) SearchUsers(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, "Tìm kiếm thành công", users)
 }
 
-// 7. Cập nhật (UpdateUser)
+//  Cập nhật (UpdateUser)
 func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -226,7 +226,7 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req model.UpdateUserRequest
+	var req model.AdminUpdateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "Dữ liệu JSON không hợp lệ", err.Error())
 		return
@@ -256,7 +256,7 @@ func (h *UserHandler) UpdateUserProfile(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	var req model.UpdateProfileRequest
+	var req model.UserUpdateProfileRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "Dữ liệu JSON không hợp lệ", err.Error())
 		return
@@ -321,7 +321,7 @@ func (h *UserHandler) DeleteUserById(w http.ResponseWriter, r *http.Request) {
 
 // 9. Xóa nhiều user (DeleteManyUsers)
 func (h *UserHandler) DeleteManyUsers(w http.ResponseWriter, r *http.Request) {
-	var req model.DeleteManyRequest
+	var req model.AdminDeleteManyUsersRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "Dữ liệu JSON không hợp lệ", err.Error())

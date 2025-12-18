@@ -23,24 +23,24 @@ func NewUserController(userRepo repository.UserRepo) *UserController {
 }
 
 // Hàm Register để đăng ký user mới
-func (c *UserController) Register(req model.RegisterRequest) (model.UserResponse, error) {
+func (c *UserController) Register(req model.RegisterRequest) (model.UserProfileResponse, error) {
 	logger.InfoLogger.Printf("Bắt đầu đăng ký user mới: %s", req.Username)
 
 	// Kiểm tra User đã tồn tại chưa (Check Username hoặc Email)
 	existingUser, _ := c.UserRepo.GetUserByIdentifier(req.Username)
 	if existingUser.ID != 0 {
-		return model.UserResponse{}, errors.New("tên đăng nhập đã tồn tại")
+		return model.UserProfileResponse{}, errors.New("tên đăng nhập đã tồn tại")
 	}
 	existingEmail, _ := c.UserRepo.GetUserByIdentifier(req.Email)
 	if existingEmail.ID != 0 {
-		return model.UserResponse{}, errors.New("email đã tồn tại")
+		return model.UserProfileResponse{}, errors.New("email đã tồn tại")
 	}
 
 	// Mã hóa mật khẩu (Hashing)
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		logger.ErrorLogger.Printf("Lỗi hash password: %v", err)
-		return model.UserResponse{}, err
+		return model.UserProfileResponse{}, err
 	}
 
 	// Map từ Request -> Model User (Entity)
@@ -56,17 +56,18 @@ func (c *UserController) Register(req model.RegisterRequest) (model.UserResponse
 	createdUser, err := c.UserRepo.CreateUser(newUser)
 	if err != nil {
 		logger.ErrorLogger.Printf("Lỗi khi tạo user trong DB: %v", err)
-		return model.UserResponse{}, err
+		return model.UserProfileResponse{}, err
 	}
 
 	// Chuyển đổi sang Response
-	res := model.UserResponse{
+	res := model.UserProfileResponse{
 		ID:        createdUser.ID,
 		Username:  createdUser.Username,
 		Email:     createdUser.Email,
 		Role:      createdUser.Role,
 		IsActive:  createdUser.IsActive,
 		CreatedAt: createdUser.CreatedAt,
+		UpdatedAt: createdUser.UpdatedAt,
 	}
 
 	logger.InfoLogger.Printf("Đăng ký thành công user ID: %d", createdUser.ID)
@@ -121,13 +122,14 @@ func (c *UserController) Login(req model.LoginRequest) (model.LoginResponse, err
 	response := model.LoginResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
-		User: model.UserResponse{
+		User: model.UserProfileResponse{
 			ID:        user.ID,
 			Username:  user.Username,
 			Email:     user.Email,
 			Role:      user.Role,
 			IsActive:  user.IsActive,
 			CreatedAt: user.CreatedAt,
+			UpdatedAt: user.UpdatedAt,
 		},
 	}
 
@@ -150,23 +152,23 @@ func (c *UserController) Logout(userID int64) error {
 }
 
 // Hàm CreateAdmin để Admin tạo tài khoản Admin mới
-func (c *UserController) CreateAdmin(req model.RegisterRequest) (model.UserResponse, error) {
+func (c *UserController) CreateAdmin(req model.RegisterRequest) (model.AdminUserResponse, error) {
 	logger.InfoLogger.Printf("ADMIN đang tạo tài khoản Admin mới: %s", req.Username)
 
 	existingUser, _ := c.UserRepo.GetUserByIdentifier(req.Username)
 	if existingUser.ID != 0 {
-		return model.UserResponse{}, errors.New("tên đăng nhập đã tồn tại")
+		return model.AdminUserResponse{}, errors.New("tên đăng nhập đã tồn tại")
 	}
 
 	existingEmail, _ := c.UserRepo.GetUserByIdentifier(req.Email)
 	if existingEmail.ID != 0 {
-		return model.UserResponse{}, errors.New("email đã tồn tại")
+		return model.AdminUserResponse{}, errors.New("email đã tồn tại")
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		logger.ErrorLogger.Printf("Lỗi hash password: %v", err)
-		return model.UserResponse{}, err
+		return model.AdminUserResponse{}, err
 	}
 
 	newAdmin := model.User{
@@ -178,92 +180,98 @@ func (c *UserController) CreateAdmin(req model.RegisterRequest) (model.UserRespo
 	}
 
 	// Gọi Repo lưu
-	createdAdmin, err := c.UserRepo.CreateUser(newAdmin)
+	created, err := c.UserRepo.CreateUser(newAdmin)
 	if err != nil {
 		logger.ErrorLogger.Printf("Lỗi tạo admin: %v", err)
-		return model.UserResponse{}, err
+		return model.AdminUserResponse{}, err
 	}
 
 	// Map sang Response
-	res := model.UserResponse{
-		ID:        createdAdmin.ID,
-		Username:  createdAdmin.Username,
-		Email:     createdAdmin.Email,
-		Role:      createdAdmin.Role,
-		IsActive:  createdAdmin.IsActive,
-		CreatedAt: createdAdmin.CreatedAt,
-	}
-
-	return res, nil
+	return model.AdminUserResponse{
+		ID: created.ID, Username: created.Username, Email: created.Email,
+		Role: created.Role, IsActive: created.IsActive, CreatedAt: created.CreatedAt,
+		UpdatedAt: created.UpdatedAt, DeletedAt: created.DeletedAt,
+	}, nil
 }
 
 // Hàm lấy tất cả Users
-func (c *UserController) GetAllUsers() ([]model.UserResponse, error) {
+func (c *UserController) GetAllUsers() ([]model.AdminUserResponse, error) {
 	logger.InfoLogger.Println("Bắt đầu lấy danh sách Users")
-	users, err := c.UserRepo.GetAllUser()
+	users, err := c.UserRepo.GetAllUsers()
 	if err != nil {
 		logger.ErrorLogger.Printf("Lỗi lấy danh sách user: %v", err)
 		return nil, err
 	}
-	return users, nil
+	var response []model.AdminUserResponse
+	for _, u := range users {
+		response = append(response, model.AdminUserResponse{
+			ID: u.ID, Username: u.Username, Email: u.Email, Role: u.Role,
+			IsActive: u.IsActive, CreatedAt: u.CreatedAt, UpdatedAt: u.UpdatedAt, DeletedAt: u.DeletedAt,
+		})
+	}
+	return response, nil
 }
 
 // Hàm lấy chi tiết user theo ID
-func (c *UserController) GetUserByID(id int64) (model.UserResponse, error) {
+func (c *UserController) GetUserByID(id int64) (model.AdminUserResponse, error) {
 	logger.InfoLogger.Printf("Lấy chi tiết user ID: %d", id)
 
 	// Gọi Repo
 	user, err := c.UserRepo.GetUserByID(id)
 	if err != nil {
 		logger.ErrorLogger.Printf("Lỗi lấy chi tiết user: %v", err)
-		return model.UserResponse{}, err
+		return model.AdminUserResponse{}, err
 	}
 
-	return user, nil
+	return model.AdminUserResponse{
+		ID: user.ID, Username: user.Username, Email: user.Email, Role: user.Role,
+		IsActive: user.IsActive, CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt, DeletedAt: user.DeletedAt,
+	}, nil
 }
 
 // Hàm tìm kiếm user theo từ khóa
-func (c *UserController) SearchUsers(keyword string) ([]model.UserResponse, error) {
+func (c *UserController) SearchUsers(keyword string) ([]model.AdminUserResponse, error) {
 	logger.InfoLogger.Printf("Tìm kiếm user với từ khóa: %s", keyword)
 	users, err := c.UserRepo.SearchUsers(keyword)
 	if err != nil {
 		logger.ErrorLogger.Printf("Lỗi tìm kiếm user: %v", err)
 		return nil, err
 	}
-	return users, nil
+	var response []model.AdminUserResponse
+	for _, u := range users {
+		response = append(response, model.AdminUserResponse{
+			ID: u.ID, Username: u.Username, Email: u.Email, Role: u.Role,
+			IsActive: u.IsActive, CreatedAt: u.CreatedAt, UpdatedAt: u.UpdatedAt, DeletedAt: u.DeletedAt,
+		})
+	}
+	return response, nil
 }
 
 // Hàm cập nhật thông tin user
-func (c *UserController) UpdateUser(id int64, req model.UpdateUserRequest) (model.UserResponse, error) {
+func (c *UserController) UpdateUser(id int64, req model.AdminUpdateUserRequest) (model.AdminUserResponse, error) {
 	logger.InfoLogger.Printf("Cập nhật user ID: %d", id)
 
 	updatedUser, err := c.UserRepo.UpdateUser(id, req)
 	if err != nil {
 		logger.ErrorLogger.Printf("Lỗi update user: %v", err)
-		return model.UserResponse{}, err
+		return model.AdminUserResponse{}, err
 	}
 
-	res := model.UserResponse{
-		ID:        updatedUser.ID,
-		Username:  updatedUser.Username,
-		Email:     updatedUser.Email,
-		Role:      updatedUser.Role,
-		IsActive:  updatedUser.IsActive,
-		CreatedAt: updatedUser.CreatedAt,
-	}
-
-	return res, nil
+	return model.AdminUserResponse{
+		ID: updatedUser.ID, Username: updatedUser.Username, Email: updatedUser.Email, Role: updatedUser.Role,
+		IsActive: updatedUser.IsActive, CreatedAt: updatedUser.CreatedAt, UpdatedAt: updatedUser.UpdatedAt, DeletedAt: updatedUser.DeletedAt,
+	}, nil
 }
 
 // Hàm User tự cập nhật thông tin cá nhân
-func (c *UserController) UpdateUserProfile(id int64, req model.UpdateProfileRequest) (model.UserResponse, error) {
+func (c *UserController) UpdateUserProfile(id int64, req model.UserUpdateProfileRequest) (model.UserProfileResponse, error) {
 	logger.InfoLogger.Printf("User ID %d yêu cầu cập nhật profile", id)
 
 	// Kiểm tra trùng Username (Nếu có yêu cầu đổi username)
 	if req.Username != nil {
 		existingUser, _ := c.UserRepo.GetUserByIdentifier(*req.Username)
 		if existingUser.ID != 0 && existingUser.ID != id {
-			return model.UserResponse{}, errors.New("tên đăng nhập đã được sử dụng")
+			return model.UserProfileResponse{}, errors.New("tên đăng nhập đã được sử dụng")
 		}
 	}
 
@@ -271,7 +279,7 @@ func (c *UserController) UpdateUserProfile(id int64, req model.UpdateProfileRequ
 	if req.Email != nil {
 		existingEmail, _ := c.UserRepo.GetUserByIdentifier(*req.Email)
 		if existingEmail.ID != 0 && existingEmail.ID != id {
-			return model.UserResponse{}, errors.New("email đã được sử dụng")
+			return model.UserProfileResponse{}, errors.New("email đã được sử dụng")
 		}
 	}
 
@@ -279,7 +287,7 @@ func (c *UserController) UpdateUserProfile(id int64, req model.UpdateProfileRequ
 	if req.Password != nil {
 		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(*req.Password), bcrypt.DefaultCost)
 		if err != nil {
-			return model.UserResponse{}, err
+			return model.UserProfileResponse{}, err
 		}
 		hashedString := string(hashedPassword)
 		req.Password = &hashedString
@@ -288,21 +296,14 @@ func (c *UserController) UpdateUserProfile(id int64, req model.UpdateProfileRequ
 	// Gọi Repo update
 	updatedUser, err := c.UserRepo.UpdateUserProfile(id, req)
 	if err != nil {
-		return model.UserResponse{}, err
+		return model.UserProfileResponse{}, err
 	}
 
 	// Trả về kết quả
-	res := model.UserResponse{
-		ID:        updatedUser.ID,
-		Username:  updatedUser.Username,
-		Email:     updatedUser.Email,
-		Role:      updatedUser.Role,
-		IsActive:  updatedUser.IsActive,
-		CreatedAt: updatedUser.CreatedAt,
-		UpdatedAt: updatedUser.UpdatedAt,
-	}
-
-	return res, nil
+	return model.UserProfileResponse{
+		ID: updatedUser.ID, Username: updatedUser.Username, Email: updatedUser.Email, Role: updatedUser.Role,
+		IsActive: updatedUser.IsActive, CreatedAt: updatedUser.CreatedAt, UpdatedAt: updatedUser.UpdatedAt,
+	}, nil
 }
 
 // Hàm User tự xóa tài khoản (Xóa mềm chính mình)
@@ -325,13 +326,13 @@ func (c *UserController) DeleteUserById(id int64) error {
 		logger.ErrorLogger.Printf("Lỗi xóa user: %v", err)
 		return err
 	}
-	logger.WarnLogger.Printf("Xóa sinh viên ID %d thành công", id)
+	logger.WarnLogger.Printf("Xóa người dùng ID %d thành công", id)
 	return nil
 
 }
 
 // Hàm xóa nhiều user cùng lúc
-func (c *UserController) DeleteManyUsers(req model.DeleteManyRequest) error {
+func (c *UserController) DeleteManyUsers(req model.AdminDeleteManyUsersRequest) error {
 	// Gọi Repo
 	logger.WarnLogger.Printf("Admin yêu cầu xóa %d users", len(req.IDs))
 	return c.UserRepo.DeleteManyUsers(req.IDs)

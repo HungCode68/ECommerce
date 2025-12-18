@@ -33,13 +33,26 @@ func main() {
 	addressRepo := repository.NewAddressDb(db.Connection)
 	addressController := controller.NewAddressController(addressRepo)
 	addressHandler := handler.NewAddressHandler(addressController, myValidator)
+
+	//Khoi tao cho product variant
+	proVariantRepo := repository.NewVariantRepo(db.Connection)
+	proVariantController := controller.NewProductVariantController(proVariantRepo)
+	proVariantHandler := handler.NewVariantHandler(proVariantController)
+
+	// Khởi tạo Repository, Controller, Handler cho Product
 	productRepo := repository.NewProductRepo(db.Connection)
-
-	productController := controller.NewProductController(productRepo)
-
+	productController := controller.NewProductController(productRepo, proVariantRepo)
 	productHandler := handler.NewProductHandler(productController)
+
+	// MODULE CATEGORY (Mới thêm vào)
+	categoryRepo := repository.NewCategoryDb(db.Connection)
+	categoryController := controller.NewCategoryController(categoryRepo)
+	// Lưu ý: CategoryHandler cần validator để check dữ liệu đầu vào
+	categoryHandler := handler.NewCategoryHandler(categoryController, myValidator)
+
+
 	// Khởi tạo Router
-	r := router.NewRouter(userHandler, addressHandler, productHandler)
+	r := router.NewRouter(userHandler, addressHandler, productHandler, categoryHandler, proVariantHandler)
 
 	//Khởi tạo Server (Truyền router r vào)
 	srv := server.NewServer(r)

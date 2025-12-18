@@ -21,7 +21,7 @@ func NewProductHandler(prtController *controller.ProductController) *ProductHand
 }
 
 // =================================================================
-// HELPER FUNCTIONS - Hàm hỗ trợ
+// HELPER FUNCTIONS - Hàm hỗ trợ JSON
 // =================================================================
 
 // writeJson - Ghi response JSON với status code và data
@@ -40,18 +40,24 @@ func (h *ProductHandler) errJson(w http.ResponseWriter, status int, message stri
 // ADMIN HANDLERS - Xử lý request từ Admin
 // =================================================================
 
-// CreateProductHandler - Xử lý request tạo sản phẩm mới
-// Validate dữ liệu đầu vào, kiểm tra trùng lặp tên/slug, tạo sản phẩm vào DB
+// CreateProductHandler - Tạo sản phẩm mới
+// [GỘP]: Sử dụng model.CreateProductRequest đã gộp (có CategoryIDs)
 func (h *ProductHandler) CreateProductHandler(w http.ResponseWriter, r *http.Request) {
 	var req model.CreateProductRequest
+	
+	// Decode
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.errJson(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
+	
+	// Validate
 	if err := validator.NewCustomValidator().Validate(req); err != nil {
 		h.errJson(w, http.StatusBadRequest, fmt.Sprintf("Validation failed: %v", err))
 		return
 	}
+
+	// Call Controller (Controller gộp sẽ xử lý cả SP, Slug loop, Categories)
 	productResponse, err := h.PrtController.CreateProductController(req)
 	if err != nil {
 		if err.Error() == "Product name already exists" || err.Error() == "Product slug already exists" {
@@ -61,11 +67,49 @@ func (h *ProductHandler) CreateProductHandler(w http.ResponseWriter, r *http.Req
 		h.errJson(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	
 	h.writeJson(w, http.StatusCreated, productResponse)
 }
 
-// AdminGetProductHandler - Lấy chi tiết sản phẩm cho Admin theo ID/Name/Slug
-// Hỗ trợ tìm kiếm qua path parameter (id, slug) hoặc query parameter (name)
+// UpdateProductHandler - Cập nhật sản phẩm
+// [GỘP]: Hỗ trợ update cả Categories (của bạn) và các thông tin khác
+func (h *ProductHandler) UpdateProductHandler(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		h.errJson(w, http.StatusBadRequest, "Invalid product ID in path")
+		return
+	}
+
+	var req model.UpdateProductRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.errJson(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+
+	if err := validator.NewCustomValidator().Validate(req); err != nil {
+		h.errJson(w, http.StatusBadRequest, fmt.Sprintf("Validation failed: %v", err))
+		return
+	}
+
+	adminReponse, err := h.PrtController.UpdateProductController(req, id)
+	if err != nil {
+		if err.Error() == "Product not found" {
+			h.errJson(w, http.StatusNotFound, err.Error())
+			return
+		}
+		h.errJson(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	h.writeJson(w, http.StatusOK, adminReponse)
+}
+
+// =================================================================
+// GET HANDLERS - Lấy thông tin sản phẩm
+// =================================================================
+
+// AdminGetProductHandler - Lấy chi tiết cho Admin
+// [GỘP]: Controller trả về Full info: Product + Categories + Variants
 func (h *ProductHandler) AdminGetProductHandler(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	slugStr := r.PathValue("slug")
@@ -84,19 +128,18 @@ func (h *ProductHandler) AdminGetProductHandler(w http.ResponseWriter, r *http.R
 		h.errJson(w, http.StatusBadRequest, "Invalid ID format in path")
 		return
 	}
-	adminProductDetailResponse, err := h.PrtController.AdminGetProductController(req)
 
+	adminProductDetailResponse, err := h.PrtController.AdminGetProductController(req)
 	if err != nil {
 		h.errJson(w, http.StatusNotFound, "Product Not Found")
 		return
 	}
 
-	h.writeJson(w, http.StatusAccepted, adminProductDetailResponse)
-
+	h.writeJson(w, http.StatusOK, adminProductDetailResponse)
 }
 
-// UserGetProductHandlerDetail - Lấy chi tiết đầy đủ sản phẩm cho User
-// Chỉ trả về sản phẩm đã published (is_published = true)
+// UserGetProductHandlerDetail - Lấy chi tiết cho User
+// [GỘP]: Controller trả về Filtered info: Product + Active Categories + Active Variants + MinPrice chuẩn
 func (h *ProductHandler) UserGetProductHandlerDetail(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	slugStr := r.PathValue("slug")
@@ -115,18 +158,17 @@ func (h *ProductHandler) UserGetProductHandlerDetail(w http.ResponseWriter, r *h
 		h.errJson(w, http.StatusBadRequest, "Invalid ID format in path")
 		return
 	}
-	userProductDetailResponse, err := h.PrtController.UserGetProductDetailController(req)
 
+	userProductDetailResponse, err := h.PrtController.UserGetProductDetailController(req)
 	if err != nil {
 		h.errJson(w, http.StatusNotFound, "Product Not Found")
 		return
 	}
 
-	h.writeJson(w, http.StatusAccepted, userProductDetailResponse)
+	h.writeJson(w, http.StatusOK, userProductDetailResponse)
 }
 
-// UserGetProductHandler - Lấy thông tin rút gọn sản phẩm cho User
-// Chỉ trả về sản phẩm published với thông tin cơ bản (name, slug, price, rating)
+// UserGetProductHandler - Lấy thông tin rút gọn (cho thẻ sản phẩm)
 func (h *ProductHandler) UserGetProductHandler(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	slugStr := r.PathValue("slug")
@@ -145,39 +187,22 @@ func (h *ProductHandler) UserGetProductHandler(w http.ResponseWriter, r *http.Re
 		h.errJson(w, http.StatusBadRequest, "Invalid ID format in path")
 		return
 	}
-	userProductDetailResponse, err := h.PrtController.UserGetProductController(req)
 
+	userProductDetailResponse, err := h.PrtController.UserGetProductController(req)
 	if err != nil {
 		h.errJson(w, http.StatusNotFound, "Product Not Found")
 		return
 	}
 
-	h.writeJson(w, http.StatusAccepted, userProductDetailResponse)
+	h.writeJson(w, http.StatusOK, userProductDetailResponse)
 }
 
-// AdminGetManyProductController - Lấy nhiều sản phẩm theo danh sách IDs
-// Nhận body JSON {"ids": [1,2,3]}, validate và trả về danh sách sản phẩm
-func (h *ProductHandler) AdminGetManyProductController(w http.ResponseWriter, r *http.Request) {
-	var req model.GetManyProductsRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.errJson(w, http.StatusBadRequest, "Invalid request payload")
-		return
-	}
-	if err := validator.NewCustomValidator().Validate(req); err != nil {
-		h.errJson(w, http.StatusBadRequest, fmt.Sprintf("Validation failed: %v", err))
-		return
-	}
-	productsResponse, err := h.PrtController.AdminGetManyProductByIDController(req.IDs)
-	if err != nil {
-		h.errJson(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	h.writeJson(w, http.StatusOK, productsResponse)
-}
+// =================================================================
+// SEARCH & LIST HANDLERS
+// =================================================================
 
-// UserSearchProductHandler - Tìm kiếm sản phẩm cho User
-// Tìm kiếm theo tên (LIKE) hoặc thương hiệu, chỉ trả về sản phẩm published
-// Validate nghiêm ngặt: DisallowUnknownFields, yêu cầu ít nhất 1 tham số
+// UserSearchProductHandler - Tìm kiếm cho User
+// [GỘP]: Giữ logic validate của BẠN (Search OR Brand OR CategoryID) -> Hỗ trợ đầy đủ nhất
 func (h *ProductHandler) UserSearchProductHandler(w http.ResponseWriter, r *http.Request) {
 	var req model.SearchProductsRequest
 
@@ -196,9 +221,9 @@ func (h *ProductHandler) UserSearchProductHandler(w http.ResponseWriter, r *http
 		return
 	}
 
-	// Kiểm tra phải có ít nhất 1 tham số tìm kiếm
-	if req.Search == "" && req.Brand == "" {
-		h.errJson(w, http.StatusBadRequest, "At least one search parameter (search or brand) is required")
+	// [LOGIC GỘP]: Kiểm tra 3 điều kiện (Hỗ trợ cả tìm theo text, brand, HOẶC danh mục)
+	if req.Search == "" && req.Brand == "" && req.CategoryID == 0 {
+		h.errJson(w, http.StatusBadRequest, "At least one search parameter (search, brand, or category_id) is required")
 		return
 	}
 
@@ -212,12 +237,10 @@ func (h *ProductHandler) UserSearchProductHandler(w http.ResponseWriter, r *http
 	h.writeJson(w, http.StatusOK, productsResponse)
 }
 
-// AdminSearchProductsHandler - Tìm kiếm sản phẩm cho Admin
-// Tương tự UserSearchProductHandler nhưng không lọc theo is_published
+// AdminSearchProductsHandler - Tìm kiếm cho Admin (All status)
 func (h *ProductHandler) AdminSearchProductsHandler(w http.ResponseWriter, r *http.Request) {
 	var req model.SearchProductsRequest
 
-	// Strict JSON validation
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
 
@@ -226,19 +249,17 @@ func (h *ProductHandler) AdminSearchProductsHandler(w http.ResponseWriter, r *ht
 		return
 	}
 
-	// Validate struct
 	if err := validator.NewCustomValidator().Validate(req); err != nil {
 		h.errJson(w, http.StatusBadRequest, fmt.Sprintf("Validation failed: %v", err))
 		return
 	}
 
-	// Kiểm tra phải có ít nhất 1 tham số tìm kiếm
-	if req.Search == "" && req.Brand == "" {
-		h.errJson(w, http.StatusBadRequest, "At least one search parameter (search or brand) is required")
+	// [LOGIC GỘP]: Tương tự User, hỗ trợ cả 3 tiêu chí
+	if req.Search == "" && req.Brand == "" && req.CategoryID == 0 {
+		h.errJson(w, http.StatusBadRequest, "At least one search parameter (search, brand, or category_id) is required")
 		return
 	}
 
-	// Call controller
 	productsResponse, err := h.PrtController.AdminSearchProductsController(&req)
 	if err != nil {
 		h.errJson(w, http.StatusInternalServerError, err.Error())
@@ -248,17 +269,9 @@ func (h *ProductHandler) AdminSearchProductsHandler(w http.ResponseWriter, r *ht
 	h.writeJson(w, http.StatusOK, productsResponse)
 }
 
-// UpdateProductHandler - Cập nhật thông tin sản phẩm
-// Lấy ID từ path, validate dữ liệu, gọi controller để update
-func (h *ProductHandler) UpdateProductHandler(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-
-		h.errJson(w, http.StatusBadRequest, "Invalid product ID in path")
-		return
-	}
-	var req model.UpdateProductRequest
+// AdminGetManyProductController - Lấy nhiều SP theo IDs
+func (h *ProductHandler) AdminGetManyProductController(w http.ResponseWriter, r *http.Request) {
+	var req model.GetManyProductsRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.errJson(w, http.StatusBadRequest, "Invalid request payload")
 		return
@@ -267,19 +280,15 @@ func (h *ProductHandler) UpdateProductHandler(w http.ResponseWriter, r *http.Req
 		h.errJson(w, http.StatusBadRequest, fmt.Sprintf("Validation failed: %v", err))
 		return
 	}
-	adminReponse, err := h.PrtController.UpdateProductController(req, id)
+	productsResponse, err := h.PrtController.AdminGetManyProductByIDController(req.IDs)
 	if err != nil {
-		if err.Error() == "Product not found" {
-			h.errJson(w, http.StatusNotFound, err.Error())
-			return
-		}
 		h.errJson(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	h.writeJson(w, http.StatusOK, adminReponse)
+	h.writeJson(w, http.StatusOK, productsResponse)
 }
 
-// AdminGetAllProductHandler - Lấy tất cả sản phẩm (không bao gồm đã xóa mềm)
+// AdminGetAllProductHandler - Lấy tất cả (trừ xóa mềm)
 func (h *ProductHandler) AdminGetAllProductHandler(w http.ResponseWriter, r *http.Request) {
 	productsResponse, err := h.PrtController.AdminGetAllProductsController()
 	if err != nil {
@@ -289,8 +298,11 @@ func (h *ProductHandler) AdminGetAllProductHandler(w http.ResponseWriter, r *htt
 	h.writeJson(w, http.StatusOK, productsResponse)
 }
 
-// AdminDeleteSoftProductHandler - Xóa mềm sản phẩm đơn theo ID
-// Set deleted_at và status = 'archived' cho sản phẩm
+// =================================================================
+// DELETE HANDLERS
+// =================================================================
+
+// AdminDeleteSoftProductHandler - Xóa mềm 1 SP
 func (h *ProductHandler) AdminDeleteSoftProductHandler(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -306,8 +318,30 @@ func (h *ProductHandler) AdminDeleteSoftProductHandler(w http.ResponseWriter, r 
 	h.writeJson(w, http.StatusOK, map[string]string{"message": "Product deleted softly successfully"})
 }
 
-// AdminGetAllSoftDeletedProductsHandler - Lấy danh sách tất cả sản phẩm đã xóa mềm
-// Trả về các sản phẩm có deleted_at IS NOT NULL và status = 'archived'
+// AdminBulkDeleteSoftProductsHandler - Xóa mềm nhiều SP (Cập nhật logic)
+// Logic cũ: Xóa all active -> Logic mới nên là xóa theo List ID (như tên hàm suggest)
+// Tuy nhiên để giữ nguyên logic hiện tại của bạn: Hàm này đang gọi DeleteAllSoft...
+func (h *ProductHandler) AdminBulkDeleteSoftProductsHandler(w http.ResponseWriter, r *http.Request) {
+	// Lưu ý: Tên hàm là BulkDelete (thường là xóa theo list ID), nhưng code cũ của bạn
+	// đang gọi AdminDeleteAllSoftDeletedProductsController (Xóa hết soft deleted?).
+	// Mình giữ nguyên logic gọi hàm của bạn để tránh break logic.
+	
+	// Nếu ý bạn là xóa nhiều theo ID:
+	/*
+	var req model.BulkDeleteProductRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil { ... }
+	err := h.PrtController.AdminBulkDelete... (Cần thêm hàm này ở Controller nếu muốn)
+	*/
+
+	err := h.PrtController.AdminDeleteAllSoftDeletedProductsController() 
+	if err != nil {
+		h.errJson(w, http.StatusInternalServerError, "Cannot delete products")
+		return
+	}
+	h.writeJson(w, http.StatusOK, map[string]string{"message": "Action completed successfully"})
+}
+
+// AdminGetAllSoftDeletedProductsHandler - Lấy list đã xóa mềm
 func (h *ProductHandler) AdminGetAllSoftDeletedProductsHandler(w http.ResponseWriter, r *http.Request) {
 	productsResponse, err := h.PrtController.AdminGetAllSoftDeletedProductsController()
 	if err != nil {
@@ -317,23 +351,12 @@ func (h *ProductHandler) AdminGetAllSoftDeletedProductsHandler(w http.ResponseWr
 	h.writeJson(w, http.StatusOK, productsResponse)
 }
 
-// AdminBulkDeleteSoftProductsHandler - Xóa mềm tất cả sản phẩm đang active
-// Set deleted_at cho tất cả sản phẩm có status = 'active'
-func (h *ProductHandler) AdminBulkDeleteSoftProductsHandler(w http.ResponseWriter, r *http.Request) {
-	err := h.PrtController.AdminDeleteAllSoftDeletedProductsController()
-	if err != nil {
-		h.errJson(w, http.StatusInternalServerError, "Cannot delete all products")
-	}
-	h.writeJson(w, http.StatusOK, map[string]string{"message": "All products deleted softly successfully"})
-
-}
-
-// AdminDeleteAllProductsHandler - Xóa vĩnh viễn tất cả sản phẩm (hard delete)
-// CẢNH BÁO: Xóa hoàn toàn tất cả sản phẩm khỏi database
+// AdminDeleteAllProductsHandler - Xóa cứng tất cả (Nguy hiểm)
 func (h *ProductHandler) AdminDeleteAllProductsHandler(w http.ResponseWriter, r *http.Request) {
 	err := h.PrtController.AdminDeleteAllProductsController()
 	if err != nil {
 		h.errJson(w, http.StatusInternalServerError, "Cannot delete all products")
+		return
 	}
 	h.writeJson(w, http.StatusOK, map[string]string{"message": "All products deleted successfully"})
 }

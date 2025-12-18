@@ -1,0 +1,572 @@
+openapi: 3.0.3
+info:
+  title: E-Commerce Category API
+  description: |-
+    Tài liệu API cho module Quản lý Danh mục (Categories).
+    Bao gồm các API Public cho User (Menu, Search) và Private cho Admin (CRUD).
+  version: 1.0.0
+tags:
+  - name: Public Categories
+    description: API Danh mục dành cho User (Chỉ hiện Active)
+  - name: Admin Categories
+    description: API Quản lý Danh mục dành cho Admin (Đầy đủ quyền)
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # --- Request Models ---
+    CreateCategoryRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          example: "Điện thoại"
+          minLength: 3
+        slug:
+          type: string
+          example: "dien-thoai"
+          description: "Nếu để trống sẽ tự động tạo từ Name"
+        description:
+          type: string
+          example: "Các loại smartphone mới nhất"
+        is_active:
+          type: boolean
+          example: true
+          default: true
+
+    UpdateCategoryRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "Điện thoại & Phụ kiện"
+        slug:
+          type: string
+          example: "dien-thoai-phu-kien"
+        description:
+          type: string
+          example: "Cập nhật mô tả mới"
+        is_active:
+          type: boolean
+          example: false
+
+    DeleteManyCategoriesRequest:
+      type: object
+      required:
+        - ids
+      properties:
+        ids:
+          type: array
+          items:
+            type: integer
+          example: [5, 8, 12]
+
+    # --- Response Models ---
+    
+    # UserCategoryResponse: Gọn nhẹ cho User hiển thị Menu
+    UserCategoryResponse:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "Điện thoại"
+        slug:
+          type: string
+          example: "dien-thoai"
+
+    # AdminCategoryResponse: Đầy đủ thông tin quản trị
+    AdminCategoryResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Điện thoại"
+        slug:
+          type: string
+          example: "dien-thoai"
+        description:
+          type: string
+          example: "Mô tả chi tiết..."
+        is_active:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    # --- Wrapper Responses ---
+    SuccessResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 200
+        message:
+          type: string
+          example: Thành công
+        data:
+          type: object
+
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 400
+        message:
+          type: string
+          example: Lỗi dữ liệu
+        errors:
+          type: object
+          description: Chi tiết lỗi
+          example: "Dữ liệu đầu vào không hợp lệ"
+
+paths:
+  # ================= PUBLIC ROUTES (USER) =================
+  /api/categories:
+    get:
+      tags:
+        - Public Categories
+      summary: Lấy danh sách danh mục (Menu)
+      description: Chỉ trả về các danh mục đang hoạt động (is_active = true)
+      responses:
+        '200':
+          description: Lấy danh sách thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/UserCategoryResponse'
+
+        '500':
+          description: Lỗi hệ thống (Database, Server)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 500
+                message: Lỗi lấy danh mục
+                errors: "sql: database is closed"
+
+        
+
+  /api/categories/search:
+    get:
+      tags:
+        - Public Categories
+      summary: User tìm kiếm danh mục
+      parameters:
+        - name: q
+          in: query
+          description: Từ khóa tìm kiếm
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        '200':
+          description: Tìm kiếm thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/UserCategoryResponse'
+        '400':
+          description: Thiếu từ khóa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+        '404':
+          description: Không tìm thấy danh mục
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+
+  # ================= ADMIN ROUTES =================
+  /api/admin/categories:
+    get:
+      tags:
+        - Admin Categories
+      summary: Lấy tất cả danh mục (Admin)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lấy danh sách thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/AdminCategoryResponse'
+        '403':
+          description: Không có quyền Admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 403
+                message: Forbidden
+                errors: "Bạn không có quyền thực hiện chức năng này (Admin only)"
+
+    post:
+      tags:
+        - Admin Categories
+      summary: Tạo danh mục mới
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCategoryRequest'
+      responses:
+        '201':
+          description: Tạo thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - properties:
+                      data:
+                        $ref: '#/components/schemas/AdminCategoryResponse'
+        '409':
+          description: Trùng Slug hoặc Tên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 409
+                message: Dữ liệu trùng lặp
+                errors: "slug danh mục đã tồn tại"
+        '400':
+          description: Validate lỗi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+        '403':
+          description: Không có quyền Admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 403
+                message: Forbidden
+                errors: "Bạn không có quyền thực hiện chức năng này (Admin only)"
+
+    delete:
+      tags:
+        - Admin Categories
+      summary: Xóa nhiều danh mục cùng lúc (Xóa mềm)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteManyCategoriesRequest'
+      responses:
+        '200':
+          description: Xóa thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                code: 200
+                message: Xóa danh sách danh mục thành công
+        '400':
+          description: Lỗi Validate input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+        '403':
+          description: Không có quyền Admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 403
+                message: Forbidden
+                errors: "Bạn không có quyền thực hiện chức năng này (Admin only)"
+
+  /api/admin/categories/search:
+    get:
+      tags:
+        - Admin Categories
+      summary: Admin tìm kiếm danh mục (All)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Tìm kiếm thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/AdminCategoryResponse'
+
+        '403':
+          description: Không có quyền Admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 403
+                message: Forbidden
+                errors: "Bạn không có quyền thực hiện chức năng này (Admin only)"
+
+        '404':
+          description: Không tìm thấy danh mục
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/admin/categories/{id}:
+    get:
+      tags:
+        - Admin Categories
+      summary: Lấy chi tiết danh mục theo ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - properties:
+                      data:
+                        $ref: '#/components/schemas/AdminCategoryResponse'
+        '404':
+          description: Không tìm thấy danh mục
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+        '403':
+          description: Không có quyền Admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 403
+                message: Forbidden
+                errors: "Bạn không có quyền thực hiện chức năng này (Admin only)"
+
+    put:
+      tags:
+        - Admin Categories
+      summary: Cập nhật danh mục
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCategoryRequest'
+      responses:
+        '200':
+          description: Cập nhật thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - properties:
+                      data:
+                        $ref: '#/components/schemas/AdminCategoryResponse'
+        '409':
+          description: Slug cập nhật bị trùng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 409
+                message: Lỗi cập nhật
+                errors: "slug 'dien-thoai' đã tồn tại"
+
+        '403':
+          description: Không có quyền Admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 403
+                message: Forbidden
+                errors: "Bạn không có quyền thực hiện chức năng này (Admin only)"
+
+    delete:
+      tags:
+        - Admin Categories
+      summary: Xóa mềm 1 danh mục
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Xóa thành công (IsActive = false)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                code: 200
+                message: Xóa danh mục thành công
+        '404':
+          description: ID không tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+        '403':
+          description: Không có quyền Admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 403
+                message: Forbidden
+                errors: "Bạn không có quyền thực hiện chức năng này (Admin only)"
+
+
+  /api/admin/categories/hard/{id}:
+    delete:
+      tags:
+        - Admin Categories
+      summary: Xóa cứng (vĩnh viễn) 1 danh mục
+      description: |
+        Hành động này sẽ xóa hoàn toàn dòng dữ liệu khỏi Database và **không thể khôi phục**.
+        **Điều kiện bắt buộc:** Danh mục này phải RỖNG (không được chứa sản phẩm nào).
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID của danh mục cần xóa
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Xóa vĩnh viễn thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                code: 200
+                message: Đã xóa vĩnh viễn danh mục thành công
+        '400':
+          description: Vi phạm quy tắc nghiệp vụ (Danh mục còn chứa sản phẩm)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 400
+                message: Không thể xóa danh mục
+                errors: "không thể xóa: danh mục này đang chứa 5 sản phẩm. Vui lòng gỡ sản phẩm trước"
+        '403':
+          description: Không có quyền Admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 403
+                message: Forbidden
+                errors: "Bạn không có quyền thực hiện chức năng này (Admin only)"
+        '404':
+          description: ID danh mục không tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 404
+                message: Không tìm thấy
+                errors: "Category ID not found"
+        

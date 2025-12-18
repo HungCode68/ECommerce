@@ -9,15 +9,21 @@ import (
 
 // UserRepo định nghĩa các phương thức thao tác với DB
 type UserRepo interface {
-	GetAllUser() ([]model.UserResponse, error)
-	GetUserByID(id int64) (model.UserResponse, error)
-	SearchUsers(keyword string) ([]model.UserResponse, error)
+	// Read Methods (Trả về Entity gốc)
+	GetAllUsers() ([]model.User, error)
+	GetUserByID(id int64) (model.User, error)
+	SearchUsers(keyword string) ([]model.User, error)
+	
+	
 	GetUserByIdentifier(identifier string) (model.User, error)
 	GetUserByRefreshToken(refreshToken string) (model.User, error)
+	
+	
 	CreateUser(user model.User) (model.User, error)
-	UpdateUser(id int64, req model.UpdateUserRequest) (model.User, error)
-	UpdateUserProfile(id int64, req model.UpdateProfileRequest) (model.User, error)
+	UpdateUser(id int64, req model.AdminUpdateUserRequest) (model.User, error)
+	UpdateUserProfile(id int64, req model.UserUpdateProfileRequest) (model.User, error)
 	UpdateRefreshToken(id int64, refreshToken string, expiry time.Time) error
+	
 	DeleteUserById(id int64) error
 	DeleteManyUsers(ids []int64) error
 	RevokeRefreshToken(userID int64) error
@@ -41,6 +47,7 @@ func (u *UserDb) GetUserByIdentifier(identifier string) (model.User, error) {
 
 	var user model.User
 
+	// Thực hiện truy vấn
 	err := u.db.QueryRow(query, identifier, identifier).Scan(
 		&user.ID,
 		&user.Username,
@@ -55,6 +62,7 @@ func (u *UserDb) GetUserByIdentifier(identifier string) (model.User, error) {
 		&user.DeletedAt,
 	)
 
+	// Xử lý lỗi
 	if err != nil {
 		if err == sql.ErrNoRows {
 			logger.DebugLogger.Printf("User not found: %s", identifier)
@@ -69,9 +77,10 @@ func (u *UserDb) GetUserByIdentifier(identifier string) (model.User, error) {
 }
 
 // Hàm lấy tất cả Users
-func (u *UserDb) GetAllUser() ([]model.UserResponse, error) {
+func (u *UserDb) GetAllUsers() ([]model.User, error) {
 	logger.DebugLogger.Println("Starting GetAllUser")
 
+	// Truy vấn lấy tất cả users
 	rows, err := u.db.Query("SELECT id, username, email, role, is_active, created_at, updated_at, deleted_at FROM users")
 	if err != nil {
 		logger.ErrorLogger.Printf("Query GetAllUser Failed: %v", err)
@@ -79,9 +88,9 @@ func (u *UserDb) GetAllUser() ([]model.UserResponse, error) {
 	}
 	defer rows.Close()
 
-	var UserSlice []model.UserResponse
+	var UserSlice []model.User
 	for rows.Next() {
-		var user model.UserResponse
+		var user model.User
 		err := rows.Scan(&user.ID, &user.Username, &user.Email, &user.Role, &user.IsActive, &user.CreatedAt, &user.UpdatedAt, &user.DeletedAt)
 		if err != nil {
 			logger.ErrorLogger.Printf("Row Scan Failed: %v", err)
@@ -94,23 +103,24 @@ func (u *UserDb) GetAllUser() ([]model.UserResponse, error) {
 }
 
 // Hàm lấy User theo ID
-func (u *UserDb) GetUserByID(id int64) (model.UserResponse, error) {
+func (u *UserDb) GetUserByID(id int64) (model.User, error) {
 	logger.DebugLogger.Printf("Starting GetUserByID for ID: %d\n", id)
-	var user model.UserResponse
+	var user model.User
 	query := "SELECT id, username, email, role, is_active, created_at, updated_at, deleted_at FROM users WHERE id = ?"
 
 	err := u.db.QueryRow(query, id).Scan(&user.ID, &user.Username, &user.Email, &user.Role, &user.IsActive, &user.CreatedAt, &user.UpdatedAt, &user.DeletedAt)
 	if err != nil {
 		logger.ErrorLogger.Printf("GetUserById failed: %v", err)
-		return model.UserResponse{}, err
+		return model.User{}, err
 	}
 	logger.InfoLogger.Printf("GetUserById success")
 	return user, nil
 }
 
 // Hàm tìm kiếm Users theo từ khóa (username hoặc email)
-func (u *UserDb) SearchUsers(keyword string) ([]model.UserResponse, error) {
+func (u *UserDb) SearchUsers(keyword string) ([]model.User, error) {
 	logger.DebugLogger.Printf("Starting SearchUsers with keyword: %s", keyword)
+	// Tìm kiếm theo từ khóa
 	searchTerm := "%" + keyword + "%"
 
 	query := "SELECT id, username, email, role, is_active, created_at, updated_at, deleted_at FROM users WHERE (username LIKE ? OR email LIKE ?)"
@@ -122,9 +132,9 @@ func (u *UserDb) SearchUsers(keyword string) ([]model.UserResponse, error) {
 	}
 	defer rows.Close()
 
-	var userSlice []model.UserResponse
+	var userSlice []model.User
 	for rows.Next() {
-		var user model.UserResponse
+		var user model.User
 		err := rows.Scan(&user.ID, &user.Username, &user.Email, &user.Role, &user.IsActive, &user.CreatedAt, &user.UpdatedAt, &user.DeletedAt)
 		if err != nil {
 			logger.ErrorLogger.Printf("SearchUsers Row Scan Failed: %v", err)
@@ -151,12 +161,14 @@ func (u *UserDb) CreateUser(user model.User) (model.User, error) {
 		return model.User{}, err
 	}
 
+	// Lấy ID của User vừa tạo
 	newId, err := result.LastInsertId()
 	if err != nil {
 		logger.ErrorLogger.Printf("Get LastInsertId Failed: %v", err)
 		return model.User{}, err
 	}
 
+	// Trả về User vừa tạo
 	createUser := model.User{
 		ID:        newId,
 		Username:  user.Username,
@@ -170,16 +182,16 @@ func (u *UserDb) CreateUser(user model.User) (model.User, error) {
 	return createUser, nil
 }
 
-// Hàm cập nhật thông tin User
-func (u *UserDb) UpdateUser(id int64, user model.UpdateUserRequest) (model.User, error) {
+// Hàm cập nhật thông tin User (Admin dùng)
+func (u *UserDb) UpdateUser(id int64, user model.AdminUpdateUserRequest) (model.User, error) {
 	logger.DebugLogger.Println("Starting UpdateUser for ID:", id)
 	now := time.Now()
 
 	queryUpdate := `UPDATE users 
-                    SET role = COALESCE(?, role), 
-                        is_active = COALESCE(?, is_active), 
-                        updated_at = ? 
-                    WHERE id = ? AND deleted_at IS NULL`
+					SET role = COALESCE(?, role), 
+						is_active = COALESCE(?, is_active), 
+						updated_at = ? 
+					WHERE id = ? AND deleted_at IS NULL`
 
 	res, err := u.db.Exec(queryUpdate, user.Role, user.IsActive, now, id)
 	if err != nil {
@@ -190,48 +202,25 @@ func (u *UserDb) UpdateUser(id int64, user model.UpdateUserRequest) (model.User,
 	// Kiểm tra xem có dòng nào được update không
 	rowsAffected, _ := res.RowsAffected()
 	if rowsAffected == 0 {
-		logger.WarnLogger.Printf("No user found to update (or no changes made) with ID: %d", id)
+		logger.WarnLogger.Printf("No user updated (ID not found or no changes): %d", id)
 		return model.User{}, sql.ErrNoRows
 	}
 
-	querySelect := `SELECT id, username, email, role, is_active, created_at, updated_at 
-                    FROM users WHERE id = ?`
-
-	var updatedUser model.User
-	err = u.db.QueryRow(querySelect, id).Scan(
-		&updatedUser.ID,
-		&updatedUser.Username,
-		&updatedUser.Email,
-		&updatedUser.Role,
-		&updatedUser.IsActive,
-		&updatedUser.CreatedAt,
-		&updatedUser.UpdatedAt,
-	)
-
-	if err != nil {
-		if err == sql.ErrNoRows {
-			logger.WarnLogger.Printf("No user found with ID: %d", id)
-			return model.User{}, err
-		}
-		logger.ErrorLogger.Printf("UpdateUser (Select) Failed: %v", err)
-		return model.User{}, err
-	}
-
 	logger.InfoLogger.Printf("UpdateUser success for ID: %d", id)
-	return updatedUser, nil
+	return u.GetUserByID(id)
 }
 
-// Hàm User tự cập nhật Profile (Username, Email, Password)
-func (u *UserDb) UpdateUserProfile(id int64, req model.UpdateProfileRequest) (model.User, error) {
+// Hàm User tự cập nhật Profile
+func (u *UserDb) UpdateUserProfile(id int64, req model.UserUpdateProfileRequest) (model.User, error) {
 	logger.DebugLogger.Printf("Starting UpdateUserProfile for ID: %d", id)
 	now := time.Now()
 
 	queryUpdate := `UPDATE users 
-                    SET username = COALESCE(?, username), 
-                        email = COALESCE(?, email), 
-                        password_hash = COALESCE(?, password_hash),
-                        updated_at = ? 
-                    WHERE id = ? AND deleted_at IS NULL`
+					SET username = COALESCE(?, username), 
+						email = COALESCE(?, email), 
+						password_hash = COALESCE(?, password_hash),
+						updated_at = ? 
+					WHERE id = ? AND deleted_at IS NULL`
 
 	_, err := u.db.Exec(queryUpdate,
 		req.Username,
@@ -246,31 +235,8 @@ func (u *UserDb) UpdateUserProfile(id int64, req model.UpdateProfileRequest) (mo
 		return model.User{}, err
 	}
 
-	querySelect := `SELECT id, username, email, role, is_active, created_at, updated_at 
-                    FROM users WHERE id = ?`
-
-	var user model.User
-	err = u.db.QueryRow(querySelect, id).Scan(
-		&user.ID,
-		&user.Username,
-		&user.Email,
-		&user.Role,
-		&user.IsActive,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-	)
-
-	if err != nil {
-		if err == sql.ErrNoRows {
-			logger.WarnLogger.Printf("User ID %d not found after update", id)
-			return model.User{}, err
-		}
-		logger.ErrorLogger.Printf("UpdateUserProfile (Select) Failed: %v", err)
-		return model.User{}, err
-	}
-
 	logger.InfoLogger.Printf("UpdateUserProfile success for ID: %d", id)
-	return user, nil
+	return u.GetUserByID(id)
 }
 
 // Hàm cập nhật Refresh Token và Expiry
@@ -293,6 +259,7 @@ func (u *UserDb) DeleteUserById(id int64) error {
 		return err
 	}
 
+	// Kiểm tra xem có dòng nào được update không
 	rowsAffected, _ := result.RowsAffected()
 	if rowsAffected == 0 {
 		return sql.ErrNoRows
@@ -306,6 +273,7 @@ func (u *UserDb) DeleteUserById(id int64) error {
 func (u *UserDb) DeleteManyUsers(ids []int64) error {
 	logger.DebugLogger.Printf("Starting DeleteManyUsers for %d users", len(ids))
 
+	// Bắt đầu transaction
 	tx, err := u.db.Begin()
 	if err != nil {
 		logger.ErrorLogger.Printf("Failed to begin transaction: %v", err)

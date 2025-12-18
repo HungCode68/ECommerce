@@ -533,6 +533,17 @@ paths:
                 data: null
                 errors: "Vui lòng nhập từ khóa tìm kiếm (?q=...)"
 
+        '403':
+          description: Không có quyền Admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 403
+                message: Forbidden
+                errors: "Bạn không có quyền thực hiện chức năng này (Admin only)"
+
   /api/admin/users/{id}:
     get:
       tags:
@@ -568,6 +579,17 @@ paths:
                 message: Không tìm thấy
                 data: null
                 errors: "User not found"
+
+        '403':
+          description: Không có quyền Admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 403
+                message: Forbidden
+                errors: "Bạn không có quyền thực hiện chức năng này (Admin only)"
     put:
       tags:
         - Admin Management
@@ -606,6 +628,17 @@ paths:
                 code: 404
                 message: Không tìm thấy
                 errors: "User not found"
+
+        '403':
+          description: Không có quyền Admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 403
+                message: Forbidden
+                errors: "Bạn không có quyền thực hiện chức năng này (Admin only)"
     delete:
       tags:
         - Admin Management
@@ -638,3 +671,14 @@ paths:
                 code: 404
                 message: Không tìm thấy
                 errors: "User not found"
+
+        '403':
+          description: Không có quyền Admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 403
+                message: Forbidden
+                errors: "Bạn không có quyền thực hiện chức năng này (Admin only)"

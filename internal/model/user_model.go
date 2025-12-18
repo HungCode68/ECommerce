@@ -27,53 +27,75 @@ type RegisterRequest struct {
 // LoginRequest: Dùng khi đăng nhập
 type LoginRequest struct {
 	// Dùng 1 trường identifier để cho phép nhập username HOẶC email
-	Identifier string `json:"identifier" validate:"required,min=3"`
-	Password   string `json:"password"   validate:"required"`
+	Identifier string `json:"identifier" validate:"required,min=3,max=100"`
+	Password   string `json:"password"   validate:"required,min=6,max=30"`
 }
 
-// LoginResponse: Cấu trúc trả về khi đăng nhập thành công
-type LoginResponse struct {
-	AccessToken  string       `json:"access_token"`
-	RefreshToken string       `json:"refresh_token"`
-	User         UserResponse `json:"user"` 
-}
 
-// UpdateProfileRequest: Dùng khi user tự cập nhật thông tin cá nhân
-type UpdateProfileRequest struct {
+// UserUpdateProfileRequest: Dùng khi user tự cập nhật thông tin cá nhân
+type UserUpdateProfileRequest struct {
 	Username *string `json:"username,omitempty" validate:"omitempty,min=3,max=100,alphanum"`
 	Email    *string `json:"email,omitempty"    validate:"omitempty,email"`
 	Password *string `json:"password,omitempty" validate:"omitempty,min=6,max=30"`
 }
 
-// UpdateUserRequest: Dùng khi cập nhật thông tin
-type UpdateUserRequest struct {
+// AdminUpdateUserRequest: Dùng khi admin cập nhật thông tin user
+type AdminUpdateUserRequest struct {
 	Role      *string   `json:"role,omitempty"     validate:"omitempty,oneof=user admin"`
 	IsActive  *bool     `json:"is_active,omitempty"`
 	UpdatedAt time.Time `db:"updated_at,omitempty"`
 }
 
-// DeleteManyRequest: Dùng để xóa nhiều user cùng lúc
-type DeleteManyRequest struct {
+// AdminDeleteManyUsersRequest: Dùng để xóa nhiều user cùng lúc
+type AdminDeleteManyUsersRequest struct {
     IDs []int64 `json:"ids" validate:"required,min=1"`
 }
 
-//GetUserRequest: Dùng để lấy chi tiết user (thường lấy theo ID)
-type GetUserRequest struct {
-	ID       int64  `json:"id,omitempty" validate:"omitempty,gt=0,numeric"`
-	Username string `json:"username,omitempty" validate:"omitempty,min=3"`
-	Email    string `json:"email,omitempty"    validate:"omitempty,email"`
+// RefreshTokenRequest: Gửi lên Refresh Token cũ để xin cấp mới
+type RefreshTokenRequest struct {
+	RefreshToken string `json:"refresh_token" validate:"required"`
 }
 
-//UserResponse: Trả về client
-type UserResponse struct {
+// UserPublicResponse: Dùng cho API công khai (VD: Người review sản phẩm)
+type UserPublicResponse struct {
+	ID       int64  `json:"id"`
+	Username string `json:"username"`
+}
+
+// UserProfileResponse: Dùng cho User xem và chỉnh sửa profile cá nhân
+type UserProfileResponse struct {
+	ID        int64     `json:"id"`
+	Username  string    `json:"username"`
+	Email     string    `json:"email"`
+	Role      string    `json:"role"`
+	IsActive  bool      `json:"is_active"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// AdminUserResponse: Dùng cho Admin quản lý
+type AdminUserResponse struct {
 	ID        int64      `json:"id"`
 	Username  string     `json:"username"`
 	Email     string     `json:"email"`
 	Role      string     `json:"role"`
 	IsActive  bool       `json:"is_active"`
 	CreatedAt time.Time  `json:"created_at"`
-	UpdatedAt time.Time  `db:"updated_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
 	DeletedAt *time.Time `json:"deleted_at"`
+}
+
+// LoginResponse: Trả về UserProfileResponse
+type LoginResponse struct {
+	AccessToken  string              `json:"access_token"`
+	RefreshToken string              `json:"refresh_token"`
+	User         UserProfileResponse `json:"user"`
+}
+
+// RefreshTokenResponse: Trả về cặp token mới toanh
+type RefreshTokenResponse struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
 }
 
 // APIResponse: Cấu trúc JSON trả về chuẩn cho mọi API
@@ -85,13 +107,3 @@ type APIResponse struct {
 }
 
 
-// RefreshTokenRequest: Gửi lên Refresh Token cũ để xin cấp mới
-type RefreshTokenRequest struct {
-	RefreshToken string `json:"refresh_token" validate:"required"`
-}
-
-// RefreshTokenResponse: Trả về cặp token mới toanh
-type RefreshTokenResponse struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-}
