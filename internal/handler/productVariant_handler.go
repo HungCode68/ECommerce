@@ -54,3 +54,64 @@ func (h *VariantHandler) CreateVariantHandler(w http.ResponseWriter, r *http.Req
 	}
 	h.writeJson(w, http.StatusCreated, variantReponse)
 }
+
+func (h *VariantHandler) UpdateVariantHandler(w http.ResponseWriter, r *http.Request) {
+	productIdStr := r.PathValue("id")
+	productID, err := strconv.ParseInt(productIdStr, 10, 64)
+	if err != nil {
+		h.errJson(w, http.StatusBadRequest, "Product ID invalid")
+		return
+	}
+
+	variantIdStr := r.PathValue("variantId")
+	variantID, err := strconv.ParseInt(variantIdStr, 10, 64)
+	if err != nil {
+		h.errJson(w, http.StatusBadRequest, "Variant ID invalid")
+		return
+	}
+
+	var req model.UpdateVariantRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.errJson(w, http.StatusBadRequest, "Invalid request")
+		return
+	}
+
+	if err := validator.NewCustomValidator().Validate(req); err != nil {
+		h.errJson(w, http.StatusBadRequest, fmt.Sprintf("Validation failed: %v", err))
+		return
+	}
+
+	variantResponse, err := h.VariantController.UpdateVariant(req, variantID, productID)
+	if err != nil {
+		fmt.Printf("Lỗi DB %v \n", err)
+		h.errJson(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	h.writeJson(w, http.StatusOK, variantResponse)
+}
+
+func (h *VariantHandler) DeleteVariantHandler(w http.ResponseWriter, r *http.Request) {
+	productIdStr := r.PathValue("id")
+	productID, err := strconv.ParseInt(productIdStr, 10, 64)
+	if err != nil {
+		h.errJson(w, http.StatusBadRequest, "Product ID invalid")
+		return
+	}
+
+	variantIdStr := r.PathValue("variantId")
+	variantID, err := strconv.ParseInt(variantIdStr, 10, 64)
+	if err != nil {
+		h.errJson(w, http.StatusBadRequest, "Variant ID invalid")
+		return
+	}
+
+	response, err := h.VariantController.DeleteVariant(variantID, productID)
+	if err != nil {
+		fmt.Printf("Lỗi DB %v \n", err)
+		h.errJson(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	h.writeJson(w, http.StatusOK, response)
+}

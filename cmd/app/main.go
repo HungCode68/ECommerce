@@ -33,16 +33,19 @@ func main() {
 	addressRepo := repository.NewAddressDb(db.Connection)
 	addressController := controller.NewAddressController(addressRepo)
 	addressHandler := handler.NewAddressHandler(addressController, myValidator)
+
+	//Khoi tao cho product variant
+	proVariantRepo := repository.NewVariantRepo(db.Connection)
+	proVariantController := controller.NewProductVariantController(proVariantRepo)
+	proVariantHandler := handler.NewVariantHandler(proVariantController)
+
 	//Khoi tao cho product
 	productRepo := repository.NewProductRepo(db.Connection)
-	productController := controller.NewProductController(productRepo)
+	productController := controller.NewProductController(productRepo, proVariantRepo)
 	productHandler := handler.NewProductHandler(productController)
-	//khoi tao cho product variant
-	proVariantRepo := repository.NewVariantRepo(db.Connection)
-	proVariantController:= controller.NewProductVariantController(proVariantRepo)
-	proVariantHandler := handler.NewVariantHandler(proVariantController)
+
 	// Khởi tạo Router
-	r := router.NewRouter(userHandler, addressHandler, productHandler,proVariantHandler)
+	r := router.NewRouter(userHandler, addressHandler, productHandler, proVariantHandler)
 
 	//Khởi tạo Server (Truyền router r vào)
 	srv := server.NewServer(r)

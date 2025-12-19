@@ -94,6 +94,7 @@ func (pr *ProductRepo) GetProductByID(id int64) (*model.Product, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return &product, nil
 }
 func (pr *ProductRepo) GetProductByName(name string) (*model.Product, error) {
@@ -120,7 +121,6 @@ func (pr *ProductRepo) GetManyProduct(ids []int64) ([]model.Product, error) {
 		return []model.Product{}, nil
 	}
 
-
 	placeholders := strings.Repeat("?,", len(ids))
 	placeholders = placeholders[:len(placeholders)-1]
 
@@ -128,7 +128,6 @@ func (pr *ProductRepo) GetManyProduct(ids []int64) ([]model.Product, error) {
         SELECT id, name, slug, short_description, description, brand, status, is_published, published_at, min_price, avg_rating, rating_count, created_by, updated_by, created_at, updated_at, deleted_at 
         FROM products 
         WHERE id IN (%s) AND deleted_at IS NULL`, placeholders) // <-- ĐÃ SỬA
-
 
 	params := make([]interface{}, len(ids))
 	for i, id := range ids {
@@ -162,7 +161,6 @@ func (pr *ProductRepo) SearchProducts(req *model.SearchProductsRequest) ([]model
 		whereClause += " AND name LIKE ?"
 		args = append(args, "%"+req.Search+"%")
 	}
-
 
 	if req.Brand != "" {
 		whereClause += " AND brand = ?"
@@ -208,9 +206,9 @@ func (pr *ProductRepo) GetConflictProductByName(name string) (bool, error) {
 	err := pr.DB.QueryRow("SELECT id FROM products WHERE name = ?", name).Scan(&id)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return false, nil 
+			return false, nil
 		}
-		return false, err 
+		return false, err
 	}
 	return true, nil
 }
@@ -227,8 +225,20 @@ func (pr *ProductRepo) GetConflictProductBySlug(slug string) (bool, error) {
 	return true, nil
 }
 
+// UpdateProduct - Cập nhật thông tin sản phẩm
 func (pr *ProductRepo) UpdateProduct(product *model.Product) (*model.Product, error) {
-	_, err := pr.DB.Exec(`UPDATE products SET name=?, slug=?, short_description=?,
+	// Kiểm tra xem product có tồn tại không
+	var exists int64
+	err := pr.DB.QueryRow("SELECT id FROM products WHERE id = ? AND deleted_at IS NULL", product.ID).Scan(&exists)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("Product not found")
+		}
+		return nil, fmt.Errorf("Error checking product existence: %w", err)
+	}
+
+	// Thực hiện update
+	_, err = pr.DB.Exec(`UPDATE products SET name=?, slug=?, short_description=?,
 							description=?, brand=?, status=?,is_published=?,published_at=?,
 							min_price=? where id=?`,
 		product.Name,
@@ -243,7 +253,7 @@ func (pr *ProductRepo) UpdateProduct(product *model.Product) (*model.Product, er
 }
 
 func (pr *ProductRepo) GetAllProducts() ([]model.Product, error) {
-	rows, err := pr.DB.Query("SELECT id, name, slug, short_description, description, brand, status, is_published, published_at, min_price, avg_rating, rating_count, created_by, updated_by, created_at, updated_at, deleted_at FROM products ")
+	rows, err := pr.DB.Query("SELECT id, name, slug, short_description, description, brand, status, is_published, published_at, min_price, avg_rating, rating_count, created_by, updated_by, created_at, updated_at, deleted_at FROM products WHERE deleted_at IS NULL")
 	if err != nil {
 		return nil, err
 	}
@@ -303,7 +313,7 @@ func (pr *ProductRepo) BulkDeleteSoftProducts(ids []int64) error {
 }
 
 func (pr *ProductRepo) GetAllProductsSoftDeleted() ([]model.Product, error) {
-	rows, err := pr.DB.Query("SELECT id, name, slug, short_description, description, brand, status, is_published, published_at, min_price, avg_rating, rating_count, created_by, updated_by, created_at, updated_at, deleted_at FROM products where status='archived' AND deleted_at IS NOT NULL")
+	rows, err := pr.DB.Query("SELECT id, name, slug, short_description, description, brand, status, is_published, published_at, min_price, avg_rating, rating_count, created_by, updated_by, created_at, updated_at, deleted_at FROM products WHERE deleted_at IS NOT NULL")
 	if err != nil {
 		return nil, err
 	}

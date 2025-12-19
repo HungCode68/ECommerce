@@ -53,17 +53,11 @@ func RegisterProductRoutes(mux *http.ServeMux, h *handler.ProductHandler) {
 	// Lấy chi tiết đầy đủ sản phẩm theo tên (query ?name=xxx) - Chỉ published
 	mux.HandleFunc("GET /user/products/detail/", h.UserGetProductHandlerDetail)
 
-	// Lấy chi tiết đầy đủ sản phẩm theo ID - Chỉ published
-	mux.HandleFunc("GET /user/product/detail/{id}", h.UserGetProductHandlerDetail)
-
 	// Lấy chi tiết đầy đủ sản phẩm theo slug - Chỉ published
 	mux.HandleFunc("GET /user/product/detail/slug/{slug}", h.UserGetProductHandlerDetail)
 
 	// Lấy thông tin rút gọn sản phẩm theo tên (query ?name=xxx) - Chỉ published
 	mux.HandleFunc("GET /user/products/", h.UserGetProductHandler)
-
-	// Lấy thông tin rút gọn sản phẩm theo ID - Chỉ published
-	mux.HandleFunc("GET /user/product/{id}", h.UserGetProductHandler)
 
 	// Lấy thông tin rút gọn sản phẩm theo slug - Chỉ published
 	mux.HandleFunc("GET /user/product/slug/{slug}", h.UserGetProductHandler)

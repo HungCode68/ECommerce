@@ -1,6 +1,8 @@
 package model
 
-import "time"
+import (
+	"time"
+)
 
 // =================================================================
 // 1. PRODUCT MODEL (Ánh xạ CSDL)
@@ -29,6 +31,8 @@ type Product struct {
 	UpdatedAt time.Time  `db:"updated_at"`
 	DeletedAt *time.Time `db:"deleted_at"` // Có thể NULL
 }
+
+// ProductVariant ánh xạ với bảng 'product_variants'
 
 // 2. REQUEST DTOs (Data Transfer Objects - Nhận Input)
 
@@ -93,12 +97,13 @@ type SearchProductsRequest struct {
 
 // UserProductResponse - Thông tin sản phẩm cho User
 type UserProductResponse struct {
-	ID       int64                 `json:"id"`
-	Name     string                `json:"name"`
-	Brand    *string               `json:"brand,omitempty"`
-	MinPrice float64               `json:"min_price"`
-	Variants []UserVariantResponse `json:"variants"`
+	ID       int64   `json:"id"`
+	Name     string  `json:"name"`
+	Brand    *string `json:"brand,omitempty"`
+	MinPrice float64 `json:"min_price"`
 }
+
+// UserVariantResponse - Thông tin variant cho User
 
 // UserProductListResponse - Danh sách sản phẩm cho User
 type UserProductListResponse struct {
@@ -108,16 +113,17 @@ type UserProductListResponse struct {
 
 // UserProductDetailResponse - Chi tiết sản phẩm cho User
 type UserProductDetailResponse struct {
-	Message          string     `json:"message,omitempty"`
-	ID               int64      `json:"id"`
-	Name             string     `json:"name"`
-	ShortDescription *string    `json:"short_description,omitempty"`
-	Description      *string    `json:"description,omitempty"`
-	Brand            *string    `json:"brand,omitempty"`
-	MinPrice         float64    `json:"min_price"`
-	AvgRating        float64    `json:"avg_rating"`
-	RatingCount      int        `json:"rating_count"`
-	PublishedAt      *time.Time `json:"published_at,omitempty"`
+	Message          string                `json:"message,omitempty"`
+	ID               int64                 `json:"id"`
+	Name             string                `json:"name"`
+	ShortDescription *string               `json:"short_description,omitempty"`
+	Description      *string               `json:"description,omitempty"`
+	Brand            *string               `json:"brand,omitempty"`
+	MinPrice         float64               `json:"min_price"`
+	AvgRating        float64               `json:"avg_rating"`
+	RatingCount      int                   `json:"rating_count"`
+	PublishedAt      *time.Time            `json:"published_at,omitempty"`
+	Variants         []UserVariantResponse `json:"variants"`
 }
 
 // =================================================================
@@ -145,6 +151,8 @@ type AdminProductResponse struct {
 	DeletedAt        *time.Time `json:"deleted_at,omitempty"`
 }
 
+// AdminVariantResponse - Thông tin variant cho Admin
+
 // AdminProductListResponse - Danh sách sản phẩm cho Admin
 type AdminProductListResponse struct {
 	Message  string                 `json:"message,omitempty"`
@@ -153,8 +161,9 @@ type AdminProductListResponse struct {
 
 // AdminProductDetailResponse - Chi tiết sản phẩm cho Admin
 type AdminProductDetailResponse struct {
-	Message string               `json:"message,omitempty"`
-	Product AdminProductResponse `json:"product"`
+	Message  string                 `json:"message,omitempty"`
+	Product  AdminProductResponse   `json:"product"`
+	Variants []AdminVariantResponse `json:"variants"`
 }
 
 // AdminCreateProductResponse - Response sau khi tạo sản phẩm mới

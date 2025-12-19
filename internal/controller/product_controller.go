@@ -9,11 +9,15 @@ import (
 )
 
 type ProductController struct {
-	Repo repository.ProductResponsitory
+	Repo         repository.ProductResponsitory
+	RepoVariants repository.ProductVariantsRepository
 }
 
-func NewProductController(repo repository.ProductResponsitory) *ProductController {
-	return &ProductController{Repo: repo}
+func NewProductController(repo repository.ProductResponsitory, repoVariants repository.ProductVariantsRepository) *ProductController {
+	return &ProductController{
+		Repo:         repo,
+		RepoVariants: repoVariants,
+	}
 }
 
 // =================================================================
@@ -131,6 +135,42 @@ func (prt *ProductController) AdminGetProductController(reqProduct *model.GetPro
 		return nil, err
 	}
 
+	// Lấy variants
+	variantsModel, err := prt.RepoVariants.GetProductVariantByID(pro.ID)
+	if err != nil {
+		variantsModel = []model.ProductsVariants{} // Nếu lỗi thì trả về mảng rỗng
+	}
+
+	// Convert variants sang AdminVariantResponse
+	variantResponses := make([]model.AdminVariantResponse, 0, len(variantsModel))
+	minPrice := pro.MinPrice // Giá mặc định từ product
+	hasActiveVariants := false
+
+	for _, v := range variantsModel {
+		variantResponses = append(variantResponses, model.AdminVariantResponse{
+			ID:             v.ID,
+			ProductID:      v.ProductID,
+			SKU:            v.SKU,
+			Title:          v.Title,
+			OptionValues:   v.OptionValues,
+			PriceOverride:  v.PriceOverride,
+			CostPrice:      v.CostPrice,
+			StockQuantity:  v.StockQuantity,
+			AllowBackorder: v.AllowBackorder,
+			IsActive:       v.IsActive,
+			CreatedAt:      v.CreatedAt.String(),
+			UpdatedAt:      v.UpdatedAt.String(),
+		})
+
+		// Tính min_price từ variants active
+		if v.IsActive && v.PriceOverride != nil {
+			if !hasActiveVariants || *v.PriceOverride < minPrice {
+				minPrice = *v.PriceOverride
+				hasActiveVariants = true
+			}
+		}
+	}
+
 	return &model.AdminProductDetailResponse{
 		Message: "Product retrieved successfully",
 		Product: model.AdminProductResponse{
@@ -143,7 +183,7 @@ func (prt *ProductController) AdminGetProductController(reqProduct *model.GetPro
 			Status:           pro.Status,
 			IsPublished:      pro.IsPublished,
 			PublishedAt:      pro.PublishedAt,
-			MinPrice:         pro.MinPrice,
+			MinPrice:         minPrice, // Sử dụng min_price đã tính toán
 			AvgRating:        pro.AvgRating,
 			RatingCount:      pro.RatingCount,
 			CreatedBy:        pro.CreatedBy,
@@ -152,6 +192,7 @@ func (prt *ProductController) AdminGetProductController(reqProduct *model.GetPro
 			UpdatedAt:        pro.UpdatedAt,
 			DeletedAt:        pro.DeletedAt,
 		},
+		Variants: variantResponses,
 	}, nil
 }
 
@@ -171,6 +212,44 @@ func (prt *ProductController) UserGetProductDetailController(reqProduct *model.G
 		return nil, fmt.Errorf("product not available")
 	}
 
+	// Lấy variants
+	variantsModel, err := prt.RepoVariants.GetProductVariantByID(pro.ID)
+	if err != nil {
+		variantsModel = []model.ProductsVariants{} // Nếu lỗi thì trả về mảng rỗng
+	}
+
+	// Convert variants sang UserVariantResponse (chỉ lấy variants active)
+	variantResponses := make([]model.UserVariantResponse, 0)
+	minPrice := pro.MinPrice // Giá mặc định từ product
+	hasActiveVariants := false
+
+	for _, v := range variantsModel {
+		// Chỉ hiển thị variant đang active
+		if v.IsActive {
+			resp := model.UserVariantResponse{
+				StockQuantity: v.StockQuantity,
+			}
+			if v.Title != nil {
+				resp.Title = *v.Title
+			}
+			if v.OptionValues != nil {
+				resp.OptionValues = *v.OptionValues
+			}
+			// Logic hiển thị giá: Nếu không có giá đè thì lấy giá gốc
+			if v.PriceOverride != nil {
+				resp.Price = *v.PriceOverride
+				// Tính min_price từ variants
+				if !hasActiveVariants || *v.PriceOverride < minPrice {
+					minPrice = *v.PriceOverride
+					hasActiveVariants = true
+				}
+			} else {
+				resp.Price = pro.MinPrice
+			}
+			variantResponses = append(variantResponses, resp)
+		}
+	}
+
 	return &model.UserProductDetailResponse{
 		Message:          "Product retrieved successfully",
 		ID:               pro.ID,
@@ -178,10 +257,11 @@ func (prt *ProductController) UserGetProductDetailController(reqProduct *model.G
 		ShortDescription: pro.ShortDescription,
 		Description:      pro.Description,
 		Brand:            pro.Brand,
-		MinPrice:         pro.MinPrice,
+		MinPrice:         minPrice, // Sử dụng min_price đã tính toán
 		AvgRating:        pro.AvgRating,
 		RatingCount:      pro.RatingCount,
 		PublishedAt:      pro.PublishedAt,
+		Variants:         variantResponses,
 	}, nil
 }
 
@@ -202,7 +282,6 @@ func (prt *ProductController) UserGetProductController(reqProduct *model.GetProd
 		Name:     pro.Name,
 		Brand:    pro.Brand,
 		MinPrice: pro.MinPrice,
-		VariantsPro: pro.,
 	}, nil
 }
 
@@ -300,6 +379,25 @@ func (prt *ProductController) AdminSearchProductsController(req *model.SearchPro
 	}, nil
 }
 func (prt *ProductController) UpdateProductController(product model.UpdateProductRequest, id int64) (*model.AdminUpdateProductResponse, error) {
+	_, err := prt.Repo.GetProductByID(id)
+	if err != nil {
+		return nil, fmt.Errorf("Product not found")
+	}
+	existingByName, err := prt.Repo.GetConflictProductByName(product.Name)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, err //failed database
+	}
+	if existingByName {
+		return nil, fmt.Errorf("Product name already exists")
+	}
+	existingBySlug, err := prt.Repo.GetConflictProductBySlug(product.Slug)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, err //failed database
+	}
+	if existingBySlug {
+		return nil, fmt.Errorf("Product slug already exists")
+	}
+
 	var publishedAt *time.Time
 	if product.PublishedAt != "" {
 		parsedTime, err := time.Parse(time.RFC3339, product.PublishedAt)
