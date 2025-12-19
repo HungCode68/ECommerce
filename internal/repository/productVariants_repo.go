@@ -23,6 +23,7 @@ func NewVariantRepo(db *sql.DB) *VariantRepo {
 	return &VariantRepo{DB: db}
 }
 
+// CreateProductVariant - Tạo biến thể mới trong database
 func (provariant *VariantRepo) CreateProductVariant(variant *model.ProductsVariants) (*model.ProductsVariants, error) {
 	query, err := provariant.DB.Exec(`insert into product_variants (product_id,sku,title,option_values,price_override,cost_price,stock_quantity,allow_backorder,is_active) values(?,?,?,?,?,?,?,?,?)`,
 		variant.ProductID, variant.SKU, variant.Title, variant.OptionValues, variant.PriceOverride, variant.CostPrice, variant.StockQuantity, variant.AllowBackorder, variant.IsActive)
@@ -38,6 +39,7 @@ func (provariant *VariantRepo) CreateProductVariant(variant *model.ProductsVaria
 	return variant, nil
 }
 
+// GetProductVariantByID - Lấy tất cả biến thể của một sản phẩm
 func (provariant *VariantRepo) GetProductVariantByID(productID int64) ([]model.ProductsVariants, error) {
 	rows, err := provariant.DB.Query(`
         SELECT id, product_id, sku, title, option_values, price_override, cost_price, 

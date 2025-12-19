@@ -193,13 +193,7 @@ type AdminDeleteProductResponse struct {
 	Success bool   `json:"success"`
 }
 
-// AdminBulkDeleteProductResponse - Response sau khi xóa nhiều sản phẩm
-type AdminBulkDeleteProductResponse struct {
-	Message      string  `json:"message"`
-	DeletedCount int     `json:"deleted_count"`
-	FailedIDs    []int64 `json:"failed_ids,omitempty"`
-	Success      bool    `json:"success"`
-}
+
 
 // GetManyProductsResponse - Response trả về nhiều sản phẩm
 type GetManyProductsResponse struct {

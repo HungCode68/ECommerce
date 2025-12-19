@@ -47,7 +47,6 @@ func main() {
 	// MODULE CATEGORY (Mới thêm vào)
 	categoryRepo := repository.NewCategoryDb(db.Connection)
 	categoryController := controller.NewCategoryController(categoryRepo)
-	// Lưu ý: CategoryHandler cần validator để check dữ liệu đầu vào
 	categoryHandler := handler.NewCategoryHandler(categoryController, myValidator)
 
 

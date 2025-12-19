@@ -7,9 +7,9 @@ import (
 )
 
 func RegisterProductRoutes(mux *http.ServeMux, h *handler.ProductHandler) {
-	// =====================================================================
+	
 	// ADMIN ROUTES - Quản lý sản phẩm (đầy đủ quyền)
-	// =====================================================================
+	
 
 	// Tạo sản phẩm mới - Kiểm tra trùng lặp tên và slug
 	createHandler:= http.HandlerFunc(h.CreateProductHandler)
@@ -59,9 +59,8 @@ func RegisterProductRoutes(mux *http.ServeMux, h *handler.ProductHandler) {
 	deleteHardHandler := http.HandlerFunc(h.AdminDeleteAllProductsHandler)
 	mux.HandleFunc("DELETE /admin/products/deleall", middleware.AdminOnlyMiddleware(deleteHardHandler).ServeHTTP)
 
-	// =====================================================================
-	// USER ROUTES - Xem sản phẩm (chỉ sản phẩm đã publish)
-	// =====================================================================
+
+	// USER ROUTES - Xem sản phẩm 
 
 	// Lấy chi tiết đầy đủ sản phẩm theo tên (query ?name=xxx) - Chỉ published
 	mux.HandleFunc("GET /user/products/detail/", h.UserGetProductHandlerDetail)

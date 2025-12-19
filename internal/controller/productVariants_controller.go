@@ -14,6 +14,7 @@ func NewProductVariantController(repoVariant repository.ProductVariantsRepositor
 	return &ProductVariantController{VariantRepo: repoVariant}
 }
 
+// CreateVariant - Tạo biến thể mới cho sản phẩm
 func (c *ProductVariantController) CreateVariant(req model.CreateVariantRequest, productID int64) (*model.CreateVariantResponse, error) {
 	newVariant := &model.ProductsVariants{
 		ProductID:      productID,
@@ -49,19 +50,17 @@ func (c *ProductVariantController) CreateVariant(req model.CreateVariantRequest,
 	return reponseVariant, nil
 }
 
+// UpdateVariant - Cập nhật thông tin biến thể sản phẩm
 func (c *ProductVariantController) UpdateVariant(req model.UpdateVariantRequest, variantID int64, productID int64) (*model.UpdateVariantResponse, error) {
-	// Kiểm tra variant có tồn tại không
 	existingVariant, err := c.VariantRepo.GetVariantByID(variantID)
 	if err != nil {
 		return nil, err
 	}
 
-	// Kiểm tra variant có thuộc product này không
 	if existingVariant.ProductID != productID {
 		return nil, fmt.Errorf("Variant does not belong to this product")
 	}
 
-	// Update variant
 	updatedVariant := &model.ProductsVariants{
 		ID:             variantID,
 		ProductID:      productID,
@@ -80,7 +79,6 @@ func (c *ProductVariantController) UpdateVariant(req model.UpdateVariantRequest,
 		return nil, err
 	}
 
-	// Lấy lại variant sau khi update
 	updatedData, err := c.VariantRepo.GetVariantByID(variantID)
 	if err != nil {
 		return nil, err
@@ -104,19 +102,17 @@ func (c *ProductVariantController) UpdateVariant(req model.UpdateVariantRequest,
 	}, nil
 }
 
+// DeleteVariant - Xóa biến thể sản phẩm
 func (c *ProductVariantController) DeleteVariant(variantID int64, productID int64) (*model.DeleteVariantResponse, error) {
-	// Kiểm tra variant có tồn tại không
 	existingVariant, err := c.VariantRepo.GetVariantByID(variantID)
 	if err != nil {
 		return nil, err
 	}
 
-	// Kiểm tra variant có thuộc product này không
 	if existingVariant.ProductID != productID {
 		return nil, fmt.Errorf("Variant does not belong to this product")
 	}
 
-	// Xóa variant
 	err = c.VariantRepo.DeleteProductVariant(variantID)
 	if err != nil {
 		return nil, err
@@ -126,4 +122,3 @@ func (c *ProductVariantController) DeleteVariant(variantID int64, productID int6
 		Message: "Variant deleted successfully",
 	}, nil
 }
-

@@ -29,6 +29,7 @@ func (h *VariantHandler) errJson(w http.ResponseWriter, status int, message stri
 	h.writeJson(w, status, map[string]string{"error": message})
 }
 
+// CreateVariantHandler - Xử lý request tạo biến thể mới
 func (h *VariantHandler) CreateVariantHandler(w http.ResponseWriter, r *http.Request) {
 	productIdStr := r.PathValue("id")
 	productID, err := strconv.ParseInt(productIdStr, 10, 64)
@@ -55,6 +56,7 @@ func (h *VariantHandler) CreateVariantHandler(w http.ResponseWriter, r *http.Req
 	h.writeJson(w, http.StatusCreated, variantReponse)
 }
 
+// UpdateVariantHandler - Xử lý request cập nhật biến thể
 func (h *VariantHandler) UpdateVariantHandler(w http.ResponseWriter, r *http.Request) {
 	productIdStr := r.PathValue("id")
 	productID, err := strconv.ParseInt(productIdStr, 10, 64)
@@ -91,6 +93,7 @@ func (h *VariantHandler) UpdateVariantHandler(w http.ResponseWriter, r *http.Req
 	h.writeJson(w, http.StatusOK, variantResponse)
 }
 
+// DeleteVariantHandler - Xử lý request xóa biến thể
 func (h *VariantHandler) DeleteVariantHandler(w http.ResponseWriter, r *http.Request) {
 	productIdStr := r.PathValue("id")
 	productID, err := strconv.ParseInt(productIdStr, 10, 64)

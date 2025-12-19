@@ -12,20 +12,15 @@ import (
 
 type ProductController struct {
 	Repo         repository.ProductResponsitory
-	RepoVariants repository.ProductVariantsRepository // [MỚI] Thêm Repo Variants từ code bạn của bạn
+	RepoVariants repository.ProductVariantsRepository
 }
 
-// Constructor gộp: Nhận cả 2 Repo
 func NewProductController(repo repository.ProductResponsitory, repoVariants repository.ProductVariantsRepository) *ProductController {
 	return &ProductController{
 		Repo:         repo,
 		RepoVariants: repoVariants,
 	}
 }
-
-// =================================================================
-// HELPER FUNCTIONS
-// =================================================================
 
 func stringToPtr(s string) *string {
 	if s == "" {
@@ -34,11 +29,7 @@ func stringToPtr(s string) *string {
 	return &s
 }
 
-// =================================================================
-// 1. CREATE PRODUCT
-// =================================================================
-
-// CreateProductController - Dùng Logic của BẠN (Tốt hơn vì có Slug Loop & Categories)
+// CreateProductController
 func (prt *ProductController) CreateProductController(product model.CreateProductRequest) (*model.AdminCreateProductResponse, error) {
 	// 1. Check trùng tên
 	existingByName, err := prt.Repo.GetConflictProductByName(product.Name)
@@ -49,7 +40,6 @@ func (prt *ProductController) CreateProductController(product model.CreateProduc
 		return nil, fmt.Errorf("Product name already exists")
 	}
 
-	// 2. Logic tự sinh Slug & Check trùng (Loop)
 	finalSlug := product.Slug
 	if finalSlug == "" {
 		finalSlug = slug.Make(product.Name)
@@ -75,7 +65,6 @@ func (prt *ProductController) CreateProductController(product model.CreateProduc
 		}
 	}
 
-	// 3. Xử lý ngày published
 	var publishedAt *time.Time
 	if product.PublishedAt != "" {
 		parsedTime, err := time.Parse(time.RFC3339, product.PublishedAt)
@@ -85,7 +74,6 @@ func (prt *ProductController) CreateProductController(product model.CreateProduc
 		publishedAt = &parsedTime
 	}
 
-	// 4. Tạo struct
 	productToCreate := &model.Product{
 		Name:             product.Name,
 		Slug:             finalSlug,
@@ -98,13 +86,11 @@ func (prt *ProductController) CreateProductController(product model.CreateProduc
 		MinPrice:         product.MinPrice,
 	}
 
-	// 5. Gọi Repo Create (Kèm CategoryIDs)
 	createdProduct, err := prt.Repo.CreateProduct(productToCreate, product.CategoryIDs)
 	if err != nil {
 		return nil, err
 	}
 
-	// 6. Fetch lại Categories để hiển thị
 	cats, err := prt.Repo.GetCategoriesByProductID(createdProduct.ID)
 	if err == nil {
 		createdProduct.Categories = cats
@@ -125,16 +111,11 @@ func (prt *ProductController) CreateProductController(product model.CreateProduc
 			MinPrice:         createdProduct.MinPrice,
 			CreatedAt:        createdProduct.CreatedAt,
 			UpdatedAt:        createdProduct.UpdatedAt,
-			Categories:       createdProduct.Categories, // Có Categories
+			Categories:       createdProduct.Categories,
 		},
 	}, nil
 }
 
-// =================================================================
-// PRIVATE HELPER - Tìm kiếm sản phẩm
-// =================================================================
-
-// getProductCommon - Dùng Logic của BẠN (Có lấy Categories)
 func (prt *ProductController) getProductCommon(reqProduct *model.GetProductRequest) (*model.Product, error) {
 	if reqProduct.ID == 0 && reqProduct.Name == "" && reqProduct.Slug == "" {
 		return nil, fmt.Errorf("at least one search parameter (id, name, or slug) is required")
@@ -157,7 +138,6 @@ func (prt *ProductController) getProductCommon(reqProduct *model.GetProductReque
 		return nil, fmt.Errorf("database query failed: %w", err)
 	}
 
-	// Fetch Categories (Logic của bạn)
 	cats, err := prt.Repo.GetCategoriesByProductID(pro.ID)
 	if err == nil {
 		pro.Categories = cats
@@ -166,27 +146,20 @@ func (prt *ProductController) getProductCommon(reqProduct *model.GetProductReque
 	return pro, nil
 }
 
-// =================================================================
-// ADMIN GET DETAIL
-// =================================================================
-
-// AdminGetProductController - [GỘP]: Product + Categories + Variants
 func (prt *ProductController) AdminGetProductController(reqProduct *model.GetProductRequest) (*model.AdminProductDetailResponse, error) {
-	// 1. Lấy Product & Categories
+
 	pro, err := prt.getProductCommon(reqProduct)
 	if err != nil {
 		return nil, err
 	}
 
-	// 2. [MỚI] Lấy Variants (Logic của bạn bạn)
 	variantsModel, err := prt.RepoVariants.GetProductVariantByID(pro.ID)
 	if err != nil {
 		variantsModel = []model.ProductsVariants{}
 	}
 
-	// 3. Map Variants & Tính MinPrice
 	variantResponses := make([]model.AdminVariantResponse, 0, len(variantsModel))
-	minPrice := pro.MinPrice // Mặc định lấy giá gốc
+	minPrice := pro.MinPrice
 	hasActiveVariants := false
 
 	for _, v := range variantsModel {
@@ -205,7 +178,6 @@ func (prt *ProductController) AdminGetProductController(reqProduct *model.GetPro
 			UpdatedAt:      v.UpdatedAt.String(),
 		})
 
-		// Logic tính giá nhỏ nhất từ biến thể active
 		if v.IsActive && v.PriceOverride != nil {
 			if !hasActiveVariants || *v.PriceOverride < minPrice {
 				minPrice = *v.PriceOverride
@@ -226,7 +198,7 @@ func (prt *ProductController) AdminGetProductController(reqProduct *model.GetPro
 			Status:           pro.Status,
 			IsPublished:      pro.IsPublished,
 			PublishedAt:      pro.PublishedAt,
-			MinPrice:         minPrice, // Dùng giá đã tính toán lại
+			MinPrice:         minPrice,
 			AvgRating:        pro.AvgRating,
 			RatingCount:      pro.RatingCount,
 			CreatedBy:        pro.CreatedBy,
@@ -234,19 +206,14 @@ func (prt *ProductController) AdminGetProductController(reqProduct *model.GetPro
 			CreatedAt:        pro.CreatedAt,
 			UpdatedAt:        pro.UpdatedAt,
 			DeletedAt:        pro.DeletedAt,
-			Categories:       pro.Categories, // Trả về Categories
+			Categories:       pro.Categories,
 		},
-		Variants: variantResponses, // Trả về Variants
+		Variants: variantResponses,
 	}, nil
 }
 
-// =================================================================
-// USER GET DETAIL
-// =================================================================
-
-// UserGetProductDetailController - [GỘP]: Filter Active Categories + Filter Active Variants
 func (prt *ProductController) UserGetProductDetailController(reqProduct *model.GetProductRequest) (*model.UserProductDetailResponse, error) {
-	// 1. Lấy Product & Categories
+
 	pro, err := prt.getProductCommon(reqProduct)
 	if err != nil {
 		return nil, err
@@ -256,7 +223,6 @@ func (prt *ProductController) UserGetProductDetailController(reqProduct *model.G
 		return nil, fmt.Errorf("product not available")
 	}
 
-	// 2. [LOGIC BẠN]: Lọc Categories Active
 	activeCategories := []model.Category{}
 	if pro.Categories != nil {
 		for _, cat := range pro.Categories {
@@ -267,7 +233,6 @@ func (prt *ProductController) UserGetProductDetailController(reqProduct *model.G
 	}
 	pro.Categories = activeCategories
 
-	// 3. [LOGIC BẠN BẠN]: Lấy Variants & Tính MinPrice
 	variantsModel, err := prt.RepoVariants.GetProductVariantByID(pro.ID)
 	if err != nil {
 		variantsModel = []model.ProductsVariants{}
@@ -278,10 +243,9 @@ func (prt *ProductController) UserGetProductDetailController(reqProduct *model.G
 	hasActiveVariants := false
 
 	for _, v := range variantsModel {
-		if v.IsActive { // Chỉ lấy Active Variant
+		if v.IsActive {
 			resp := model.UserVariantResponse{
 				StockQuantity: v.StockQuantity,
-				// Nhớ map thêm Title/Color/Size nếu Model có
 			}
 			if v.Title != nil {
 				resp.Title = *v.Title
@@ -290,7 +254,6 @@ func (prt *ProductController) UserGetProductDetailController(reqProduct *model.G
 				resp.OptionValues = *v.OptionValues
 			}
 
-			// Xử lý giá
 			if v.PriceOverride != nil {
 				resp.Price = *v.PriceOverride
 				if !hasActiveVariants || *v.PriceOverride < minPrice {
@@ -311,27 +274,21 @@ func (prt *ProductController) UserGetProductDetailController(reqProduct *model.G
 		ShortDescription: pro.ShortDescription,
 		Description:      pro.Description,
 		Brand:            pro.Brand,
-		MinPrice:         minPrice, // Giá hiển thị là giá thấp nhất tìm thấy
+		MinPrice:         minPrice,
 		AvgRating:        pro.AvgRating,
 		RatingCount:      pro.RatingCount,
 		PublishedAt:      pro.PublishedAt,
-		Categories:       pro.Categories,   // Categories (Filtered)
-		Variants:         variantResponses, // Variants (Filtered)
+		Categories:       pro.Categories,
+		Variants:         variantResponses,
 	}, nil
 }
 
-// =================================================================
-// UPDATE PRODUCT
-// =================================================================
-
-// UpdateProductController - Dùng Logic của BẠN (Update được Categories & Pointer Fields)
 func (prt *ProductController) UpdateProductController(req model.UpdateProductRequest, id int64) (*model.AdminUpdateProductResponse, error) {
 	existingProduct, err := prt.Repo.GetProductByID(id)
 	if err != nil {
 		return nil, fmt.Errorf("Product not found")
 	}
 
-	// Xử lý logic SLUG
 	finalSlug := existingProduct.Slug
 	if req.Slug != "" {
 		newSlug := slug.Make(req.Slug)
@@ -347,7 +304,6 @@ func (prt *ProductController) UpdateProductController(req model.UpdateProductReq
 		}
 	}
 
-	// Helper merge pointer
 	mergeStringPtr := func(newVal string, oldVal *string) *string {
 		if newVal != "" {
 			return &newVal
@@ -397,13 +353,11 @@ func (prt *ProductController) UpdateProductController(req model.UpdateProductReq
 		productToUpdate.Status = existingProduct.Status
 	}
 
-	// Update Product & Categories
 	updatedProduct, err := prt.Repo.UpdateProduct(productToUpdate, req.CategoryIDs)
 	if err != nil {
 		return nil, err
 	}
 
-	// Fetch lại Categories
 	cats, err := prt.Repo.GetCategoriesByProductID(updatedProduct.ID)
 	if err == nil {
 		updatedProduct.Categories = cats
@@ -435,10 +389,6 @@ func (prt *ProductController) UpdateProductController(req model.UpdateProductReq
 		Product: *reponse,
 	}, nil
 }
-
-// =================================================================
-// OTHER CONTROLLERS (LIST, DELETE, SEARCH) - Dùng Logic của BẠN
-// =================================================================
 
 func (prt *ProductController) AdminGetAllProductsController() (*model.AdminProductListResponse, error) {
 	products, err := prt.Repo.GetAllProducts()
@@ -498,7 +448,6 @@ func (prt *ProductController) UserGetAllProductsController() (*model.UserProduct
 	}, nil
 }
 
-// UserSearchProductByNameController
 func (prt *ProductController) UserSearchProductByNameController(req *model.SearchProductsRequest) (*model.UserProductListResponse, error) {
 	products, err := prt.Repo.SearchProducts(req)
 	if err != nil {
@@ -522,7 +471,6 @@ func (prt *ProductController) UserSearchProductByNameController(req *model.Searc
 	}, nil
 }
 
-// AdminSearchProductsController
 func (prt *ProductController) AdminSearchProductsController(req *model.SearchProductsRequest) (*model.AdminProductListResponse, error) {
 	products, err := prt.Repo.SearchProducts(req)
 	if err != nil {
@@ -557,7 +505,6 @@ func (prt *ProductController) AdminSearchProductsController(req *model.SearchPro
 	}, nil
 }
 
-// AdminGetManyProductByIDController
 func (prt *ProductController) AdminGetManyProductByIDController(ids []int64) ([]model.AdminProductResponse, error) {
 	products, err := prt.Repo.GetManyProduct(ids)
 	if err != nil {
@@ -588,7 +535,6 @@ func (prt *ProductController) AdminGetManyProductByIDController(ids []int64) ([]
 	return responses, nil
 }
 
-// UserGetProductController (Simple)
 func (prt *ProductController) UserGetProductController(reqProduct *model.GetProductRequest) (*model.UserProductResponse, error) {
 	pro, err := prt.getProductCommon(reqProduct)
 	if err != nil {
@@ -605,7 +551,6 @@ func (prt *ProductController) UserGetProductController(reqProduct *model.GetProd
 	}, nil
 }
 
-// Các hàm Soft Delete / Hard Delete (Giữ nguyên của BẠN)
 func (prt *ProductController) AdminDeleteSoftProductController(id int64) error {
 	return prt.Repo.DeleteSoftProduct(id)
 }

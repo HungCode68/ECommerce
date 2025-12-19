@@ -14,10 +14,8 @@ type ProductsVariants struct {
 	AllowBackorder bool      `db:"allow_backorder"`
 	IsActive       bool      `db:"is_active"`
 	CreatedAt      time.Time `db:"created_at"`
-	UpdatedAt       time.Time `db:"update_at"`
+	UpdatedAt      time.Time `db:"update_at"`
 }
-
-//Admin input
 
 type CreateVariantRequest struct {
 	SKU            string  `json:"sku" validate:"required"`
@@ -40,8 +38,6 @@ type UpdateVariantRequest struct {
 	IsActive       bool    `json:"is_active"`
 	AllowBackorder bool    `json:"allow_backorder"`
 }
-
-//admin reponse
 
 type CreateVariantResponse struct {
 	Message    string               `json:"msg"`
@@ -72,10 +68,9 @@ type AdminVariantResponse struct {
 	UpdatedAt      string   `json:"updated_at"`
 }
 
-//user res
 type UserVariantResponse struct {
 	Title         string  `json:"title"`
 	OptionValues  string  `json:"option_values"`
-	Price         float64 `json:"price"` // Giá bán
+	Price         float64 `json:"price"`
 	StockQuantity int     `json:"stock_quantity"`
 }
