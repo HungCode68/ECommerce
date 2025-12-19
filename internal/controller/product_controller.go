@@ -15,6 +15,7 @@ type ProductController struct {
 	RepoVariants repository.ProductVariantsRepository
 }
 
+// NewProductController - Khởi tạo product controller
 func NewProductController(repo repository.ProductResponsitory, repoVariants repository.ProductVariantsRepository) *ProductController {
 	return &ProductController{
 		Repo:         repo,
@@ -22,6 +23,7 @@ func NewProductController(repo repository.ProductResponsitory, repoVariants repo
 	}
 }
 
+// stringToPtr - Chuyển đổi string thành con trỏ, trả về nil nếu rỗng
 func stringToPtr(s string) *string {
 	if s == "" {
 		return nil
@@ -29,7 +31,7 @@ func stringToPtr(s string) *string {
 	return &s
 }
 
-// CreateProductController
+// CreateProductController - Tạo sản phẩm mới kèm danh mục
 func (prt *ProductController) CreateProductController(product model.CreateProductRequest) (*model.AdminCreateProductResponse, error) {
 	// 1. Check trùng tên
 	existingByName, err := prt.Repo.GetConflictProductByName(product.Name)
@@ -116,6 +118,7 @@ func (prt *ProductController) CreateProductController(product model.CreateProduc
 	}, nil
 }
 
+// getProductCommon - Lấy thông tin sản phẩm theo ID, Name hoặc Slug
 func (prt *ProductController) getProductCommon(reqProduct *model.GetProductRequest) (*model.Product, error) {
 	if reqProduct.ID == 0 && reqProduct.Name == "" && reqProduct.Slug == "" {
 		return nil, fmt.Errorf("at least one search parameter (id, name, or slug) is required")
@@ -146,6 +149,7 @@ func (prt *ProductController) getProductCommon(reqProduct *model.GetProductReque
 	return pro, nil
 }
 
+// AdminGetProductController - Lấy chi tiết sản phẩm kèm variants cho Admin
 func (prt *ProductController) AdminGetProductController(reqProduct *model.GetProductRequest) (*model.AdminProductDetailResponse, error) {
 
 	pro, err := prt.getProductCommon(reqProduct)
@@ -212,6 +216,7 @@ func (prt *ProductController) AdminGetProductController(reqProduct *model.GetPro
 	}, nil
 }
 
+// UserGetProductDetailController - Lấy chi tiết sản phẩm đã publish kèm variants active cho User
 func (prt *ProductController) UserGetProductDetailController(reqProduct *model.GetProductRequest) (*model.UserProductDetailResponse, error) {
 
 	pro, err := prt.getProductCommon(reqProduct)
@@ -283,6 +288,7 @@ func (prt *ProductController) UserGetProductDetailController(reqProduct *model.G
 	}, nil
 }
 
+// UpdateProductController - Cập nhật thông tin sản phẩm và danh mục
 func (prt *ProductController) UpdateProductController(req model.UpdateProductRequest, id int64) (*model.AdminUpdateProductResponse, error) {
 	existingProduct, err := prt.Repo.GetProductByID(id)
 	if err != nil {
@@ -390,12 +396,12 @@ func (prt *ProductController) UpdateProductController(req model.UpdateProductReq
 	}, nil
 }
 
+// AdminGetAllProductsController - Lấy tất cả sản phẩm kèm danh mục cho Admin
 func (prt *ProductController) AdminGetAllProductsController() (*model.AdminProductListResponse, error) {
 	products, err := prt.Repo.GetAllProducts()
 	if err != nil {
 		return nil, err
 	}
-	// Convert logic như cũ...
 	var responses []model.AdminProductResponse
 	for _, pro := range products {
 		responses = append(responses, model.AdminProductResponse{
@@ -425,6 +431,7 @@ func (prt *ProductController) AdminGetAllProductsController() (*model.AdminProdu
 	}, nil
 }
 
+// UserGetAllProductsController - Lấy danh sách sản phẩm đã publish cho User
 func (prt *ProductController) UserGetAllProductsController() (*model.UserProductListResponse, error) {
 	products, err := prt.Repo.GetAllProducts()
 	if err != nil {
@@ -448,6 +455,7 @@ func (prt *ProductController) UserGetAllProductsController() (*model.UserProduct
 	}, nil
 }
 
+// UserSearchProductByNameController - Tìm kiếm sản phẩm đã publish cho User
 func (prt *ProductController) UserSearchProductByNameController(req *model.SearchProductsRequest) (*model.UserProductListResponse, error) {
 	products, err := prt.Repo.SearchProducts(req)
 	if err != nil {
@@ -471,6 +479,7 @@ func (prt *ProductController) UserSearchProductByNameController(req *model.Searc
 	}, nil
 }
 
+// AdminSearchProductsController - Tìm kiếm sản phẩm cho Admin
 func (prt *ProductController) AdminSearchProductsController(req *model.SearchProductsRequest) (*model.AdminProductListResponse, error) {
 	products, err := prt.Repo.SearchProducts(req)
 	if err != nil {
@@ -505,6 +514,7 @@ func (prt *ProductController) AdminSearchProductsController(req *model.SearchPro
 	}, nil
 }
 
+// AdminGetManyProductByIDController - Lấy nhiều sản phẩm theo danh sách IDs
 func (prt *ProductController) AdminGetManyProductByIDController(ids []int64) ([]model.AdminProductResponse, error) {
 	products, err := prt.Repo.GetManyProduct(ids)
 	if err != nil {
@@ -535,6 +545,7 @@ func (prt *ProductController) AdminGetManyProductByIDController(ids []int64) ([]
 	return responses, nil
 }
 
+// UserGetProductController - Lấy thông tin rút gọn sản phẩm đã publish cho User
 func (prt *ProductController) UserGetProductController(reqProduct *model.GetProductRequest) (*model.UserProductResponse, error) {
 	pro, err := prt.getProductCommon(reqProduct)
 	if err != nil {
@@ -551,10 +562,12 @@ func (prt *ProductController) UserGetProductController(reqProduct *model.GetProd
 	}, nil
 }
 
+// AdminDeleteSoftProductController - Xóa mềm sản phẩm
 func (prt *ProductController) AdminDeleteSoftProductController(id int64) error {
 	return prt.Repo.DeleteSoftProduct(id)
 }
 
+// AdminGetAllSoftDeletedProductsController - Lấy danh sách sản phẩm đã xóa mềm
 func (prt *ProductController) AdminGetAllSoftDeletedProductsController() (*model.AdminProductListResponse, error) {
 	products, err := prt.Repo.GetAllProductsSoftDeleted()
 	if err != nil {
@@ -588,10 +601,12 @@ func (prt *ProductController) AdminGetAllSoftDeletedProductsController() (*model
 	}, nil
 }
 
+// AdminDeleteAllSoftDeletedProductsController -
 func (prt *ProductController) AdminDeleteAllSoftDeletedProductsController() error {
 	return prt.Repo.DeleteAllProductsSoftDeleted()
 }
 
+// AdminDeleteAllProductsController - Xóa cứng tất cả sản phẩm
 func (prt *ProductController) AdminDeleteAllProductsController() error {
 	return prt.Repo.DeleteAllProducts()
 }

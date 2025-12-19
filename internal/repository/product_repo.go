@@ -55,19 +55,14 @@ func NewProductRepo(db *sql.DB) *ProductRepo {
 	return &ProductRepo{DB: db}
 }
 
-// =================================================================
-// 1. CREATE & READ OPERATIONS
-// =================================================================
-
 // CreateProduct - Tạo sản phẩm (Có Transaction để đảm bảo toàn vẹn dữ liệu)
 func (pr *ProductRepo) CreateProduct(product *model.Product, categoryIDs []int64) (*model.Product, error) {
-	// Bắt đầu Transaction
+
 	tx, err := pr.DB.Begin()
 	if err != nil {
 		return nil, err
 	}
 
-	// 1. Insert vào bảng products
 	query := `INSERT INTO products(name, slug, short_description, description, brand, status, is_published, published_at, min_price) 
               VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
@@ -77,7 +72,6 @@ func (pr *ProductRepo) CreateProduct(product *model.Product, categoryIDs []int64
 		return nil, fmt.Errorf("cannot insert product: %v", err)
 	}
 
-	// Lấy ID vừa tạo
 	id, err := res.LastInsertId()
 	if err != nil {
 		tx.Rollback()
@@ -85,7 +79,6 @@ func (pr *ProductRepo) CreateProduct(product *model.Product, categoryIDs []int64
 	}
 	product.ID = id
 
-	// 2. Insert vào bảng trung gian product_categories (Nếu có chọn danh mục)
 	if len(categoryIDs) > 0 {
 		catQuery := `INSERT INTO product_categories (product_id, category_id) VALUES (?, ?)`
 		stmt, err := tx.Prepare(catQuery)
@@ -104,7 +97,6 @@ func (pr *ProductRepo) CreateProduct(product *model.Product, categoryIDs []int64
 		}
 	}
 
-	// Commit Transaction
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
@@ -114,11 +106,11 @@ func (pr *ProductRepo) CreateProduct(product *model.Product, categoryIDs []int64
 
 // GetProductByID - Lấy sản phẩm theo ID
 func (pr *ProductRepo) GetProductByID(id int64) (*model.Product, error) {
-	// Query chuẩn: Chỉ lấy sản phẩm chưa bị xóa mềm
+
 	query := `SELECT id, name, slug, short_description, description, brand, status, is_published, published_at, min_price, avg_rating, rating_count, created_by, updated_by, created_at, updated_at, deleted_at 
 			  FROM products 
 			  WHERE id=? AND deleted_at IS NULL`
-	
+
 	rows := pr.DB.QueryRow(query, id)
 	var product model.Product
 	err := rows.Scan(&product.ID, &product.Name, &product.Slug, &product.ShortDescription, &product.Description, &product.Brand, &product.Status, &product.IsPublished, &product.PublishedAt, &product.MinPrice, &product.AvgRating, &product.RatingCount, &product.CreatedBy, &product.UpdatedBy, &product.CreatedAt, &product.UpdatedAt, &product.DeletedAt)
@@ -133,7 +125,7 @@ func (pr *ProductRepo) GetProductByName(name string) (*model.Product, error) {
 	query := `SELECT id, name, slug, short_description, description, brand, status, is_published, published_at, min_price, avg_rating, rating_count, created_by, updated_by, created_at, updated_at, deleted_at 
 			  FROM products 
 			  WHERE name=? AND deleted_at IS NULL`
-	
+
 	rows := pr.DB.QueryRow(query, name)
 	var product model.Product
 	err := rows.Scan(&product.ID, &product.Name, &product.Slug, &product.ShortDescription, &product.Description, &product.Brand, &product.Status, &product.IsPublished, &product.PublishedAt, &product.MinPrice, &product.AvgRating, &product.RatingCount, &product.CreatedBy, &product.UpdatedBy, &product.CreatedAt, &product.UpdatedAt, &product.DeletedAt)
@@ -148,7 +140,7 @@ func (pr *ProductRepo) GetProductBySlug(slug string) (*model.Product, error) {
 	query := `SELECT id, name, slug, short_description, description, brand, status, is_published, published_at, min_price, avg_rating, rating_count, created_by, updated_by, created_at, updated_at, deleted_at 
 			  FROM products 
 			  WHERE slug=? AND deleted_at IS NULL`
-	
+
 	rows := pr.DB.QueryRow(query, slug)
 	var product model.Product
 	err := rows.Scan(&product.ID, &product.Name, &product.Slug, &product.ShortDescription, &product.Description, &product.Brand, &product.Status, &product.IsPublished, &product.PublishedAt, &product.MinPrice, &product.AvgRating, &product.RatingCount, &product.CreatedBy, &product.UpdatedBy, &product.CreatedAt, &product.UpdatedAt, &product.DeletedAt)
@@ -208,28 +200,25 @@ func (pr *ProductRepo) SearchProducts(req *model.SearchProductsRequest) ([]model
 	whereClauses := []string{"p.deleted_at IS NULL"}
 	args := []interface{}{}
 
-	// Filter theo Category (Cần JOIN)
 	if req.CategoryID > 0 {
 		joinClause += " JOIN product_categories pc ON p.id = pc.product_id"
 		whereClauses = append(whereClauses, "pc.category_id = ?")
 		args = append(args, req.CategoryID)
 	}
 
-	// Search by name
 	if req.Search != "" {
 		whereClauses = append(whereClauses, "p.name LIKE ?")
 		args = append(args, "%"+req.Search+"%")
 	}
 
-	// Filter by brand
 	if req.Brand != "" {
 		whereClauses = append(whereClauses, "p.brand = ?")
 		args = append(args, req.Brand)
 	}
 
-	finalQuery := fmt.Sprintf("%s %s WHERE %s ORDER BY p.created_at DESC", 
-		baseQuery, 
-		joinClause, 
+	finalQuery := fmt.Sprintf("%s %s WHERE %s ORDER BY p.created_at DESC",
+		baseQuery,
+		joinClause,
 		strings.Join(whereClauses, " AND "),
 	)
 
@@ -282,10 +271,6 @@ func (pr *ProductRepo) GetConflictProductBySlug(slug string) (bool, error) {
 	return true, nil
 }
 
-// =================================================================
-// 2. UPDATE OPERATIONS
-// =================================================================
-
 // UpdateProduct - Cập nhật thông tin và danh mục
 func (pr *ProductRepo) UpdateProduct(product *model.Product, categoryIDs []int64) (*model.Product, error) {
 	tx, err := pr.DB.Begin()
@@ -293,29 +278,24 @@ func (pr *ProductRepo) UpdateProduct(product *model.Product, categoryIDs []int64
 		return nil, err
 	}
 
-	// 1. Update thông tin Product
-	// [GỘP LOGIC]: Thêm điều kiện 'AND deleted_at IS NULL' từ code repo_1
-	// Để đảm bảo không update nhầm vào sản phẩm đã bị xóa mềm.
 	query := `UPDATE products 
               SET name=?, slug=?, short_description=?, description=?, brand=?, status=?, is_published=?, published_at=?, min_price=?, updated_at=NOW() 
               WHERE id=? AND deleted_at IS NULL`
-    
+
 	res, err := tx.Exec(query, product.Name, product.Slug, product.ShortDescription, product.Description, product.Brand, product.Status, product.IsPublished, product.PublishedAt, product.MinPrice, product.ID)
 	if err != nil {
 		tx.Rollback()
 		return nil, fmt.Errorf("cannot update product: %v", err)
 	}
 
-	// Kiểm tra xem có dòng nào được update không (nếu ID sai hoặc đã bị xóa -> 0 rows)
 	rowsAffected, _ := res.RowsAffected()
 	if rowsAffected == 0 {
-		// Thử kiểm tra xem lỗi do ID không tồn tại hay do sản phẩm đã bị xóa
+
 		tx.Rollback()
 		return nil, fmt.Errorf("product not found or already deleted")
 	}
 
-	// 2. Xử lý Categories (Chỉ khi có gửi danh sách lên)
-	if categoryIDs != nil { 
+	if categoryIDs != nil {
 		if len(categoryIDs) == 0 {
 			tx.Rollback()
 			return nil, fmt.Errorf("sản phẩm bắt buộc phải thuộc ít nhất 1 danh mục")
@@ -352,10 +332,6 @@ func (pr *ProductRepo) UpdateProduct(product *model.Product, categoryIDs []int64
 
 	return product, nil
 }
-
-// =================================================================
-// 3. HELPER & GET ALL
-// =================================================================
 
 // GetCategoriesByProductID - Hàm hỗ trợ lấy danh mục cho sp
 func (pr *ProductRepo) GetCategoriesByProductID(productID int64) ([]model.Category, error) {
@@ -398,14 +374,14 @@ func (pr *ProductRepo) GetAllProducts() ([]model.Product, error) {
 	defer rows.Close()
 
 	products := []model.Product{}
-	
+
 	for rows.Next() {
 		var product model.Product
 		err := rows.Scan(
-			&product.ID, &product.Name, &product.Slug, &product.ShortDescription, 
-			&product.Description, &product.Brand, &product.Status, &product.IsPublished, 
-			&product.PublishedAt, &product.MinPrice, &product.AvgRating, &product.RatingCount, 
-			&product.CreatedBy, &product.UpdatedBy, &product.CreatedAt, &product.UpdatedAt, 
+			&product.ID, &product.Name, &product.Slug, &product.ShortDescription,
+			&product.Description, &product.Brand, &product.Status, &product.IsPublished,
+			&product.PublishedAt, &product.MinPrice, &product.AvgRating, &product.RatingCount,
+			&product.CreatedBy, &product.UpdatedBy, &product.CreatedAt, &product.UpdatedAt,
 			&product.DeletedAt,
 		)
 		if err != nil {
@@ -424,9 +400,7 @@ func (pr *ProductRepo) GetAllProducts() ([]model.Product, error) {
 	return products, nil
 }
 
-// =================================================================
-// 4. DELETE OPERATIONS
-// =================================================================
+//  DELETE
 
 func (pr *ProductRepo) DeleteSoftProduct(id int64) error {
 	_, err := pr.DB.Exec("UPDATE products SET deleted_at = CURRENT_TIMESTAMP , status = 'archived' WHERE id = ?", id)
