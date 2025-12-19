@@ -1,0 +1,451 @@
+openapi: 3.0.3
+info:
+  title: E-Commerce Product Variants API
+  version: 1.0.0
+  description: |-
+    Tài liệu API cho module Quản lý Biến thể Sản phẩm (Product Variants).
+    Bao gồm các API cho Admin để quản lý các phiên bản/biến thể của sản phẩm (màu sắc, kích thước, v.v.).
+tags:
+  - name: Admin Product Variants
+    description: API Quản lý Biến thể Sản phẩm dành cho Admin
+
+components:
+  schemas:
+    # --- Request Models ---
+    CreateVariantRequest:
+      type: object
+      required:
+        - sku
+        - option_value
+      properties:
+        sku:
+          type: string
+          example: "IP15-BLK-128GB"
+          description: "Mã SKU duy nhất cho biến thể"
+        title:
+          type: string
+          example: "iPhone 15 Đen 128GB"
+          minLength: 3
+          description: "Tiêu đề biến thể (tùy chọn)"
+        option_value:
+          type: string
+          example: "Màu: Đen, Dung lượng: 128GB"
+          description: "Các thuộc tính biến thể"
+        price_override:
+          type: number
+          format: float
+          example: 20990000
+          minimum: 0
+          description: "Giá ghi đè cho biến thể này"
+        cost_price:
+          type: number
+          format: float
+          example: 18000000
+          minimum: 0
+          description: "Giá vốn"
+        stock_quantity:
+          type: integer
+          example: 50
+          minimum: 0
+          description: "Số lượng tồn kho"
+        is_active:
+          type: boolean
+          example: true
+          default: true
+          description: "Trạng thái kích hoạt"
+        allow_backorder:
+          type: boolean
+          example: false
+          default: false
+          description: "Cho phép đặt hàng khi hết hàng"
+
+    UpdateVariantRequest:
+      type: object
+      required:
+        - sku
+        - option_value
+      properties:
+        sku:
+          type: string
+          example: "IP15-BLK-256GB"
+          description: "Mã SKU cập nhật"
+        title:
+          type: string
+          example: "iPhone 15 Đen 256GB"
+          minLength: 3
+        option_value:
+          type: string
+          example: "Màu: Đen, Dung lượng: 256GB"
+        price_override:
+          type: number
+          format: float
+          example: 24990000
+          minimum: 0
+        cost_price:
+          type: number
+          format: float
+          example: 21000000
+          minimum: 0
+        stock_quantity:
+          type: integer
+          example: 30
+          minimum: 0
+        is_active:
+          type: boolean
+          example: true
+        allow_backorder:
+          type: boolean
+          example: false
+
+    # --- Response Models ---
+    
+    AdminVariantResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        product_id:
+          type: integer
+          example: 5
+        sku:
+          type: string
+          example: "IP15-BLK-128GB"
+        title:
+          type: string
+          nullable: true
+          example: "iPhone 15 Đen 128GB"
+        option_values:
+          type: string
+          nullable: true
+          example: "Màu: Đen, Dung lượng: 128GB"
+        price_override:
+          type: number
+          format: float
+          nullable: true
+          example: 20990000
+        cost_price:
+          type: number
+          format: float
+          nullable: true
+          example: 18000000
+        stock_quantity:
+          type: integer
+          example: 50
+        is_active:
+          type: boolean
+          example: true
+        allow_backorder:
+          type: boolean
+          example: false
+        created_at:
+          type: string
+          format: date-time
+          example: "2025-12-19T10:30:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2025-12-19T14:45:00Z"
+
+    UserVariantResponse:
+      type: object
+      properties:
+        title:
+          type: string
+          example: "iPhone 15 Đen 128GB"
+        option_values:
+          type: string
+          example: "Màu: Đen, Dung lượng: 128GB"
+        price:
+          type: number
+          format: float
+          example: 20990000
+          description: "Giá bán hiển thị"
+        stock_quantity:
+          type: integer
+          example: 50
+
+    CreateVariantResponse:
+      type: object
+      properties:
+        msg:
+          type: string
+          example: "Tạo biến thể thành công"
+        variant:
+          $ref: '#/components/schemas/AdminVariantResponse'
+
+    UpdateVariantResponse:
+      type: object
+      properties:
+        msg:
+          type: string
+          example: "Cập nhật biến thể thành công"
+        variant:
+          $ref: '#/components/schemas/AdminVariantResponse'
+
+    DeleteVariantResponse:
+      type: object
+      properties:
+        msg:
+          type: string
+          example: "Xóa biến thể thành công"
+
+    # --- Wrapper Responses ---
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Lỗi dữ liệu"
+
+paths:
+  # ================= ADMIN ROUTES =================
+  /admin/product/{id}/variant:
+    post:
+      tags:
+        - Admin Product Variants
+      summary: Tạo biến thể mới cho sản phẩm
+      description: Tạo một biến thể mới (variant) cho sản phẩm với SKU và thuộc tính riêng biệt
+      parameters:
+        - name: id
+          in: path
+          description: ID của sản phẩm
+          required: true
+          schema:
+            type: integer
+            example: 5
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateVariantRequest'
+            example:
+              sku: "IP15-BLK-128GB"
+              title: "iPhone 15 Đen 128GB"
+              option_value: "Màu: Đen, Dung lượng: 128GB"
+              price_override: 20990000
+              cost_price: 18000000
+              stock_quantity: 50
+              is_active: true
+              allow_backorder: false
+      responses:
+        '201':
+          description: Tạo biến thể thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateVariantResponse'
+              example:
+                msg: "Tạo biến thể thành công"
+                variant:
+                  id: 1
+                  product_id: 5
+                  sku: "IP15-BLK-128GB"
+                  title: "iPhone 15 Đen 128GB"
+                  option_values: "Màu: Đen, Dung lượng: 128GB"
+                  price_override: 20990000
+                  cost_price: 18000000
+                  stock_quantity: 50
+                  is_active: true
+                  allow_backorder: false
+                  created_at: "2025-12-19T10:30:00Z"
+                  updated_at: "2025-12-19T10:30:00Z"
+
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidId:
+                  value:
+                    error: "ID invalid"
+                  summary: "ID sản phẩm không hợp lệ"
+                invalidRequest:
+                  value:
+                    error: "Invalid request"
+                  summary: "Dữ liệu request không đúng format"
+                validationFailed:
+                  value:
+                    error: "Validation failed: SKU is required"
+                  summary: "Thiếu trường bắt buộc"
+
+
+        '500':
+          description: Lỗi server hoặc database
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Cannot create variant"
+
+  /admin/product/{id}/variant/{variantId}:
+    put:
+      tags:
+        - Admin Product Variants
+      summary: Cập nhật biến thể sản phẩm
+      description: Cập nhật thông tin biến thể sản phẩm (SKU, giá, tồn kho, v.v.)
+      parameters:
+        - name: id
+          in: path
+          description: ID của sản phẩm
+          required: true
+          schema:
+            type: integer
+            example: 5
+        - name: variantId
+          in: path
+          description: ID của biến thể cần cập nhật
+          required: true
+          schema:
+            type: integer
+            example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateVariantRequest'
+            example:
+              sku: "IP15-BLK-256GB"
+              title: "iPhone 15 Đen 256GB"
+              option_value: "Màu: Đen, Dung lượng: 256GB"
+              price_override: 24990000
+              cost_price: 21000000
+              stock_quantity: 30
+              is_active: true
+              allow_backorder: false
+      responses:
+        '200':
+          description: Cập nhật biến thể thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateVariantResponse'
+              example:
+                msg: "Cập nhật biến thể thành công"
+                variant:
+                  id: 1
+                  product_id: 5
+                  sku: "IP15-BLK-256GB"
+                  title: "iPhone 15 Đen 256GB"
+                  option_values: "Màu: Đen, Dung lượng: 256GB"
+                  price_override: 24990000
+                  cost_price: 21000000
+                  stock_quantity: 30
+                  is_active: true
+                  allow_backorder: false
+                  created_at: "2025-12-19T10:30:00Z"
+                  updated_at: "2025-12-19T14:45:00Z"
+
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidProductId:
+                  value:
+                    error: "Product ID invalid"
+                  summary: "ID sản phẩm không hợp lệ"
+                invalidVariantId:
+                  value:
+                    error: "Variant ID invalid"
+                  summary: "ID biến thể không hợp lệ"
+                invalidRequest:
+                  value:
+                    error: "Invalid request"
+                  summary: "Dữ liệu request không đúng format"
+                validationFailed:
+                  value:
+                    error: "Validation failed: stock_quantity must be >= 0"
+                  summary: "Validation thất bại"
+
+
+
+        '404':
+          description: Không tìm thấy biến thể
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Variant not found"
+
+        '500':
+          description: Lỗi server hoặc database
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Database error"
+
+    delete:
+      tags:
+        - Admin Product Variants
+      summary: Xóa biến thể sản phẩm
+      description: Xóa một biến thể của sản phẩm
+      parameters:
+        - name: id
+          in: path
+          description: ID của sản phẩm
+          required: true
+          schema:
+            type: integer
+            example: 5
+        - name: variantId
+          in: path
+          description: ID của biến thể cần xóa
+          required: true
+          schema:
+            type: integer
+            example: 1
+      responses:
+        '200':
+          description: Xóa biến thể thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteVariantResponse'
+              example:
+                msg: "Xóa biến thể thành công"
+
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidProductId:
+                  value:
+                    error: "Product ID invalid"
+                  summary: "ID sản phẩm không hợp lệ"
+                invalidVariantId:
+                  value:
+                    error: "Variant ID invalid"
+                  summary: "ID biến thể không hợp lệ"
+
+
+        '404':
+          description: Không tìm thấy biến thể
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Variant not found"
+
+        '500':
+          description: Lỗi server hoặc database
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Database error"
