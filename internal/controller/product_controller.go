@@ -540,6 +540,8 @@ func (prt *ProductController) AdminGetManyProductByIDController(ids []int64) ([]
 			CreatedAt:        pro.CreatedAt,
 			UpdatedAt:        pro.UpdatedAt,
 			DeletedAt:        pro.DeletedAt,
+			Categories:       pro.Categories,
+			Variants:         pro.Variants,
 		})
 	}
 	return responses, nil

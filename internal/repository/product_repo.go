@@ -212,8 +212,8 @@ func (pr *ProductRepo) SearchProducts(req *model.SearchProductsRequest) ([]model
 	}
 
 	if req.Brand != "" {
-		whereClauses = append(whereClauses, "p.brand = ?")
-		args = append(args, req.Brand)
+		whereClauses = append(whereClauses, "p.brand LIKE ?")
+		args = append(args, "%"+req.Brand+"%")
 	}
 
 	finalQuery := fmt.Sprintf("%s %s WHERE %s ORDER BY p.created_at DESC",
