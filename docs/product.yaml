@@ -43,6 +43,7 @@ paths:
               status: "active"
               is_published: true
               min_price: 29990000
+              category_ids: [1, 3, 5]
       responses:
         '201':
           description: Tạo sản phẩm thành công
@@ -763,6 +764,44 @@ components:
           type: string
           format: date-time
           nullable: true
+        variants:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              sku:
+                type: string
+              price:
+                type: number
+                format: float
+              stock:
+                type: integer
+              created_at:
+                type: string
+              updated_at:
+                type: string
+        categories:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              slug:
+                type: string
+              description:
+                type: string
+              created_at:
+                type: string
+              updated_at:
+                type: string
+              
 
     AdminProductListResponse:
       type: object
