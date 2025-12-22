@@ -1,29 +1,28 @@
-package controller
+package user
 
 import (
 	"errors"
 	"golang/internal/logger"
 	"golang/internal/model"
-	"golang/internal/repository"
+	"golang/internal/repository/user"
 	"os"
 	"time"
-
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
-type UserController struct {
-	UserRepo repository.UserRepo
+type userController struct {
+	UserRepo user.UserRepo
 }
 
-func NewUserController(userRepo repository.UserRepo) *UserController {
-	return &UserController{
+func NewUserController(userRepo user.UserRepo) UserController {
+	return &userController{
 		UserRepo: userRepo,
 	}
 }
 
 // Hàm Register để đăng ký user mới
-func (c *UserController) Register(req model.RegisterRequest) (model.UserProfileResponse, error) {
+func (c *userController) Register(req model.RegisterRequest) (model.UserProfileResponse, error) {
 	logger.InfoLogger.Printf("Bắt đầu đăng ký user mới: %s", req.Username)
 
 	// Kiểm tra User đã tồn tại chưa (Check Username hoặc Email)
@@ -75,7 +74,7 @@ func (c *UserController) Register(req model.RegisterRequest) (model.UserProfileR
 }
 
 // Hàm Login để xác thực user
-func (c *UserController) Login(req model.LoginRequest) (model.LoginResponse, error) {
+func (c *userController) Login(req model.LoginRequest) (model.LoginResponse, error) {
 	logger.InfoLogger.Printf("Yêu cầu login từ: %s", req.Identifier)
 
 	//  Tìm user trong DB
@@ -138,7 +137,7 @@ func (c *UserController) Login(req model.LoginRequest) (model.LoginResponse, err
 }
 
 // Hàm Logout: Hủy refresh token của user
-func (c *UserController) Logout(userID int64) error {
+func (c *userController) Logout(userID int64) error {
 	logger.InfoLogger.Printf("User ID %d yêu cầu đăng xuất", userID)
 
 	// Gọi Repo để xóa token trong DB
@@ -152,7 +151,7 @@ func (c *UserController) Logout(userID int64) error {
 }
 
 // Hàm CreateAdmin để Admin tạo tài khoản Admin mới
-func (c *UserController) CreateAdmin(req model.RegisterRequest) (model.AdminUserResponse, error) {
+func (c *userController) CreateAdmin(req model.RegisterRequest) (model.AdminUserResponse, error) {
 	logger.InfoLogger.Printf("ADMIN đang tạo tài khoản Admin mới: %s", req.Username)
 
 	existingUser, _ := c.UserRepo.GetUserByIdentifier(req.Username)
@@ -195,7 +194,7 @@ func (c *UserController) CreateAdmin(req model.RegisterRequest) (model.AdminUser
 }
 
 // Hàm lấy tất cả Users
-func (c *UserController) GetAllUsers() ([]model.AdminUserResponse, error) {
+func (c *userController) GetAllUsers() ([]model.AdminUserResponse, error) {
 	logger.InfoLogger.Println("Bắt đầu lấy danh sách Users")
 	users, err := c.UserRepo.GetAllUsers()
 	if err != nil {
@@ -213,7 +212,7 @@ func (c *UserController) GetAllUsers() ([]model.AdminUserResponse, error) {
 }
 
 // Hàm lấy chi tiết user theo ID
-func (c *UserController) GetUserByID(id int64) (model.AdminUserResponse, error) {
+func (c *userController) GetUserByID(id int64) (model.AdminUserResponse, error) {
 	logger.InfoLogger.Printf("Lấy chi tiết user ID: %d", id)
 
 	// Gọi Repo
@@ -230,7 +229,7 @@ func (c *UserController) GetUserByID(id int64) (model.AdminUserResponse, error) 
 }
 
 // Hàm tìm kiếm user theo từ khóa
-func (c *UserController) SearchUsers(keyword string) ([]model.AdminUserResponse, error) {
+func (c *userController) SearchUsers(keyword string) ([]model.AdminUserResponse, error) {
 	logger.InfoLogger.Printf("Tìm kiếm user với từ khóa: %s", keyword)
 	users, err := c.UserRepo.SearchUsers(keyword)
 	if err != nil {
@@ -248,7 +247,7 @@ func (c *UserController) SearchUsers(keyword string) ([]model.AdminUserResponse,
 }
 
 // Hàm cập nhật thông tin user
-func (c *UserController) UpdateUser(id int64, req model.AdminUpdateUserRequest) (model.AdminUserResponse, error) {
+func (c *userController) UpdateUser(id int64, req model.AdminUpdateUserRequest) (model.AdminUserResponse, error) {
 	logger.InfoLogger.Printf("Cập nhật user ID: %d", id)
 
 	updatedUser, err := c.UserRepo.UpdateUser(id, req)
@@ -264,7 +263,7 @@ func (c *UserController) UpdateUser(id int64, req model.AdminUpdateUserRequest) 
 }
 
 // Hàm User tự cập nhật thông tin cá nhân
-func (c *UserController) UpdateUserProfile(id int64, req model.UserUpdateProfileRequest) (model.UserProfileResponse, error) {
+func (c *userController) UpdateUserProfile(id int64, req model.UserUpdateProfileRequest) (model.UserProfileResponse, error) {
 	logger.InfoLogger.Printf("User ID %d yêu cầu cập nhật profile", id)
 
 	// Kiểm tra trùng Username (Nếu có yêu cầu đổi username)
@@ -307,10 +306,10 @@ func (c *UserController) UpdateUserProfile(id int64, req model.UserUpdateProfile
 }
 
 // Hàm User tự xóa tài khoản (Xóa mềm chính mình)
-func (c *UserController) DeleteMyAccount(id int64) error {
+func (c *userController) DeleteMyAccount(id int64) error {
 	logger.WarnLogger.Printf("User ID %d yêu cầu tự xóa tài khoản", id)
 
-	err := c.UserRepo.DeleteUserById(id)
+	err := c.UserRepo.DeleteSoftUsers([]int64{id})
 	if err != nil {
 		return err
 	}
@@ -319,23 +318,23 @@ func (c *UserController) DeleteMyAccount(id int64) error {
 }
 
 // Hàm xóa user
-func (c *UserController) DeleteUserById(id int64) error {
-	logger.WarnLogger.Printf("Xóa user ID: %d", id)
-	err := c.UserRepo.DeleteUserById(id)
-	if err != nil {
-		logger.ErrorLogger.Printf("Lỗi xóa user: %v", err)
-		return err
-	}
-	logger.WarnLogger.Printf("Xóa người dùng ID %d thành công", id)
-	return nil
+// func (c *userController) DeleteUserById(id int64) error {
+// 	logger.WarnLogger.Printf("Xóa user ID: %d", id)
+// 	err := c.UserRepo.DeleteManyUsers([]int64{id})
+// 	if err != nil {
+// 		logger.ErrorLogger.Printf("Lỗi xóa user: %v", err)
+// 		return err
+// 	}
+// 	logger.WarnLogger.Printf("Xóa người dùng ID %d thành công", id)
+// 	return nil
 
-}
+// }
 
 // Hàm xóa nhiều user cùng lúc
-func (c *UserController) DeleteManyUsers(req model.AdminDeleteManyUsersRequest) error {
+func (c *userController) DeleteSoftUsers(req model.AdminDeleteManyUsersRequest) error {
 	// Gọi Repo
 	logger.WarnLogger.Printf("Admin yêu cầu xóa %d users", len(req.IDs))
-	return c.UserRepo.DeleteManyUsers(req.IDs)
+	return c.UserRepo.DeleteSoftUsers(req.IDs)
 }
 
 // Hàm tạo Access Token và Refresh Token
@@ -370,8 +369,8 @@ func generateTokens(userID int64, role string) (string, string, error) {
 	return accessToken, refreshToken, nil
 }
 
-// Hàm Refresh Token 
-func (c *UserController) RefreshToken(req model.RefreshTokenRequest) (model.RefreshTokenResponse, error) {
+// Hàm Refresh Token
+func (c *userController) RefreshToken(req model.RefreshTokenRequest) (model.RefreshTokenResponse, error) {
 	logger.InfoLogger.Println("Yêu cầu làm mới Token")
 
 	// Tìm User đang giữ token này
@@ -384,13 +383,13 @@ func (c *UserController) RefreshToken(req model.RefreshTokenRequest) (model.Refr
 		return model.RefreshTokenResponse{}, errors.New("tài khoản đã bị khóa")
 	}
 
-	// TẠO CẶP TOKEN MỚI 
+	// TẠO CẶP TOKEN MỚI
 	newAccessToken, newRefreshToken, err := generateTokens(user.ID, user.Role)
 	if err != nil {
 		return model.RefreshTokenResponse{}, err
 	}
 
-	//  Lưu Token mới vào DB 
+	//  Lưu Token mới vào DB
 	newExpiry := time.Now().Add(7 * 24 * time.Hour)
 	err = c.UserRepo.UpdateRefreshToken(user.ID, newRefreshToken, newExpiry)
 	if err != nil {

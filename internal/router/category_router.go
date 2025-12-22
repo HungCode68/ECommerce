@@ -1,53 +1,33 @@
 package router
 
 import (
-	"golang/internal/handler"
+	"golang/internal/handler/category"
 	"golang/internal/middleware"
 	"net/http"
 )
 
-func NewCategoryRouter(mux *http.ServeMux, catHandler *handler.CategoryHandler) http.Handler {
+func NewCategoryRouter(mux *http.ServeMux, catHandler category.CategoryHandler) http.Handler {
+	publicGroup := newGroup(mux, "/api/categories")
 
-	// Lấy danh sách danh mục (Menu - Active Only)
-	mux.HandleFunc("GET /api/categories", catHandler.UserGetActiveCategories)
+	publicGroup.HandleFunc("GET", "", catHandler.UserGetActiveCategories)     // Lấy danh sách danh mục (Active)
+	publicGroup.HandleFunc("GET", "/search", catHandler.UserSearchCategories) // Tìm kiếm (Active)
 
-	// Tìm kiếm danh mục (User - Active Only)
-	mux.HandleFunc("GET /api/categories/search", catHandler.UserSearchCategories)
+	// =================================================================
+	adminGroup := newGroup(mux, "/api/admin/categories", middleware.AdminOnlyMiddleware)
 
+	// Các chức năng quản lý
+	adminGroup.HandleFunc("GET", "", catHandler.AdminGetAllCategories)        // Lấy tất cả danh mục (Cả ẩn)
+	adminGroup.HandleFunc("GET", "/search", catHandler.AdminSearchCategories) // Tìm kiếm (Cả ẩn)
+	adminGroup.HandleFunc("POST", "", catHandler.CreateCategory)              // Tạo mới danh mục
+	adminGroup.HandleFunc("DELETE", "", catHandler.DeleteSoftCategories)          // Xóa danh mục
 
-	// ADMIN ROUTES (Cần quyền Admin)
-	// Lấy tất cả danh mục (All)
-	getAllHandler := http.HandlerFunc(catHandler.AdminGetAllCategories)
-	mux.Handle("GET /api/admin/categories", middleware.AdminOnlyMiddleware(getAllHandler))
+	// Các chức năng theo ID
+	adminGroup.HandleFunc("GET", "/{id}", catHandler.AdminGetCategoryByID) // Xem chi tiết danh mục
+	adminGroup.HandleFunc("PUT", "/{id}", catHandler.UpdateCategory)       // Cập nhật
+	// adminGroup.HandleFunc("DELETE", "/{id}", catHandler.DeleteCategory)    // Xóa mềm (Ẩn)
 
-	// Tìm kiếm danh mục (All)
-	searchHandler := http.HandlerFunc(catHandler.AdminSearchCategories)
-	mux.Handle("GET /api/admin/categories/search", middleware.AdminOnlyMiddleware(searchHandler))
-
-	// Tạo danh mục mới
-	createHandler := http.HandlerFunc(catHandler.CreateCategory)
-	mux.Handle("POST /api/admin/categories", middleware.AdminOnlyMiddleware(createHandler))
-
-	// Xóa nhiều danh mục cùng lúc
-	deleteManyHandler := http.HandlerFunc(catHandler.DeleteManyCategories)
-	mux.Handle("DELETE /api/admin/categories", middleware.AdminOnlyMiddleware(deleteManyHandler))
-
-	// Xóa cứng 1 danh mục
-	deleteHardHandler := http.HandlerFunc(catHandler.DeleteCategoryHard)
-	mux.Handle("DELETE /api/admin/categories/hard/{id}", middleware.AdminOnlyMiddleware(deleteHardHandler))
-
-	// Lấy chi tiết danh mục theo ID (để Admin sửa)
-	getByIDHandler := http.HandlerFunc(catHandler.AdminGetCategoryByID)
-	mux.Handle("GET /api/admin/categories/{id}", middleware.AdminOnlyMiddleware(getByIDHandler))
-
-	// Cập nhật danh mục
-	updateHandler := http.HandlerFunc(catHandler.UpdateCategory)
-	mux.Handle("PUT /api/admin/categories/{id}", middleware.AdminOnlyMiddleware(updateHandler))
-
-	// Xóa (ẩn) 1 danh mục
-	deleteHandler := http.HandlerFunc(catHandler.DeleteCategory)
-	mux.Handle("DELETE /api/admin/categories/{id}", middleware.AdminOnlyMiddleware(deleteHandler))
-
+	// Chức năng nâng cao
+	adminGroup.HandleFunc("DELETE", "/hard/{id}", catHandler.DeleteCategoryHard) // Xóa cứng (Vĩnh viễn)
 
 	return mux
 }

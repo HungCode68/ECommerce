@@ -1,4 +1,4 @@
-package repository
+package user
 
 import (
 	"database/sql"
@@ -6,28 +6,6 @@ import (
 	"golang/internal/model"
 	"time"
 )
-
-// UserRepo định nghĩa các phương thức thao tác với DB
-type UserRepo interface {
-	// Read Methods (Trả về Entity gốc)
-	GetAllUsers() ([]model.User, error)
-	GetUserByID(id int64) (model.User, error)
-	SearchUsers(keyword string) ([]model.User, error)
-	
-	
-	GetUserByIdentifier(identifier string) (model.User, error)
-	GetUserByRefreshToken(refreshToken string) (model.User, error)
-	
-	
-	CreateUser(user model.User) (model.User, error)
-	UpdateUser(id int64, req model.AdminUpdateUserRequest) (model.User, error)
-	UpdateUserProfile(id int64, req model.UserUpdateProfileRequest) (model.User, error)
-	UpdateRefreshToken(id int64, refreshToken string, expiry time.Time) error
-	
-	DeleteUserById(id int64) error
-	DeleteManyUsers(ids []int64) error
-	RevokeRefreshToken(userID int64) error
-}
 
 // UserDb implement UserRepo
 type UserDb struct {
@@ -247,30 +225,8 @@ func (u *UserDb) UpdateRefreshToken(id int64, token string, expiry time.Time) er
 	return err
 }
 
-// Hàm xóa mềm User (soft delete)
-func (u *UserDb) DeleteUserById(id int64) error {
-	logger.DebugLogger.Println("Starting DeleteUser for ID:", id)
-
-	query := `UPDATE users SET deleted_at = ? WHERE id = ?`
-
-	result, err := u.db.Exec(query, time.Now(), id)
-	if err != nil {
-		logger.ErrorLogger.Println("Soft DeleteUser failed:", err)
-		return err
-	}
-
-	// Kiểm tra xem có dòng nào được update không
-	rowsAffected, _ := result.RowsAffected()
-	if rowsAffected == 0 {
-		return sql.ErrNoRows
-	}
-
-	logger.InfoLogger.Printf("Soft DeleteUser success, id=%d marked as deleted\n", id)
-	return nil
-}
-
 // Hàm xóa nhiều User cùng lúc (soft delete)
-func (u *UserDb) DeleteManyUsers(ids []int64) error {
+func (u *UserDb) DeleteSoftUsers(ids []int64) error {
 	logger.DebugLogger.Printf("Starting DeleteManyUsers for %d users", len(ids))
 
 	// Bắt đầu transaction
@@ -280,7 +236,7 @@ func (u *UserDb) DeleteManyUsers(ids []int64) error {
 		return err
 	}
 
-	query := `UPDATE users SET deleted_at = ? WHERE id = ?`
+	query := `UPDATE users SET deleted_at = ?, is_active = 0 WHERE id = ?`
 
 	stmt, err := tx.Prepare(query)
 	if err != nil {

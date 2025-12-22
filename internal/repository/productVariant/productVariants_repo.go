@@ -1,4 +1,4 @@
-package repository
+package productVariant
 
 import (
 	"database/sql"
@@ -7,19 +7,11 @@ import (
 	"time"
 )
 
-type ProductVariantsRepository interface {
-	CreateProductVariant(variant *model.ProductsVariants) (*model.ProductsVariants, error)
-	GetProductVariantByID(productID int64) ([]model.ProductsVariants, error)
-	GetVariantByID(variantID int64) (*model.ProductsVariants, error)
-	UpdateProductVariant(variant *model.ProductsVariants) error
-	DeleteProductVariant(variantID int64) error
-}
-
 type VariantRepo struct {
 	DB *sql.DB
 }
 
-func NewVariantRepo(db *sql.DB) *VariantRepo {
+func NewVariantRepo(db *sql.DB) ProductVariantsRepository {
 	return &VariantRepo{DB: db}
 }
 

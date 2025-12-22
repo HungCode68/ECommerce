@@ -2,14 +2,11 @@ package main
 
 import (
 	config "golang/internal/configs/database"
-	"golang/internal/controller"
-	"golang/internal/handler"
 	"golang/internal/logger"
-	"golang/internal/repository"
-	"golang/internal/router"
+	"golang/internal/module"
 	"golang/internal/server"
-	"golang/internal/validator"
 	"log"
+	"net/http"
 )
 
 func main() {
@@ -22,39 +19,19 @@ func main() {
 	defer db.Connection.Close()
 	log.Println("Kết nối database thành công")
 
-	myValidator := validator.NewCustomValidator()
+	mux := http.NewServeMux()
 
-	// Khởi tạo Repository, Controller, Handler cho User
-	userRepo := repository.NewUserDb(db.Connection)
-	userController := controller.NewUserController(userRepo)
-	userHandler := handler.NewUserHandler(userController, myValidator)
+	// KHỞI TẠO CÁC MODULE
+	module.InitUserModule(db.Connection, mux)
 
-	// Khởi tạo Repository, Controller, Handler cho Address
-	addressRepo := repository.NewAddressDb(db.Connection)
-	addressController := controller.NewAddressController(addressRepo)
-	addressHandler := handler.NewAddressHandler(addressController, myValidator)
+	module.InitAddressModule(db.Connection, mux)
 
-	//Khoi tao cho product variant
-	proVariantRepo := repository.NewVariantRepo(db.Connection)
-	proVariantController := controller.NewProductVariantController(proVariantRepo)
-	proVariantHandler := handler.NewVariantHandler(proVariantController)
+	module.InitProductModule(db.Connection, mux)
 
-	// Khởi tạo Repository, Controller, Handler cho Product
-	productRepo := repository.NewProductRepo(db.Connection)
-	productController := controller.NewProductController(productRepo, proVariantRepo)
-	productHandler := handler.NewProductHandler(productController)
+	module.InitCategoryModule(db.Connection, mux)
 
-	// MODULE CATEGORY (Mới thêm vào)
-	categoryRepo := repository.NewCategoryDb(db.Connection)
-	categoryController := controller.NewCategoryController(categoryRepo)
-	categoryHandler := handler.NewCategoryHandler(categoryController, myValidator)
-
-
-	// Khởi tạo Router
-	r := router.NewRouter(userHandler, addressHandler, productHandler, categoryHandler, proVariantHandler)
-
-	//Khởi tạo Server (Truyền router r vào)
-	srv := server.NewServer(r)
+	// Chạy Server
+	srv := server.NewServer(mux)
 
 	log.Println("Server starting on :8081")
 	if err := srv.ListenAndServe(); err != nil {

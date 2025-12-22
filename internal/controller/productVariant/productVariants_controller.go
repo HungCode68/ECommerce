@@ -1,21 +1,21 @@
-package controller
+package productvariant
 
 import (
 	"fmt"
 	"golang/internal/model"
-	"golang/internal/repository"
+	"golang/internal/repository/productVariant"
 )
 
-type ProductVariantController struct {
-	VariantRepo repository.ProductVariantsRepository
+type productVariantController struct {
+	VariantRepo productVariant.ProductVariantsRepository
 }
 
-func NewProductVariantController(repoVariant repository.ProductVariantsRepository) *ProductVariantController {
-	return &ProductVariantController{VariantRepo: repoVariant}
+func NewProductVariantController(repoVariant productVariant.ProductVariantsRepository) ProductVariantController {
+	return &productVariantController{VariantRepo: repoVariant}
 }
 
 // CreateVariant - Tạo biến thể mới cho sản phẩm
-func (c *ProductVariantController) CreateVariant(req model.CreateVariantRequest, productID int64) (*model.CreateVariantResponse, error) {
+func (c *productVariantController) CreateVariant(req model.CreateVariantRequest, productID int64) (*model.CreateVariantResponse, error) {
 	newVariant := &model.ProductsVariants{
 		ProductID:      productID,
 		SKU:            req.SKU,
@@ -51,7 +51,7 @@ func (c *ProductVariantController) CreateVariant(req model.CreateVariantRequest,
 }
 
 // UpdateVariant - Cập nhật thông tin biến thể sản phẩm
-func (c *ProductVariantController) UpdateVariant(req model.UpdateVariantRequest, variantID int64, productID int64) (*model.UpdateVariantResponse, error) {
+func (c *productVariantController) UpdateVariant(req model.UpdateVariantRequest, variantID int64, productID int64) (*model.UpdateVariantResponse, error) {
 	existingVariant, err := c.VariantRepo.GetVariantByID(variantID)
 	if err != nil {
 		return nil, err
@@ -103,7 +103,7 @@ func (c *ProductVariantController) UpdateVariant(req model.UpdateVariantRequest,
 }
 
 // DeleteVariant - Xóa biến thể sản phẩm
-func (c *ProductVariantController) DeleteVariant(variantID int64, productID int64) (*model.DeleteVariantResponse, error) {
+func (c *productVariantController) DeleteVariant(variantID int64, productID int64) (*model.DeleteVariantResponse, error) {
 	existingVariant, err := c.VariantRepo.GetVariantByID(variantID)
 	if err != nil {
 		return nil, err

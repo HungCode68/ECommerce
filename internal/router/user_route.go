@@ -1,64 +1,35 @@
 package router
 
 import (
-	"net/http"
-	"golang/internal/handler"
+	"golang/internal/handler/user"
 	"golang/internal/middleware"
+	"net/http"
 )
 
-func NewUserRouter(mux *http.ServeMux ,userHandler *handler.UserHandler) http.Handler {
-	
-	
-	// Đăng ký tài khoản thường
-	mux.HandleFunc("POST /api/auth/register", userHandler.Register)
-	
-	// Đăng nhập
-	mux.HandleFunc("POST /api/auth/login", userHandler.Login)
+func NewUserRouter(mux *http.ServeMux, userHandler user.UserHandler) http.Handler {
+	authGroup := newGroup(mux, "/api/auth")
 
-	// Refresh Token
-	mux.HandleFunc("POST /api/auth/refresh", userHandler.RefreshToken)
+	authGroup.HandleFunc("POST", "/register", userHandler.Register)
+	authGroup.HandleFunc("POST", "/login", userHandler.Login)
+	authGroup.HandleFunc("POST", "/refresh", userHandler.RefreshToken)
 
-	// Đăng xuất
-	logoutHandler := http.HandlerFunc(userHandler.Logout)
-    mux.Handle("POST /api/auth/logout", middleware.AuthMiddleware(logoutHandler))
+	// =================================================================
+	userGroup := newGroup(mux, "/api", middleware.AuthMiddleware)
 
-	// User tự cập nhật thông tin: PUT /api/v1/users/me
-    updateProfileHandler := http.HandlerFunc(userHandler.UpdateUserProfile)
-    mux.Handle("PUT /api/users/me", middleware.AuthMiddleware(updateProfileHandler))
+	userGroup.HandleFunc("POST", "/auth/logout", userHandler.Logout)         // Logout
+	userGroup.HandleFunc("PUT", "/users/me", userHandler.UpdateUserProfile)  // Cập nhật profile
+	userGroup.HandleFunc("DELETE", "/users/me", userHandler.DeleteMyAccount) // Xoá tài khoản cá nhân
 
-    // User tự xóa tài khoản: DELETE /api/users/me
-    deleteMyAccountHandler := http.HandlerFunc(userHandler.DeleteMyAccount)
-    mux.Handle("DELETE /api/users/me", middleware.AuthMiddleware(deleteMyAccountHandler))
+	// =================================================================
+	adminGroup := newGroup(mux, "/api/admin/users", middleware.AdminOnlyMiddleware)
 
-
-	// ------- Admin routes -------
-	// Lấy danh sách user
-	getAllHandler := http.HandlerFunc(userHandler.GetAllUsers)
-	mux.Handle("GET /api/admin/users", middleware.AdminOnlyMiddleware(getAllHandler))
-
-	// Tìm kiếm user
-	searchHandler := http.HandlerFunc(userHandler.SearchUsers)
-	mux.Handle("GET /api/admin/users/search", middleware.AdminOnlyMiddleware(searchHandler))
-
-	// Xem chi tiết user bất kỳ
-	getByIDHandler := http.HandlerFunc(userHandler.GetUserByID)
-	mux.Handle("GET /api/admin/users/{id}", middleware.AdminOnlyMiddleware(getByIDHandler))
-
-	// Tạo Admin mới: POST /api/admin/users
-	createAdminHandler := http.HandlerFunc(userHandler.CreateAdmin)
-	mux.Handle("POST /api/admin/users", middleware.AdminOnlyMiddleware(createAdminHandler))
-
-	// Xóa nhiều User: DELETE /api/admin/users
-	deleteManyHandler := http.HandlerFunc(userHandler.DeleteManyUsers)
-	mux.Handle("DELETE /api/admin/users", middleware.AdminOnlyMiddleware(deleteManyHandler))
-
-	// Cập nhật thông tin User: PUT /api/users/{id}
-	updateUserHandler := http.HandlerFunc(userHandler.UpdateUser)
-	mux.Handle("PUT /api/admin/users/{id}", middleware.AdminOnlyMiddleware(updateUserHandler))
-
-	// Xóa 1 User: DELETE /api/users/{id}
-	deleteUserHandler := http.HandlerFunc(userHandler.DeleteUserById)
-	mux.Handle("DELETE /api/admin/users/{id}", middleware.AdminOnlyMiddleware(deleteUserHandler))
+	adminGroup.HandleFunc("GET", "", userHandler.GetAllUsers)            // Lấy tất cả users
+	adminGroup.HandleFunc("GET", "/search", userHandler.SearchUsers)     // Tìm kiếm users
+	adminGroup.HandleFunc("GET", "/{id}", userHandler.GetUserByID)       // Lấy user by ID
+	adminGroup.HandleFunc("POST", "", userHandler.CreateAdmin)           // Tạo mới admin
+	adminGroup.HandleFunc("DELETE", "", userHandler.DeleteSoftUsers)     // Xóa users
+	adminGroup.HandleFunc("PUT", "/{id}", userHandler.UpdateUser)        // Cập nhật user by ID
+	// adminGroup.HandleFunc("DELETE", "/{id}", userHandler.DeleteUserById) // Xóa user by ID
 
 	return mux
 }

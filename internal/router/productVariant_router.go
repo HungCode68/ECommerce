@@ -1,12 +1,24 @@
 package router
 
 import (
-	"golang/internal/handler"
+	"golang/internal/handler/productVariant"
+	"golang/internal/middleware"
 	"net/http"
 )
 
-func ProductVariantRouter(mux *http.ServeMux, h *handler.VariantHandler) {
-	mux.HandleFunc("POST /admin/product/{id}/variant", h.CreateVariantHandler)
-	mux.HandleFunc("PUT /admin/product/{id}/variant/{variantId}", h.UpdateVariantHandler)
-	mux.HandleFunc("DELETE /admin/product/{id}/variant/{variantId}", h.DeleteVariantHandler)
+// NewProductVariantRouter định nghĩa các route cho biến thể sản phẩm (Variant)
+func NewProductVariantRouter(mux *http.ServeMux, h productVariant.ProductVariantHandler) http.Handler {
+
+	variantGroup := newGroup(mux, "/admin/product", middleware.AdminOnlyMiddleware)
+
+	// Tạo biến thể mới cho sản phẩm
+	variantGroup.HandleFunc("POST", "/{id}/variant", h.CreateVariantHandler)
+
+	// Cập nhật biến thể
+	variantGroup.HandleFunc("PUT", "/{id}/variant/{variantId}", h.UpdateVariantHandler)
+
+	// Xóa biến thể
+	variantGroup.HandleFunc("DELETE", "/{id}/variant/{variantId}", h.DeleteVariantHandler)
+
+	return mux
 }

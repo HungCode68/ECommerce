@@ -1,28 +1,28 @@
-package controller
+package category
 
 import (
 	"errors"
 	"fmt"
 	"golang/internal/logger"
 	"golang/internal/model"
-	"golang/internal/repository"
+	"golang/internal/repository/category"
 
-	"github.com/gosimple/slug" 
+	"github.com/gosimple/slug"
 )
 
-type CategoryController struct {
-	CategoryRepo repository.CategoryRepo
+type categoryController struct {
+	CategoryRepo category.CategoryRepo
 }
 
-func NewCategoryController(catRepo repository.CategoryRepo) *CategoryController {
-	return &CategoryController{
+func NewCategoryController(catRepo category.CategoryRepo) CategoryController {
+	return &categoryController{
 		CategoryRepo: catRepo,
 	}
 }
 
 
 // CreateCategory - Tạo danh mục mới
-func (c *CategoryController) CreateCategory(req model.CreateCategoryRequest) (model.AdminCategoryResponse, error) {
+func (c *categoryController) CreateCategory(req model.CreateCategoryRequest) (model.AdminCategoryResponse, error) {
 	logger.InfoLogger.Printf("Admin yêu cầu tạo danh mục mới: %s", req.Name)
 
 	//  Xử lý Slug (Nếu rỗng thì tự tạo từ Name)
@@ -83,7 +83,7 @@ func (c *CategoryController) CreateCategory(req model.CreateCategoryRequest) (mo
 }
 
 // UpdateCategory - Cập nhật danh mục
-func (c *CategoryController) UpdateCategory(id int64, req model.UpdateCategoryRequest) (model.AdminCategoryResponse, error) {
+func (c *categoryController) UpdateCategory(id int64, req model.UpdateCategoryRequest) (model.AdminCategoryResponse, error) {
 	logger.InfoLogger.Printf("Admin cập nhật danh mục ID: %d", id)
 
 	//  Kiểm tra Slug nếu có thay đổi
@@ -130,20 +130,20 @@ func (c *CategoryController) UpdateCategory(id int64, req model.UpdateCategoryRe
 }
 
 // DeleteCategory - Xóa mềm 1 danh mục
-func (c *CategoryController) DeleteCategory(id int64) error {
-	logger.WarnLogger.Printf("Admin yêu cầu xóa (ẩn) danh mục ID: %d", id)
-	err := c.CategoryRepo.DeleteCategory(id)
-	if err != nil {
-		logger.ErrorLogger.Printf("Lỗi xóa danh mục: %v", err)
-		return err
-	}
-	return nil
-}
+// func (c *categoryController) DeleteCategory(id int64) error {
+// 	logger.WarnLogger.Printf("Admin yêu cầu xóa (ẩn) danh mục ID: %d", id)
+// 	err := c.CategoryRepo.DeleteCategory(id)
+// 	if err != nil {
+// 		logger.ErrorLogger.Printf("Lỗi xóa danh mục: %v", err)
+// 		return err
+// 	}
+// 	return nil
+// }
 
 // DeleteManyCategories - Xóa mềm nhiều danh mục
-func (c *CategoryController) DeleteManyCategories(req model.DeleteManyCategoriesRequest) error {
+func (c *categoryController) DeleteSoftCategories(req model.DeleteManyCategoriesRequest) error {
 	logger.WarnLogger.Printf("Admin yêu cầu xóa %d danh mục", len(req.IDs))
-	err := c.CategoryRepo.DeleteManyCategories(req.IDs)
+	err := c.CategoryRepo.DeleteSoftCategories(req.IDs)
 	if err != nil {
 		logger.ErrorLogger.Printf("Lỗi xóa nhiều danh mục: %v", err)
 		return err
@@ -152,7 +152,7 @@ func (c *CategoryController) DeleteManyCategories(req model.DeleteManyCategories
 }
 
 // DeleteCategoryHard - Xóa cứng 1 danh mục
-func (c *CategoryController) DeleteCategoryHard(id int64) error {
+func (c *categoryController) DeleteCategoryHard(id int64) error {
 	logger.WarnLogger.Printf("Admin yêu cầu xóa cứng danh mục ID: %d", id)
     // Gọi Repo Xóa cứng
     err := c.CategoryRepo.DeleteCategoryHard(id)
@@ -164,7 +164,7 @@ func (c *CategoryController) DeleteCategoryHard(id int64) error {
 }
 
 // AdminGetAllCategories - Lấy tất cả (Active + Inactive)
-func (c *CategoryController) AdminGetAllCategories() ([]model.AdminCategoryResponse, error) {
+func (c *categoryController) AdminGetAllCategories() ([]model.AdminCategoryResponse, error) {
 	logger.InfoLogger.Println("Admin lấy tất cả danh mục")
 	cats, err := c.CategoryRepo.GetAllCategories()
 	if err != nil {
@@ -187,7 +187,7 @@ func (c *CategoryController) AdminGetAllCategories() ([]model.AdminCategoryRespo
 }
 
 // AdminGetCategoryByID - Lấy chi tiết theo ID
-func (c *CategoryController) AdminGetCategoryByID(id int64) (model.AdminCategoryResponse, error) {
+func (c *categoryController) AdminGetCategoryByID(id int64) (model.AdminCategoryResponse, error) {
 	cat, err := c.CategoryRepo.GetCategoryByID(id)
 	if err != nil {
 		return model.AdminCategoryResponse{}, err
@@ -205,7 +205,7 @@ func (c *CategoryController) AdminGetCategoryByID(id int64) (model.AdminCategory
 }
 
 // AdminSearchCategories - Tìm kiếm (Active + Inactive)
-func (c *CategoryController) AdminSearchCategories(keyword string) ([]model.AdminCategoryResponse, error) {
+func (c *categoryController) AdminSearchCategories(keyword string) ([]model.AdminCategoryResponse, error) {
 	logger.InfoLogger.Printf("Admin tìm kiếm danh mục: %s", keyword)
 	
 	cats, err := c.CategoryRepo.SearchAllCategories(keyword)
@@ -230,7 +230,7 @@ func (c *CategoryController) AdminSearchCategories(keyword string) ([]model.Admi
 
 
 // UserGetActiveCategories - Lấy danh sách danh mục để hiển thị Menu
-func (c *CategoryController) UserGetActiveCategories() ([]model.UserCategoryResponse, error) {
+func (c *categoryController) UserGetActiveCategories() ([]model.UserCategoryResponse, error) {
 	// Gọi Repo lấy danh sách ACTIVE
 	cats, err := c.CategoryRepo.GetActiveCategories()
 	if err != nil {
@@ -254,7 +254,7 @@ func (c *CategoryController) UserGetActiveCategories() ([]model.UserCategoryResp
 }
 
 // UserSearchCategories - Tìm kiếm danh mục (Chỉ Active)
-func (c *CategoryController) UserSearchCategories(keyword string) ([]model.UserCategoryResponse, error) {
+func (c *categoryController) UserSearchCategories(keyword string) ([]model.UserCategoryResponse, error) {
 	logger.InfoLogger.Printf("User tìm kiếm danh mục: %s", keyword)
 
 	cats, err := c.CategoryRepo.SearchActiveCategories(keyword)

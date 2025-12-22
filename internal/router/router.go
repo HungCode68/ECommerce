@@ -1,17 +1,22 @@
 package router
 
 import (
-	"golang/internal/handler"
+	addressRouter "golang/internal/handler/address"
+	categoryRouter "golang/internal/handler/category"
+	productRouter "golang/internal/handler/product"
+	productVariantRouter "golang/internal/handler/productVariant"
+	userRouter "golang/internal/handler/user"
+
 	"net/http"
 )
 
 // NewRouter: Hàm khởi tạo Router tổng
 func NewRouter(
-	userHandler *handler.UserHandler,
-	addressHandler *handler.AddressHandler, 
-	productHandler *handler.ProductHandler,
-	categoryHandler *handler.CategoryHandler,
-	productVariantHandler *handler.VariantHandler,
+	userHandler userRouter.UserHandler,
+	addressHandler addressRouter.AddressHandler,
+	productHandler productRouter.ProductHandler,
+	categoryHandler categoryRouter.CategoryHandler,
+	productVariantHandler productVariantRouter.ProductVariantHandler,
 ) http.Handler {
 
 	mux := http.NewServeMux()
@@ -22,13 +27,12 @@ func NewRouter(
 	NewAddressRouter(mux, addressHandler)
 
 	// Đăng ký router Product
-	RegisterProductRoutes(mux, productHandler)
+	NewProductRouter(mux, productHandler)
 
 	// Đăng ký router Category
-    NewCategoryRouter(mux, categoryHandler)
+	NewCategoryRouter(mux, categoryHandler)
 
-	ProductVariantRouter(mux,productVariantHandler)
-
+	NewProductVariantRouter(mux, productVariantHandler)
 
 	// 3. Đăng ký Health Check (Optional - để check server sống hay chết)
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {

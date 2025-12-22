@@ -1,36 +1,22 @@
 package router
 
 import (
-	"golang/internal/handler"
+	"golang/internal/handler/address"
 	"golang/internal/middleware"
 	"net/http"
 )
 
-func NewAddressRouter(mux *http.ServeMux ,addressHandler *handler.AddressHandler) http.Handler {
-
+func NewAddressRouter(mux *http.ServeMux, addressHandler address.AddressHandler) http.Handler {
 	// Tạo địa chỉ mới
-	createHandler := http.HandlerFunc(addressHandler.CreateAddress)
-	mux.Handle("POST /api/addresses", middleware.AuthMiddleware(createHandler))
+	addressGroup := newGroup(mux, "/api/addresses", middleware.AuthMiddleware)
 
-	// Lấy danh sách địa chỉ của tôi
-	listHandler := http.HandlerFunc(addressHandler.GetMyAddresses)
-	mux.Handle("GET /api/addresses", middleware.AuthMiddleware(listHandler))
-
-	// Lấy chi tiết 1 địa chỉ
-	detailHandler := http.HandlerFunc(addressHandler.GetAddressByID)
-	mux.Handle("GET /api/addresses/{id}", middleware.AuthMiddleware(detailHandler))
-
-	//  Cập nhật địa chỉ
-	updateHandler := http.HandlerFunc(addressHandler.UpdateAddress)
-	mux.Handle("PUT /api/addresses/{id}", middleware.AuthMiddleware(updateHandler))
-
-	//  Xóa địa chỉ
-	deleteHandler := http.HandlerFunc(addressHandler.DeleteAddress)
-	mux.Handle("DELETE /api/addresses/{id}", middleware.AuthMiddleware(deleteHandler))
-
-	// Đặt mặc định
-	setDefaultHandler := http.HandlerFunc(addressHandler.SetDefaultAddress)
-	mux.Handle("PUT /api/addresses/{id}/default", middleware.AuthMiddleware(setDefaultHandler))
+	// Định nghĩa các route
+	addressGroup.HandleFunc("POST", "", addressHandler.CreateAddress)                 // Tạo mới địa chỉ
+	addressGroup.HandleFunc("GET", "", addressHandler.GetMyAddresses)                 // Lấy danh sách địa chỉ của tôi
+	addressGroup.HandleFunc("GET", "/{id}", addressHandler.GetAddressByID)            // Xem chi tiết địa chỉ
+	addressGroup.HandleFunc("PUT", "/{id}", addressHandler.UpdateAddress)             // Cập nhật địa chỉ
+	addressGroup.HandleFunc("DELETE", "/{id}", addressHandler.DeleteAddress)          // Xóa địa chỉ
+	addressGroup.HandleFunc("PUT", "/{id}/default", addressHandler.SetDefaultAddress) // Đặt mặc định địa chỉ
 
 	return mux
 }

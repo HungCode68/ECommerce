@@ -1,29 +1,29 @@
-package controller
+package address
 
 import (
 	"database/sql"
 	"errors"
 	"golang/internal/logger"
 	"golang/internal/model"
-	"golang/internal/repository"
+	"golang/internal/repository/address"
 )
 
-type AddressController struct {
-	AddressRepo repository.AddressRepo
+type addressController struct {
+	AddressRepo address.AddressRepo
 }
 
-func NewAddressController(addressRepo repository.AddressRepo) *AddressController {
-	return &AddressController{
+func NewAddressController(addressRepo address.AddressRepo) AddressController {
+	return &addressController{
 		AddressRepo: addressRepo,
 	}
 }
 
-//Tạo địa chỉ mới
-func (c *AddressController) CreateAddress(userID int64, req model.CreateAddressRequest) (model.AddressResponse, error) {
+// Tạo địa chỉ mới
+func (c *addressController) CreateAddress(userID int64, req model.CreateAddressRequest) (model.AddressResponse, error) {
 	logger.InfoLogger.Printf("User %d đang tạo địa chỉ mới", userID)
 
 	newAddress := model.Address{
-		UserID:            userID, 
+		UserID:            userID,
 		Label:             req.Label,
 		RecipientName:     req.RecipientName,
 		Phone:             req.Phone,
@@ -33,7 +33,6 @@ func (c *AddressController) CreateAddress(userID int64, req model.CreateAddressR
 		State:             req.State,
 		Country:           req.Country,
 		IsDefaultShipping: req.IsDefaultShipping,
-		
 	}
 
 	createdAddr, err := c.AddressRepo.CreateAddress(newAddress)
@@ -42,7 +41,6 @@ func (c *AddressController) CreateAddress(userID int64, req model.CreateAddressR
 		return model.AddressResponse{}, err
 	}
 
-	
 	res := model.AddressResponse{
 		ID:                createdAddr.ID,
 		UserID:            createdAddr.UserID,
@@ -63,8 +61,8 @@ func (c *AddressController) CreateAddress(userID int64, req model.CreateAddressR
 	return res, nil
 }
 
-//Lấy danh sách địa chỉ của User
-func (c *AddressController) GetMyAddresses(userID int64) ([]model.AddressResponse, error) {
+// Lấy danh sách địa chỉ của User
+func (c *addressController) GetMyAddresses(userID int64) ([]model.AddressResponse, error) {
 	logger.InfoLogger.Printf("Lấy danh sách địa chỉ của User ID: %d", userID)
 
 	addresses, err := c.AddressRepo.GetAddressesByUserID(userID)
@@ -95,8 +93,8 @@ func (c *AddressController) GetMyAddresses(userID int64) ([]model.AddressRespons
 	return res, nil
 }
 
-//  Lấy chi tiết 1 địa chỉ (Có check quyền sở hữu)
-func (c *AddressController) GetAddressByID(id int64, userID int64) (model.AddressResponse, error) {
+// Lấy chi tiết 1 địa chỉ (Có check quyền sở hữu)
+func (c *addressController) GetAddressByID(id int64, userID int64) (model.AddressResponse, error) {
 	logger.InfoLogger.Printf("User %d xem chi tiết địa chỉ %d", userID, id)
 
 	addr, err := c.AddressRepo.GetAddressByID(id, userID)
@@ -128,7 +126,7 @@ func (c *AddressController) GetAddressByID(id int64, userID int64) (model.Addres
 }
 
 // Cập nhật địa chỉ
-func (c *AddressController) UpdateAddress(id int64, userID int64, req model.UpdateAddressRequest) (model.AddressResponse, error) {
+func (c *addressController) UpdateAddress(id int64, userID int64, req model.UpdateAddressRequest) (model.AddressResponse, error) {
 	logger.InfoLogger.Printf("User %d cập nhật địa chỉ %d", userID, id)
 
 	updatedAddr, err := c.AddressRepo.UpdateAddress(id, userID, req)
@@ -159,8 +157,8 @@ func (c *AddressController) UpdateAddress(id int64, userID int64, req model.Upda
 	return res, nil
 }
 
-//  Xóa địa chỉ
-func (c *AddressController) DeleteAddress(id int64, userID int64) error {
+// Xóa địa chỉ
+func (c *addressController) DeleteAddress(id int64, userID int64) error {
 	logger.WarnLogger.Printf("User %d yêu cầu xóa địa chỉ %d", userID, id)
 
 	err := c.AddressRepo.DeleteAddress(id, userID)
@@ -176,7 +174,7 @@ func (c *AddressController) DeleteAddress(id int64, userID int64) error {
 }
 
 // Đặt địa chỉ mặc định
-func (c *AddressController) SetDefaultAddress(userID int64, addressID int64) error {
+func (c *addressController) SetDefaultAddress(userID int64, addressID int64) error {
 	logger.InfoLogger.Printf("User %d đặt địa chỉ %d làm mặc định", userID, addressID)
 
 	err := c.AddressRepo.SetDefaultAddress(userID, addressID)

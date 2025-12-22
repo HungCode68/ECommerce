@@ -1,4 +1,4 @@
-package repository
+package category
 
 import (
 	"database/sql"
@@ -9,24 +9,6 @@ import (
 
 	"github.com/gosimple/slug"
 )
-
-// CategoryRepo định nghĩa các phương thức thao tác với bảng categories
-type CategoryRepo interface {
-	CreateCategory(category *model.Category) (*model.Category, error)
-	UpdateCategory(id int64, req model.UpdateCategoryRequest) (*model.Category, error)
-	DeleteCategory(id int64) error
-	DeleteManyCategories(ids []int64) error
-	DeleteCategoryHard(id int64) error
-	GetCategoryByID(id int64) (*model.Category, error)
-	GetAllCategories() ([]model.Category, error)
-	SearchAllCategories(keyword string) ([]model.Category, error)
-
-	GetActiveCategories() ([]model.Category, error)
-	SearchActiveCategories(keyword string) ([]model.Category, error)
-
-	CountProductsByCategoryID(categoryID int64) (int, error)
-	CheckSlugExist(slug string) (bool, error)
-}
 
 // CategoryDb implement CategoryRepo
 type CategoryDb struct {
@@ -102,14 +84,13 @@ func (r *CategoryDb) GetCategoryByID(id int64) (*model.Category, error) {
 	return &cat, nil
 }
 
-
 // AdminSearchCategories: Tìm kiếm danh mục theo tên (Lấy cả Active và Inactive)
 func (r *CategoryDb) SearchAllCategories(keyword string) ([]model.Category, error) {
 	logger.DebugLogger.Printf("Starting AdminSearchCategories with keyword: %s", keyword)
 
 	nameKeyword := "%" + keyword + "%"
-	slugKeyword := "%" + slug.Make(keyword) + "%" 
-	
+	slugKeyword := "%" + slug.Make(keyword) + "%"
+
 	query := `SELECT id, name, slug, description, is_active, created_at, updated_at 
 			  FROM categories 
 			  WHERE name LIKE ? OR slug LIKE ? 
@@ -284,30 +265,8 @@ func (r *CategoryDb) UpdateCategory(id int64, req model.UpdateCategoryRequest) (
 	return r.GetCategoryByID(id)
 }
 
-// Xóa mềm 1 danh mục (Thực chất là Hủy kích hoạt - Deactivate)
-func (r *CategoryDb) DeleteCategory(id int64) error {
-	logger.DebugLogger.Printf("Starting Soft DeleteCategory (Deactivate) ID: %d", id)
-
-	query := "UPDATE categories SET is_active = 0, updated_at = ? WHERE id = ?"
-
-	now := time.Now()
-	res, err := r.db.Exec(query, now, id)
-	if err != nil {
-		logger.ErrorLogger.Printf("Soft DeleteCategory Failed: %v", err)
-		return err
-	}
-
-	rows, _ := res.RowsAffected()
-	if rows == 0 {
-		return sql.ErrNoRows
-	}
-
-	logger.InfoLogger.Printf("Category ID %d deactivated successfully", id)
-	return nil
-}
-
 // Xóa mềm nhiều danh mục (Transaction)
-func (r *CategoryDb) DeleteManyCategories(ids []int64) error {
+func (r *CategoryDb) DeleteSoftCategories(ids []int64) error {
 	logger.DebugLogger.Printf("Starting Soft DeleteManyCategories: %d items", len(ids))
 
 	tx, err := r.db.Begin()
@@ -343,48 +302,47 @@ func (r *CategoryDb) DeleteManyCategories(ids []int64) error {
 	return nil
 }
 
-
 // Xóa cứng danh mục (Chỉ cho phép khi không có sản phẩm)
 func (r *CategoryDb) DeleteCategoryHard(id int64) error {
-    logger.DebugLogger.Printf("Yêu cầu xóa cứng danh mục ID: %d", id)
+	logger.DebugLogger.Printf("Yêu cầu xóa cứng danh mục ID: %d", id)
 
-    // Kiểm tra ràng buộc sản phẩm
-    count, err := r.CountProductsByCategoryID(id)
-    if err != nil {
-        return err
-    }
+	// Kiểm tra ràng buộc sản phẩm
+	count, err := r.CountProductsByCategoryID(id)
+	if err != nil {
+		return err
+	}
 
-    if count > 0 {
-        return fmt.Errorf("không thể xóa: danh mục này đang chứa %d sản phẩm. Vui lòng gỡ sản phẩm trước", count)
-    }
+	if count > 0 {
+		return fmt.Errorf("không thể xóa: danh mục này đang chứa %d sản phẩm. Vui lòng gỡ sản phẩm trước", count)
+	}
 
-    //  Thực hiện xóa vĩnh viễn
-    query := "DELETE FROM categories WHERE id = ?"
-    res, err := r.db.Exec(query, id)
-    if err != nil {
-        logger.ErrorLogger.Printf("Hard Delete Failed: %v", err)
-        return err
-    }
+	//  Thực hiện xóa vĩnh viễn
+	query := "DELETE FROM categories WHERE id = ?"
+	res, err := r.db.Exec(query, id)
+	if err != nil {
+		logger.ErrorLogger.Printf("Hard Delete Failed: %v", err)
+		return err
+	}
 
-    rows, _ := res.RowsAffected()
-    if rows == 0 {
-        return sql.ErrNoRows
-    }
+	rows, _ := res.RowsAffected()
+	if rows == 0 {
+		return sql.ErrNoRows
+	}
 
-    logger.InfoLogger.Printf("Đã xóa vĩnh viễn danh mục ID %d", id)
-    return nil
+	logger.InfoLogger.Printf("Đã xóa vĩnh viễn danh mục ID %d", id)
+	return nil
 }
 
 // Kiểm tra xem danh mục có đang chứa sản phẩm nào không
 func (r *CategoryDb) CountProductsByCategoryID(categoryID int64) (int, error) {
-    var count int
-    // Đếm trong bảng trung gian product_categories
-    query := "SELECT COUNT(*) FROM product_categories WHERE category_id = ?"
-    err := r.db.QueryRow(query, categoryID).Scan(&count)
-    if err != nil {
-        return 0, err
-    }
-    return count, nil
+	var count int
+	// Đếm trong bảng trung gian product_categories
+	query := "SELECT COUNT(*) FROM product_categories WHERE category_id = ?"
+	err := r.db.QueryRow(query, categoryID).Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 // Kiểm tra Slug đã tồn tại chưa (Dùng khi Create/Update)

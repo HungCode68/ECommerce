@@ -31,6 +31,7 @@ type Product struct {
 	UpdatedAt  time.Time  `db:"updated_at"`
 	DeletedAt  *time.Time `db:"deleted_at"` // Có thể NULL
 	Categories []Category `json:"categories,omitempty"`
+	Variants   []ProductsVariants `json:"variants,omitempty"`
 }
 
 // 2. REQUEST DTOs (Data Transfer Objects - Nhận Input)
@@ -43,7 +44,6 @@ type GetProductRequest struct {
 }
 
 // CreateProductRequest dùng cho việc thêm sản phẩm mới (Admin)
-// (Giữ logic CategoryIDs của bạn)
 type CreateProductRequest struct {
 	Name             string  `json:"name" validate:"required,min=3,max=255"`
 	Slug             string  `json:"slug" validate:"omitempty,min=3,max=255"`
@@ -58,7 +58,6 @@ type CreateProductRequest struct {
 }
 
 // UpdateProductRequest dùng cho việc cập nhật sản phẩm (Admin)
-// (Giữ logic CategoryIDs của bạn)
 type UpdateProductRequest struct {
 	Name             string   `json:"name" validate:"omitempty,min=3,max=255"`
 	Slug             string   `json:"slug" validate:"omitempty,min=3,max=255"`
@@ -88,7 +87,6 @@ type GetManyProductsRequest struct {
 }
 
 // SearchProductsRequest - Tìm kiếm sản phẩm đơn giản
-// (Giữ logic CategoryID của bạn)
 type SearchProductsRequest struct {
 	Search     string `json:"search" validate:"omitempty,max=255"`
 	Brand      string `json:"brand" validate:"omitempty,max=100"`
@@ -115,7 +113,6 @@ type UserProductListResponse struct {
 }
 
 // UserProductDetailResponse - Chi tiết sản phẩm cho User
-// [GỘP]: Giữ Categories của bạn + Thêm Variants của bạn bạn
 type UserProductDetailResponse struct {
 	Message          string     `json:"message,omitempty"`
 	ID               int64      `json:"id"`
@@ -129,7 +126,7 @@ type UserProductDetailResponse struct {
 	PublishedAt      *time.Time `json:"published_at,omitempty"`
 	
 	Categories       []Category            `json:"categories,omitempty"` // Của bạn
-	Variants         []UserVariantResponse `json:"variants,omitempty"`   // Của bạn bạn (Mới)
+	Variants         []UserVariantResponse `json:"variants,omitempty"`
 }
 
 // =================================================================
@@ -139,7 +136,6 @@ type UserProductDetailResponse struct {
 
 
 // AdminProductResponse - Thông tin đầy đủ sản phẩm cho Admin
-// (Giữ Categories của bạn)
 type AdminProductResponse struct {
 	ID               int64      `json:"id"`
 	Name             string     `json:"name"`
@@ -159,6 +155,7 @@ type AdminProductResponse struct {
 	UpdatedAt        time.Time  `json:"updated_at"`
 	DeletedAt        *time.Time `json:"deleted_at,omitempty"`
 	Categories       []Category `json:"categories,omitempty"`
+	Variants         []ProductsVariants `json:"variants,omitempty"`
 }
 
 // AdminProductListResponse - Danh sách sản phẩm cho Admin
@@ -168,11 +165,10 @@ type AdminProductListResponse struct {
 }
 
 // AdminProductDetailResponse - Chi tiết sản phẩm cho Admin
-// [GỘP]: Thêm Variants vào response chi tiết
 type AdminProductDetailResponse struct {
 	Message  string                 `json:"message,omitempty"`
 	Product  AdminProductResponse   `json:"product"`
-	Variants []AdminVariantResponse `json:"variants,omitempty"` // Mới
+	Variants []AdminVariantResponse `json:"variants,omitempty"`
 }
 
 // AdminCreateProductResponse - Response sau khi tạo sản phẩm mới
@@ -192,7 +188,6 @@ type AdminDeleteProductResponse struct {
 	Message string `json:"message"`
 	Success bool   `json:"success"`
 }
-
 
 
 // GetManyProductsResponse - Response trả về nhiều sản phẩm

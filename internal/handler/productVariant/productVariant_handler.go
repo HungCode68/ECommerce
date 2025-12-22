@@ -1,9 +1,9 @@
-package handler
+package productVariant
 
 import (
 	"encoding/json"
 	"fmt"
-	"golang/internal/controller"
+	"golang/internal/controller/productVariant"
 	"golang/internal/model"
 	"golang/internal/validator"
 	"net/http"
@@ -11,10 +11,10 @@ import (
 )
 
 type VariantHandler struct {
-	VariantController *controller.ProductVariantController
+	VariantController productvariant.ProductVariantController
 }
 
-func NewVariantHandler(vtController *controller.ProductVariantController) *VariantHandler {
+func NewVariantHandler(vtController productvariant.ProductVariantController) ProductVariantHandler {
 	return &VariantHandler{VariantController: vtController}
 }
 
@@ -43,7 +43,7 @@ func (h *VariantHandler) CreateVariantHandler(w http.ResponseWriter, r *http.Req
 		h.errJson(w, http.StatusBadRequest, "Invalid request ")
 		return
 	}
-	if err := validator.NewCustomValidator().Validate(req); err != nil {
+	if err := validator.Validate(req); err != nil {
 		h.errJson(w, http.StatusBadRequest, fmt.Sprintf("Validation failed: %v", err))
 		return
 	}
@@ -78,7 +78,7 @@ func (h *VariantHandler) UpdateVariantHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	if err := validator.NewCustomValidator().Validate(req); err != nil {
+	if err := validator.Validate(req); err != nil {
 		h.errJson(w, http.StatusBadRequest, fmt.Sprintf("Validation failed: %v", err))
 		return
 	}
