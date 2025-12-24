@@ -1,11 +1,14 @@
 package product
 
 import (
+	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"golang/internal/model"
 	product "golang/internal/repository/product"
-	productVariant "golang/internal/repository/productVariant"
+	producthistory "golang/internal/repository/producthistory"
+	productVariant "golang/internal/repository/productvariant"
 	"time"
 
 	"github.com/gosimple/slug"
@@ -14,13 +17,15 @@ import (
 type productController struct {
 	Repo         product.ProductRepository
 	RepoVariants productVariant.ProductVariantsRepository
+	HistoryRepo  producthistory.ProductHistoryRepository
 }
 
 // NewProductController - Khởi tạo product controller
-func NewProductController(repo product.ProductRepository, repoVariants productVariant.ProductVariantsRepository) ProductController {
+func NewProductController(repo product.ProductRepository, repoVariants productVariant.ProductVariantsRepository, repoHistory producthistory.ProductHistoryRepository) ProductController {
 	return &productController{
 		Repo:         repo,
 		RepoVariants: repoVariants,
+		HistoryRepo:  repoHistory,
 	}
 }
 
@@ -290,11 +295,12 @@ func (prt *productController) UserGetProductDetailController(reqProduct *model.G
 }
 
 // UpdateProductController - Cập nhật thông tin sản phẩm và danh mục
-func (prt *productController) UpdateProductController(req model.UpdateProductRequest, id int64) (*model.AdminUpdateProductResponse, error) {
+func (prt *productController) UpdateProductController(ctx context.Context, req model.UpdateProductRequest, id int64) (*model.AdminUpdateProductResponse, error) {
 	existingProduct, err := prt.Repo.GetProductByID(id)
 	if err != nil {
 		return nil, fmt.Errorf("Product not found")
 	}
+	// Compare to check changed fields
 
 	finalSlug := existingProduct.Slug
 	if req.Slug != "" {
@@ -364,7 +370,145 @@ func (prt *productController) UpdateProductController(req model.UpdateProductReq
 	if err != nil {
 		return nil, err
 	}
+	changes := make(map[string]model.ProductChangeLog)
 
+	if existingProduct.Name != req.Name && req.Name != "" {
+		changes["name"] = model.ProductChangeLog{
+			Field:    "name",
+			OldValue: existingProduct.Name,
+			NewValue: req.Name,
+		}
+	}
+	if existingProduct.Slug != req.Slug && req.Slug != "" {
+		changes["slug"] = model.ProductChangeLog{
+			Field:    "slug",
+			OldValue: existingProduct.Slug,
+			NewValue: req.Slug,
+		}
+	}
+	if req.ShortDescription != "" &&
+		(existingProduct.ShortDescription == nil || *existingProduct.ShortDescription != req.ShortDescription) {
+		changes["short_description"] = model.ProductChangeLog{
+			Field:    "short_description",
+			OldValue: existingProduct.ShortDescription,
+			NewValue: req.ShortDescription,
+		}
+	}
+	if existingProduct.Description != stringToPtr(req.Description) && req.Description != "" {
+		changes["description"] = model.ProductChangeLog{
+			Field:    "description",
+			OldValue: existingProduct.Description,
+			NewValue: req.Description,
+		}
+	}
+	if existingProduct.Brand != stringToPtr(req.Brand) && req.Brand != "" {
+		changes["brand"] = model.ProductChangeLog{
+			Field:    "brand",
+			OldValue: existingProduct.Brand,
+			NewValue: req.Brand,
+		}
+	}
+	if existingProduct.Status != req.Status && req.Status != "" {
+		changes["status"] = model.ProductChangeLog{
+			Field:    "status",
+			OldValue: existingProduct.Status,
+			NewValue: req.Status,
+		}
+	}
+	if req.IsPublished != nil && existingProduct.IsPublished != *req.IsPublished {
+		changes["is_published"] = model.ProductChangeLog{
+			Field:    "is_published",
+			OldValue: existingProduct.IsPublished,
+			NewValue: *req.IsPublished,
+		}
+	}
+	if req.MinPrice != nil && existingProduct.MinPrice != *req.MinPrice {
+		changes["min_price"] = model.ProductChangeLog{
+			Field:    "min_price",
+			OldValue: existingProduct.MinPrice,
+			NewValue: *req.MinPrice,
+		}
+	}
+
+	if req.PublishedAt != "" {
+		newPublishedAt, err := time.Parse(time.RFC3339, req.PublishedAt)
+		if err != nil {
+			return nil, err
+		}
+		if existingProduct.PublishedAt == nil || !existingProduct.PublishedAt.Equal(newPublishedAt) {
+			changes["published_at"] = model.ProductChangeLog{
+				Field:    "published_at",
+				OldValue: existingProduct.PublishedAt,
+				NewValue: newPublishedAt,
+			}
+		}
+	}
+
+	if len(req.CategoryIDs) > 0 {
+		var oldCategoryIDs []int64
+		for _, cat := range existingProduct.Categories {
+			oldCategoryIDs = append(oldCategoryIDs, cat.ID)
+		}
+		// Logic so sánh mảng đơn giản
+		isDiff := false
+		if len(oldCategoryIDs) != len(req.CategoryIDs) {
+			isDiff = true
+		} else {
+			m := make(map[int64]bool)
+			for _, x := range oldCategoryIDs {
+				m[x] = true
+			}
+			for _, x := range req.CategoryIDs {
+				if !m[x] {
+					isDiff = true
+					break
+				}
+			}
+		}
+		if isDiff {
+			changes["categories"] = model.ProductChangeLog{Field: "categories", OldValue: oldCategoryIDs, NewValue: req.CategoryIDs}
+		}
+	}
+
+	if len(changes) > 0 {
+		changesBytes, err := json.Marshal(changes)
+		if err == nil {
+
+			// === 1. KHAI BÁO BIẾN ADMIN ID ===
+			var adminID *int64 // Mặc định là nil
+
+			// === 2. GỌI ADMIN ID TỪ CONTEXT (Dùng key "userID" như trong middleware) ===
+			if val := ctx.Value("userID"); val != nil {
+				// Cần ép kiểu vì ctx.Value trả về interface{}
+				// JWT thường lưu số dưới dạng float64, nên cần kiểm tra cả 2 trường hợp
+				if idFloat, ok := val.(float64); ok {
+					v := int64(idFloat)
+					adminID = &v
+				} else if idInt, ok := val.(int64); ok {
+					adminID = &idInt
+				} else if idInt, ok := val.(int); ok {
+					v := int64(idInt)
+					adminID = &v
+				}
+			}
+			var note *string
+			if req.Note != "" {
+				note = &req.Note
+			}
+			// === 3. SỬ DỤNG ADMIN ID ===
+			changeLog := &model.ProductHistory{
+				ProductID: existingProduct.ID,
+				AdminID:   adminID, // <-- Biến adminID đã có giá trị ở đây
+				Changes:   json.RawMessage(changesBytes),
+				Note:      note,
+				ChangedAt: time.Now(),
+			}
+
+			_, err = prt.HistoryRepo.CreateProductHistory(changeLog)
+
+		}
+
+	}
 	cats, err := prt.Repo.GetCategoriesByProductID(updatedProduct.ID)
 	if err == nil {
 		updatedProduct.Categories = cats
@@ -542,7 +686,7 @@ func (prt *productController) AdminGetManyProductByIDController(ids []int64) ([]
 			UpdatedAt:        pro.UpdatedAt,
 			DeletedAt:        pro.DeletedAt,
 			Categories:       pro.Categories,
-			Variants: 		  pro.Variants,
+			Variants:         pro.Variants,
 		})
 	}
 	return responses, nil

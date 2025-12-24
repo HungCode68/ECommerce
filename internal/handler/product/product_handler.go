@@ -67,7 +67,6 @@ func (h *productHandler) UpdateProductHandler(w http.ResponseWriter, r *http.Req
 		h.errJson(w, http.StatusBadRequest, "Invalid product ID in path")
 		return
 	}
-
 	var req model.UpdateProductRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.errJson(w, http.StatusBadRequest, "Invalid request payload")
@@ -79,7 +78,7 @@ func (h *productHandler) UpdateProductHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	adminReponse, err := h.PrtController.UpdateProductController(req, id)
+	adminReponse, err := h.PrtController.UpdateProductController(r.Context(),req, id)
 	if err != nil {
 		if err.Error() == "Product not found" {
 			h.errJson(w, http.StatusNotFound, err.Error())
@@ -128,10 +127,10 @@ func (h *productHandler) AdminGetProductHandler(w http.ResponseWriter, r *http.R
 
 // UserGetProductHandlerDetail - Lấy chi tiết cho User
 func (h *productHandler) UserGetProductHandlerDetail(w http.ResponseWriter, r *http.Request) {
-	
-	idStr := r.PathValue("id")           // Ưu tiên lấy ID từ URL path đẹp (/products/123)
-	queryID := r.URL.Query().Get("id")   // Fallback lấy từ query param (?id=123)
-	nameStr := r.URL.Query().Get("name") // Tìm theo tên
+
+	idStr := r.PathValue("id")             // Ưu tiên lấy ID từ URL path đẹp (/products/123)
+	queryID := r.URL.Query().Get("id")     // Fallback lấy từ query param (?id=123)
+	nameStr := r.URL.Query().Get("name")   // Tìm theo tên
 	brandStr := r.URL.Query().Get("brand") // [BẠN CỦA BẠN THÊM]: Tìm theo brand nếu cần
 
 	var parsedErr error
@@ -219,7 +218,7 @@ func (h *productHandler) UserGetProductHandler(w http.ResponseWriter, r *http.Re
 // UserSearchProductHandler - Tìm kiếm cho User
 
 func (h *productHandler) UserSearchProductHandler(w http.ResponseWriter, r *http.Request) {
-	
+
 	searchParam := r.URL.Query().Get("name")          // ?name=Samsung
 	brandParam := r.URL.Query().Get("brand")          // ?brand=Apple
 	categoryIDStr := r.URL.Query().Get("category_id") // ?category_id=1
@@ -245,7 +244,7 @@ func (h *productHandler) UserSearchProductHandler(w http.ResponseWriter, r *http
 		Brand:      brandParam,
 		CategoryID: categoryID,
 	}
-	
+
 	// Validate struct nếu cần (tùy logic validator của bạn)
 	if err := validator.Validate(req); err != nil {
 		h.errJson(w, http.StatusBadRequest, fmt.Sprintf("Validation failed: %v", err))
@@ -263,7 +262,7 @@ func (h *productHandler) UserSearchProductHandler(w http.ResponseWriter, r *http
 
 // AdminSearchProductsHandler - Tìm kiếm cho Admin (All status)
 func (h *productHandler) AdminSearchProductsHandler(w http.ResponseWriter, r *http.Request) {
-	
+
 	searchParam := r.URL.Query().Get("name")
 	brandParam := r.URL.Query().Get("brand")
 	categoryIDStr := r.URL.Query().Get("category_id")

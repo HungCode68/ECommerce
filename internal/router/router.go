@@ -4,7 +4,8 @@ import (
 	addressRouter "golang/internal/handler/address"
 	categoryRouter "golang/internal/handler/category"
 	productRouter "golang/internal/handler/product"
-	productVariantRouter "golang/internal/handler/productVariant"
+	producthistory "golang/internal/handler/producthistory"
+	productVariantRouter "golang/internal/handler/productvariant"
 	userRouter "golang/internal/handler/user"
 
 	"net/http"
@@ -17,6 +18,7 @@ func NewRouter(
 	productHandler productRouter.ProductHandler,
 	categoryHandler categoryRouter.CategoryHandler,
 	productVariantHandler productVariantRouter.ProductVariantHandler,
+	productHistoryHandler producthistory.ProductHistoryHandler,
 ) http.Handler {
 
 	mux := http.NewServeMux()
@@ -33,6 +35,8 @@ func NewRouter(
 	NewCategoryRouter(mux, categoryHandler)
 
 	NewProductVariantRouter(mux, productVariantHandler)
+
+	NewProductHistoryRouter(mux, productHistoryHandler)
 
 	// 3. Đăng ký Health Check (Optional - để check server sống hay chết)
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {

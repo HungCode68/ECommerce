@@ -3,14 +3,14 @@ package productvariant
 import (
 	"fmt"
 	"golang/internal/model"
-	"golang/internal/repository/productVariant"
+	"golang/internal/repository/productvariant"
 )
 
 type productVariantController struct {
-	VariantRepo productVariant.ProductVariantsRepository
+	VariantRepo productvariant.ProductVariantsRepository
 }
 
-func NewProductVariantController(repoVariant productVariant.ProductVariantsRepository) ProductVariantController {
+func NewProductVariantController(repoVariant productvariant.ProductVariantsRepository) ProductVariantController {
 	return &productVariantController{VariantRepo: repoVariant}
 }
 

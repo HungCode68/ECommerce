@@ -1,6 +1,9 @@
 package product
 
-import "golang/internal/model"
+import (
+	"context"
+	"golang/internal/model"
+)
 
 // ProductController - Interface định nghĩa các nghiệp vụ sản phẩm
 type ProductController interface {
@@ -9,7 +12,7 @@ type ProductController interface {
 	CreateProductController(product model.CreateProductRequest) (*model.AdminCreateProductResponse, error)
 
 	// Cập nhật sản phẩm
-	UpdateProductController(req model.UpdateProductRequest, id int64) (*model.AdminUpdateProductResponse, error)
+	UpdateProductController(ctx context.Context,req model.UpdateProductRequest, id int64) (*model.AdminUpdateProductResponse, error)
 
 	// Admin Get Logic
 	// Lấy chi tiết sản phẩm theo ID

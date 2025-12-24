@@ -27,10 +27,10 @@ type Product struct {
 	CreatedBy   *int64  `db:"created_by"` // Có thể NULL
 	UpdatedBy   *int64  `db:"updated_by"` // Có thể NULL
 
-	CreatedAt  time.Time  `db:"created_at"`
-	UpdatedAt  time.Time  `db:"updated_at"`
-	DeletedAt  *time.Time `db:"deleted_at"` // Có thể NULL
-	Categories []Category `json:"categories,omitempty"`
+	CreatedAt  time.Time          `db:"created_at"`
+	UpdatedAt  time.Time          `db:"updated_at"`
+	DeletedAt  *time.Time         `db:"deleted_at"` // Có thể NULL
+	Categories []Category         `json:"categories,omitempty"`
 	Variants   []ProductsVariants `json:"variants,omitempty"`
 }
 
@@ -68,7 +68,8 @@ type UpdateProductRequest struct {
 	Status           string   `json:"status" validate:"omitempty,oneof=draft active inactive archived"`
 	IsPublished      *bool    `json:"is_published"`
 	PublishedAt      string   `json:"published_at" validate:"omitempty,datetime=2006-01-02T15:04:05Z07:00"`
-	CategoryIDs      []int64  `json:"category_ids"`
+	Note             string   `json:"note" validate:"required,max=1000"`
+	CategoryIDs      []int64  `json:"category_ids" validate:"omitempty,min=1"`
 }
 
 // DeleteProductRequest dùng cho việc xóa sản phẩm (Admin)
@@ -97,7 +98,6 @@ type SearchProductsRequest struct {
 // 3. RESPONSE DTOs - USER (Trả về cho khách hàng)
 // =================================================================
 
-
 // UserProductResponse - Thông tin sản phẩm cho User
 type UserProductResponse struct {
 	ID       int64   `json:"id"`
@@ -124,37 +124,35 @@ type UserProductDetailResponse struct {
 	AvgRating        float64    `json:"avg_rating"`
 	RatingCount      int        `json:"rating_count"`
 	PublishedAt      *time.Time `json:"published_at,omitempty"`
-	
-	Categories       []Category            `json:"categories,omitempty"` // Của bạn
-	Variants         []UserVariantResponse `json:"variants,omitempty"`
+
+	Categories []Category            `json:"categories,omitempty"` // Của bạn
+	Variants   []UserVariantResponse `json:"variants,omitempty"`
 }
 
 // =================================================================
 // 4. RESPONSE DTOs - ADMIN (Trả về đầy đủ thông tin cho quản trị viên)
 // =================================================================
 
-
-
 // AdminProductResponse - Thông tin đầy đủ sản phẩm cho Admin
 type AdminProductResponse struct {
-	ID               int64      `json:"id"`
-	Name             string     `json:"name"`
-	Slug             string     `json:"slug"`
-	ShortDescription *string    `json:"short_description,omitempty"`
-	Description      *string    `json:"description,omitempty"`
-	Brand            *string    `json:"brand,omitempty"`
-	Status           string     `json:"status"`
-	IsPublished      bool       `json:"is_published"`
-	PublishedAt      *time.Time `json:"published_at,omitempty"`
-	MinPrice         float64    `json:"min_price"`
-	AvgRating        float64    `json:"avg_rating"`
-	RatingCount      int        `json:"rating_count"`
-	CreatedBy        *int64     `json:"created_by,omitempty"`
-	UpdatedBy        *int64     `json:"updated_by,omitempty"`
-	CreatedAt        time.Time  `json:"created_at"`
-	UpdatedAt        time.Time  `json:"updated_at"`
-	DeletedAt        *time.Time `json:"deleted_at,omitempty"`
-	Categories       []Category `json:"categories,omitempty"`
+	ID               int64              `json:"id"`
+	Name             string             `json:"name"`
+	Slug             string             `json:"slug"`
+	ShortDescription *string            `json:"short_description,omitempty"`
+	Description      *string            `json:"description,omitempty"`
+	Brand            *string            `json:"brand,omitempty"`
+	Status           string             `json:"status"`
+	IsPublished      bool               `json:"is_published"`
+	PublishedAt      *time.Time         `json:"published_at,omitempty"`
+	MinPrice         float64            `json:"min_price"`
+	AvgRating        float64            `json:"avg_rating"`
+	RatingCount      int                `json:"rating_count"`
+	CreatedBy        *int64             `json:"created_by,omitempty"`
+	UpdatedBy        *int64             `json:"updated_by,omitempty"`
+	CreatedAt        time.Time          `json:"created_at"`
+	UpdatedAt        time.Time          `json:"updated_at"`
+	DeletedAt        *time.Time         `json:"deleted_at,omitempty"`
+	Categories       []Category         `json:"categories,omitempty"`
 	Variants         []ProductsVariants `json:"variants,omitempty"`
 }
 
@@ -188,7 +186,6 @@ type AdminDeleteProductResponse struct {
 	Message string `json:"message"`
 	Success bool   `json:"success"`
 }
-
 
 // GetManyProductsResponse - Response trả về nhiều sản phẩm
 type GetManyProductsResponse struct {

@@ -16,7 +16,7 @@ type DBConfig struct {
 
 func NewDatabaseConnection() *DBConfig {
 	//  Load file .env
-	if err := godotenv.Load("internal/configs/.env"); err != nil {
+	if err := godotenv.Load("./.env"); err != nil {
 		log.Fatalf("Lỗi trong file .env: %v", err)
 	}
 

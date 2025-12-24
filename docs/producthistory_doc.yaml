@@ -1,0 +1,357 @@
+openapi: 3.0.0
+info:
+  title: Product History API
+  description: API quản lý lịch sử thay đổi sản phẩm trong hệ thống E-Commerce
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@ecommerce.com
+
+servers:
+  - url: http://localhost:8080
+    description: Development Server
+
+tags:
+  - name: Product History
+    description: Các endpoint quản lý lịch sử thay đổi sản phẩm
+
+paths:
+  /admin/product/history:
+    get:
+      tags:
+        - Product History
+      summary: Lấy lịch sử thay đổi theo Product ID
+      description: |
+        Endpoint này cho phép lấy lịch sử thay đổi của một hoặc nhiều sản phẩm cụ thể.
+        Chỉ dành cho Admin. Hỗ trợ tìm kiếm nhiều product ID bằng cách truyền các ID phân tách bằng dấu phẩy.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: query
+          required: true
+          description: ID của sản phẩm cần xem lịch sử. Có thể truyền nhiều ID phân tách bằng dấu phẩy (vd. 1,2,3)
+          schema:
+            type: string
+            example: "1,2,3"
+      responses:
+        '200':
+          description: Lấy lịch sử thay đổi thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Lấy lịch sử sản phẩm thành công"
+                  histories:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProductHistoryResponse'
+              examples:
+                success:
+                  summary: Ví dụ response thành công
+                  value:
+                    message: "Lấy lịch sử sản phẩm thành công"
+                    histories:
+                      - id: 1
+                        product_id: 101
+                        variant_id: 201
+                        admin_id: 5
+                        changed_at: "2025-12-24T10:30:00Z"
+                        changes:
+                          - field: "price"
+                            old_value: 100000
+                            new_value: 120000
+                          - field: "stock"
+                            old_value: 50
+                            new_value: 75
+                        note: "Cập nhật giá và số lượng tồn kho"
+                      - id: 2
+                        product_id: 102
+                        variant_id: null
+                        admin_id: 5
+                        changed_at: "2025-12-23T15:20:00Z"
+                        changes:
+                          - field: "name"
+                            old_value: "Áo thun cũ"
+                            new_value: "Áo thun mới"
+                        note: "Cập nhật tên sản phẩm"
+        '400':
+          description: Lỗi validate dữ liệu đầu vào
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidId:
+                  summary: ID không hợp lệ
+                  value:
+                    error: "Invalid product ID"
+        '401':
+          description: Chưa đăng nhập hoặc token không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                unauthorized:
+                  summary: Chưa xác thực
+                  value:
+                    error: "Unauthorized"
+        '403':
+          description: Không có quyền truy cập (chỉ dành cho Admin)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                forbidden:
+                  summary: Không có quyền
+                  value:
+                    error: "Forbidden - Admin only"
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                serverError:
+                  summary: Lỗi server
+                  value:
+                    error: "Failed to get product history"
+
+  /admin/product/history/all:
+    get:
+      tags:
+        - Product History
+      summary: Lấy lịch sử thay đổi của tất cả sản phẩm
+      description: |
+        Endpoint này cho phép lấy lịch sử thay đổi của tất cả sản phẩm trong hệ thống với phân trang.
+        Chỉ dành cho Admin.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          description: Số trang cần lấy (mặc định là 1)
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+            example: 1
+        - name: limit
+          in: query
+          required: false
+          description: Số lượng bản ghi trên mỗi trang (mặc định là 10)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+            example: 10
+      responses:
+        '200':
+          description: Lấy danh sách lịch sử thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetAllProductsHistoryResponse'
+              examples:
+                success:
+                  summary: Ví dụ response thành công
+                  value:
+                    message: "Lấy tất cả lịch sử sản phẩm thành công"
+                    meta:
+                      current_page: 1
+                      total_pages: 5
+                      page: 1
+                      limit: 10
+                    histories:
+                      - id: 1
+                        product_id: 101
+                        variant_id: 201
+                        admin_id: 5
+                        changed_at: "2025-12-24T10:30:00Z"
+                        changes:
+                          - field: "price"
+                            old_value: 100000
+                            new_value: 120000
+                        note: "Cập nhật giá sản phẩm"
+                      - id: 2
+                        product_id: 102
+                        variant_id: null
+                        admin_id: 3
+                        changed_at: "2025-12-24T09:15:00Z"
+                        changes:
+                          - field: "stock"
+                            old_value: 20
+                            new_value: 50
+                        note: "Nhập thêm hàng"
+        '401':
+          description: Chưa đăng nhập hoặc token không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                unauthorized:
+                  summary: Chưa xác thực
+                  value:
+                    error: "Unauthorized"
+        '403':
+          description: Không có quyền truy cập (chỉ dành cho Admin)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                forbidden:
+                  summary: Không có quyền
+                  value:
+                    error: "Forbidden - Admin only"
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                serverError:
+                  summary: Lỗi server
+                  value:
+                    error: "Failed to get all products history"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token để xác thực. Thêm "Bearer " trước token (vd. Bearer eyJhbGciOi...)
+
+  schemas:
+    ProductHistoryResponse:
+      type: object
+      description: Thông tin lịch sử thay đổi sản phẩm
+      required:
+        - id
+        - product_id
+        - changed_at
+        - changes
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: ID của bản ghi lịch sử
+          example: 1
+        product_id:
+          type: integer
+          format: int64
+          description: ID của sản phẩm được thay đổi
+          example: 101
+        variant_id:
+          type: integer
+          format: int64
+          nullable: true
+          description: ID của biến thể sản phẩm (nếu có)
+          example: 201
+        admin_id:
+          type: integer
+          format: int64
+          nullable: true
+          description: ID của admin thực hiện thay đổi
+          example: 5
+        changed_at:
+          type: string
+          format: date-time
+          description: Thời gian thay đổi
+          example: "2025-12-24T10:30:00Z"
+        changes:
+          type: array
+          description: Danh sách các thay đổi được thực hiện (JSON array)
+          items:
+            $ref: '#/components/schemas/ProductChangeLog'
+        note:
+          type: string
+          nullable: true
+          description: Ghi chú về thay đổi
+          example: "Cập nhật giá sản phẩm theo chương trình khuyến mãi"
+
+    ProductChangeLog:
+      type: object
+      description: Chi tiết một thay đổi cụ thể
+      required:
+        - field
+        - old_value
+        - new_value
+      properties:
+        field:
+          type: string
+          description: Tên trường được thay đổi
+          example: "price"
+        old_value:
+          description: Giá trị cũ của trường
+          example: 100000
+        new_value:
+          description: Giá trị mới của trường
+          example: 120000
+
+    GetAllProductsHistoryResponse:
+      type: object
+      description: Response cho endpoint lấy tất cả lịch sử sản phẩm
+      required:
+        - meta
+        - histories
+      properties:
+        message:
+          type: string
+          description: Thông báo kết quả
+          example: "Lấy tất cả lịch sử sản phẩm thành công"
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+        histories:
+          type: array
+          description: Danh sách lịch sử thay đổi
+          items:
+            $ref: '#/components/schemas/ProductHistoryResponse'
+
+    PaginationMeta:
+      type: object
+      description: Thông tin phân trang
+      required:
+        - current_page
+        - total_pages
+        - page
+        - limit
+      properties:
+        current_page:
+          type: integer
+          description: Trang hiện tại
+          example: 1
+        total_pages:
+          type: integer
+          description: Tổng số trang
+          example: 5
+        page:
+          type: integer
+          description: Số trang được yêu cầu
+          example: 1
+        limit:
+          type: integer
+          description: Số lượng bản ghi trên mỗi trang
+          example: 10
+
+    ErrorResponse:
+      type: object
+      description: Cấu trúc response lỗi
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Mô tả lỗi
+          example: "Invalid product ID"

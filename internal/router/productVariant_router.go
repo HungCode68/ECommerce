@@ -1,13 +1,13 @@
 package router
 
 import (
-	"golang/internal/handler/productVariant"
+	"golang/internal/handler/productvariant"
 	"golang/internal/middleware"
 	"net/http"
 )
 
 // NewProductVariantRouter định nghĩa các route cho biến thể sản phẩm (Variant)
-func NewProductVariantRouter(mux *http.ServeMux, h productVariant.ProductVariantHandler) http.Handler {
+func NewProductVariantRouter(mux *http.ServeMux, h productvariant.ProductVariantHandler) http.Handler {
 
 	variantGroup := newGroup(mux, "/admin/product", middleware.AdminOnlyMiddleware)
 

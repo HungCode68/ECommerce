@@ -218,7 +218,7 @@ paths:
             example:
               sku: "IP15-BLK-128GB"
               title: "iPhone 15 Đen 128GB"
-              option_value: "Màu: Đen, Dung lượng: 128GB"
+              option_value: "{\"color\": \"Black\", \"storage\": \"256GB\"}"
               price_override: 20990000
               cost_price: 18000000
               stock_quantity: 50

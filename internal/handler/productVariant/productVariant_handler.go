@@ -1,9 +1,9 @@
-package productVariant
+package productvariant
 
 import (
 	"encoding/json"
 	"fmt"
-	"golang/internal/controller/productVariant"
+	"golang/internal/controller/productvariant"
 	"golang/internal/model"
 	"golang/internal/validator"
 	"net/http"

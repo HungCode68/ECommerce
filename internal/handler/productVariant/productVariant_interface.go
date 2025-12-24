@@ -1,4 +1,4 @@
-package productVariant
+package productvariant
 
 import "net/http"
 
