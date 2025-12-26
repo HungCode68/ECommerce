@@ -1,0 +1,377 @@
+openapi: 3.0.3
+info:
+  title: E-Commerce Product Review API
+  description: |-
+    Tài liệu API cho module Quản lý Đánh giá Sản phẩm (Product Reviews).
+  version: 1.0.0
+tags:
+  - name: Product Reviews (Public)
+    description: API công khai để xem đánh giá sản phẩm
+  - name: Product Reviews (User)
+    description: API cho người dùng đã xác thực để tạo đánh giá
+  - name: Product Reviews (Admin)
+    description: API cho Admin quản lý đánh giá
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # --- Request Models ---
+    CreateProductReviewRequest:
+      type: object
+      required:
+        - body
+        - rating
+      properties:
+        body:
+          type: string
+          example: "Sản phẩm rất tốt, chất lượng vượt mong đợi!"
+          minLength: 5
+          maxLength: 1000
+          description: Nội dung đánh giá (5-1000 ký tự, không chứa từ ngữ không phù hợp)
+        rating:
+          type: integer
+          example: 5
+          minimum: 1
+          maximum: 5
+          description: Số sao đánh giá (1-5)
+
+    # --- Response Models ---
+    ProductReviewResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        product_id:
+          type: integer
+          format: int64
+          example: 10
+        body:
+          type: string
+          example: "Sản phẩm rất tốt, chất lượng vượt mong đợi!"
+        rating:
+          type: integer
+          example: 5
+        user_id:
+          type: integer
+          format: int64
+          example: 123
+        created_at:
+          type: string
+          format: date-time
+          example: "2025-12-26T10:30:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2025-12-26T10:30:00Z"
+
+    CreateProductReviewResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Review created successfully"
+        review:
+          $ref: '#/components/schemas/ProductReviewResponse'
+
+    ProductReviewListResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Reviews retrieved successfully"
+        product_id:
+          type: integer
+          format: int64
+          example: 10
+        avg_rating:
+          type: number
+          format: double
+          example: 4.5
+          description: Điểm đánh giá trung bình của sản phẩm
+        rating_count:
+          type: integer
+          format: int64
+          example: 42
+          description: Tổng số đánh giá của sản phẩm
+        reviews:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductReviewResponse'
+
+    DeleteProductReviewResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Review deleted successfully"
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Invalid request"
+        message:
+          type: string
+          example: "Rating must be between 1 and 5"
+
+paths:
+  /user/product/{id}/reviews:
+    get:
+      tags:
+        - Product Reviews (Public)
+      summary: Lấy danh sách đánh giá của sản phẩm
+      description: |-
+        API công khai để lấy tất cả đánh giá của một sản phẩm.
+        Bao gồm thông tin về điểm trung bình và tổng số đánh giá.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID của sản phẩm cần xem đánh giá
+          schema:
+            type: integer
+            format: int64
+            example: 10
+      responses:
+        '200':
+          description: Lấy danh sách đánh giá thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductReviewListResponse'
+              examples:
+                success:
+                  value:
+                    message: "Reviews retrieved successfully"
+                    product_id: 10
+                    avg_rating: 4.5
+                    rating_count: 3
+                    reviews:
+                      - id: 1
+                        product_id: 10
+                        body: "Sản phẩm rất tốt!"
+                        rating: 5
+                        user_id: 123
+                        created_at: "2025-12-26T10:30:00Z"
+                        updated_at: "2025-12-26T10:30:00Z"
+                      - id: 2
+                        product_id: 10
+                        body: "Chất lượng ổn, giao hàng nhanh"
+                        rating: 4
+                        user_id: 124
+                        created_at: "2025-12-25T14:20:00Z"
+                        updated_at: "2025-12-25T14:20:00Z"
+                      - id: 3
+                        product_id: 10
+                        body: "Đúng như mô tả"
+                        rating: 4
+                        user_id: 125
+                        created_at: "2025-12-24T09:15:00Z"
+                        updated_at: "2025-12-24T09:15:00Z"
+        '404':
+          description: Không tìm thấy sản phẩm
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Product not found"
+                message: "Product with ID 10 does not exist"
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - Product Reviews (User)
+      summary: Tạo đánh giá mới cho sản phẩm
+      description: |-
+        API cho người dùng đã xác thực để tạo đánh giá cho sản phẩm.
+        
+        **Yêu cầu:**
+        - Người dùng phải đăng nhập (Bearer Token)
+        - Nội dung đánh giá từ 5-1000 ký tự
+        - Rating từ 1-5 sao
+        - Không chứa từ ngữ không phù hợp
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID của sản phẩm cần đánh giá
+          schema:
+            type: integer
+            format: int64
+            example: 10
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProductReviewRequest'
+            examples:
+              validReview:
+                summary: Đánh giá hợp lệ
+                value:
+                  body: "Sản phẩm rất tốt, chất lượng vượt mong đợi. Giao hàng nhanh chóng!"
+                  rating: 5
+              minimalReview:
+                summary: Đánh giá ngắn gọn
+                value:
+                  body: "Tốt!"
+                  rating: 4
+      responses:
+        '201':
+          description: Tạo đánh giá thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateProductReviewResponse'
+              example:
+                message: "Review created successfully"
+                review:
+                  id: 15
+                  product_id: 10
+                  body: "Sản phẩm rất tốt, chất lượng vượt mong đợi!"
+                  rating: 5
+                  user_id: 123
+                  created_at: "2025-12-26T10:30:00Z"
+                  updated_at: "2025-12-26T10:30:00Z"
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidRating:
+                  summary: Rating không hợp lệ
+                  value:
+                    error: "Validation failed"
+                    message: "Rating must be between 1 and 5"
+                bodyTooShort:
+                  summary: Nội dung quá ngắn
+                  value:
+                    error: "Validation failed"
+                    message: "Body must be at least 5 characters"
+                badWords:
+                  summary: Chứa từ ngữ không phù hợp
+                  value:
+                    error: "Validation failed"
+                    message: "Review contains inappropriate language"
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Unauthorized"
+                message: "Authentication required"
+        '404':
+          description: Không tìm thấy sản phẩm
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Product not found"
+                message: "Product with ID 10 does not exist"
+        '409':
+          description: Đã đánh giá trước đó
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Conflict"
+                message: "You have already reviewed this product"
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /admin/product/reviews/{reviewId}:
+    delete:
+      tags:
+        - Product Reviews (Admin)
+      summary: Xóa đánh giá (Admin)
+      description: |-
+        API cho Admin để xóa đánh giá không phù hợp hoặc vi phạm chính sách.
+        
+        **Yêu cầu:**
+        - Phải có quyền Admin
+        - Bearer Token hợp lệ
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reviewId
+          in: path
+          required: true
+          description: ID của đánh giá cần xóa
+          schema:
+            type: integer
+            format: int64
+            example: 15
+      responses:
+        '200':
+          description: Xóa đánh giá thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteProductReviewResponse'
+              example:
+                message: "Review deleted successfully"
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Unauthorized"
+                message: "Authentication required"
+        '403':
+          description: Không có quyền truy cập
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Forbidden"
+                message: "Admin access required"
+        '404':
+          description: Không tìm thấy đánh giá
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Review not found"
+                message: "Review with ID 15 does not exist"
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Development server
+  - url: https://api.ecommerce.com/v1
+    description: Production server

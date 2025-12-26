@@ -32,6 +32,7 @@ type Product struct {
 	DeletedAt  *time.Time         `db:"deleted_at"` // Có thể NULL
 	Categories []Category         `json:"categories,omitempty"`
 	Variants   []ProductsVariants `json:"variants,omitempty"`
+	Reviews    []ProductReview    `json:"reviews,omitempty"`
 }
 
 // 2. REQUEST DTOs (Data Transfer Objects - Nhận Input)
@@ -125,8 +126,9 @@ type UserProductDetailResponse struct {
 	RatingCount      int        `json:"rating_count"`
 	PublishedAt      *time.Time `json:"published_at,omitempty"`
 
-	Categories []Category            `json:"categories,omitempty"` // Của bạn
+	Categories []Category            `json:"categories,omitempty"`
 	Variants   []UserVariantResponse `json:"variants,omitempty"`
+	Reviews    []ProductReview       `json:"reviews,omitempty"`
 }
 
 // =================================================================
@@ -154,6 +156,7 @@ type AdminProductResponse struct {
 	DeletedAt        *time.Time         `json:"deleted_at,omitempty"`
 	Categories       []Category         `json:"categories,omitempty"`
 	Variants         []ProductsVariants `json:"variants,omitempty"`
+	Reviews          []ProductReview    `json:"reviews,omitempty"`
 }
 
 // AdminProductListResponse - Danh sách sản phẩm cho Admin

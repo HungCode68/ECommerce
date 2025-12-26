@@ -10,9 +10,33 @@ import (
 // 1. Tạo biến toàn cục (private) để lưu instance của thư viện gốc
 var validate *validator.Validate
 
+var badWordList = []string{
+	"abc",
+	"fake",
+	"scam",
+	"fraud",
+	"spam",
+}
+
+// CustomValidator struct (nếu cần thêm phương thức khác, có thể thêm vào đây)
+
 // 2. Hàm init() sẽ tự động chạy khi chương trình bắt đầu
 func init() {
 	validate = validator.New()
+	// Đăng ký hàm validate tùy chỉnh cho từ ngữ không phù hợp
+	validate.RegisterValidation("badwords", containsBadWords)
+}
+func containsBadWords(fl validator.FieldLevel) bool {
+	text := fl.Field().String()
+	textLower := strings.ToLower(text)
+
+	for _, word := range badWordList {
+		if strings.Contains(textLower, word) {
+			return false // Trả về false nghĩa là Vi phạm (Lỗi)
+		}
+	}
+	return true // Trả về true nghĩa là Hợp lệ
+
 }
 
 // 3. Hàm Validate công khai (Global Function) - Không cần receiver (cv *CustomValidator) nữa
@@ -51,6 +75,8 @@ func getErrorMessage(fe validator.FieldError) string {
 		return fmt.Sprintf("Giá trị phải là một trong các loại: %s", strings.ReplaceAll(fe.Param(), " ", ", "))
 	case "gt":
 		return fmt.Sprintf("Giá trị phải lớn hơn %s", fe.Param())
+	case "badwords":
+		return "Nội dung chứa từ ngữ không phù hợp"
 	default:
 		return fmt.Sprintf("Lỗi không xác định (%s)", fe.Tag())
 	}

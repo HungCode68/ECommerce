@@ -8,6 +8,7 @@ import (
 	"golang/internal/model"
 	product "golang/internal/repository/product"
 	producthistory "golang/internal/repository/producthistory"
+	productreview "golang/internal/repository/productreview"
 	productVariant "golang/internal/repository/productvariant"
 	"time"
 
@@ -18,14 +19,16 @@ type productController struct {
 	Repo         product.ProductRepository
 	RepoVariants productVariant.ProductVariantsRepository
 	HistoryRepo  producthistory.ProductHistoryRepository
+	ReviewRepo   productreview.ProductReviewRepository
 }
 
 // NewProductController - Khởi tạo product controller
-func NewProductController(repo product.ProductRepository, repoVariants productVariant.ProductVariantsRepository, repoHistory producthistory.ProductHistoryRepository) ProductController {
+func NewProductController(repo product.ProductRepository, repoVariants productVariant.ProductVariantsRepository, repoHistory producthistory.ProductHistoryRepository, repoReview productreview.ProductReviewRepository) ProductController {
 	return &productController{
 		Repo:         repo,
 		RepoVariants: repoVariants,
 		HistoryRepo:  repoHistory,
+		ReviewRepo:   repoReview,
 	}
 }
 
@@ -151,6 +154,15 @@ func (prt *productController) getProductCommon(reqProduct *model.GetProductReque
 	if err == nil {
 		pro.Categories = cats
 	}
+	//lay rate va count reviews
+	avgRating, err := prt.ReviewRepo.GetAverageRatingByProductID(pro.ID)
+	if err == nil {
+		pro.AvgRating = avgRating
+	}
+
+	if ratingCount, err := prt.ReviewRepo.GetCountRatingByProductID(pro.ID); err == nil {
+		pro.RatingCount = int(ratingCount)
+	}
 
 	return pro, nil
 }
@@ -195,6 +207,10 @@ func (prt *productController) AdminGetProductController(reqProduct *model.GetPro
 			}
 		}
 	}
+	reviewsResponses, err := prt.ReviewRepo.GetProductReviewsByProductID(pro.ID)
+	if err != nil {
+		reviewsResponses = []model.ProductReview{}
+	}
 
 	return &model.AdminProductDetailResponse{
 		Message: "Product retrieved successfully",
@@ -217,6 +233,7 @@ func (prt *productController) AdminGetProductController(reqProduct *model.GetPro
 			UpdatedAt:        pro.UpdatedAt,
 			DeletedAt:        pro.DeletedAt,
 			Categories:       pro.Categories,
+			Reviews:          reviewsResponses,
 		},
 		Variants: variantResponses,
 	}, nil
@@ -253,6 +270,7 @@ func (prt *productController) UserGetProductDetailController(reqProduct *model.G
 	minPrice := pro.MinPrice
 	hasActiveVariants := false
 
+	reviewReponse, err := prt.ReviewRepo.GetProductReviewsByProductID(pro.ID)
 	for _, v := range variantsModel {
 		if v.IsActive {
 			resp := model.UserVariantResponse{
@@ -291,6 +309,7 @@ func (prt *productController) UserGetProductDetailController(reqProduct *model.G
 		PublishedAt:      pro.PublishedAt,
 		Categories:       pro.Categories,
 		Variants:         variantResponses,
+		Reviews:          reviewReponse,
 	}, nil
 }
 
@@ -498,7 +517,7 @@ func (prt *productController) UpdateProductController(ctx context.Context, req m
 			// === 3. SỬ DỤNG ADMIN ID ===
 			changeLog := &model.ProductHistory{
 				ProductID: existingProduct.ID,
-				AdminID:   adminID, // <-- Biến adminID đã có giá trị ở đây
+				AdminID:   adminID,
 				Changes:   json.RawMessage(changesBytes),
 				Note:      note,
 				ChangedAt: time.Now(),
