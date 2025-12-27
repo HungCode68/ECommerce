@@ -9,7 +9,7 @@ import (
 
 	cartRepo "golang/internal/repository/cart"
 	productRepo "golang/internal/repository/product"
-	variantRepo "golang/internal/repository/productVariant"
+	variantRepo "golang/internal/repository/productvariant"
 
 	"golang/internal/router"
 )
