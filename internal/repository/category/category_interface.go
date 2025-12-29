@@ -12,8 +12,8 @@ type CategoryRepo interface {
 	DeleteSoftCategories(ids []int64) error
 	DeleteCategoryHard(id int64) error
 	GetCategoryByID(id int64) (*model.Category, error)
-	GetAllCategories() ([]model.Category, error)
-	SearchAllCategories(keyword string) ([]model.Category, error)
+	GetAllCategories(req model.AdminGetCategoriesRequest) ([]model.Category, int, error)
+	SearchAllCategories(keyword string, isActive *bool) ([]model.Category, error)
 
 	GetActiveCategories() ([]model.Category, error)
 	SearchActiveCategories(keyword string) ([]model.Category, error)

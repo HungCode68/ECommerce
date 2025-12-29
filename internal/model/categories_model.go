@@ -44,6 +44,12 @@ type GetCategoryRequest struct {
 	Slug string `json:"slug,omitempty" validate:"omitempty,min=1"`
 }
 
+// AdminGetCategoriesRequest: Chỉ dùng cho việc phân trang
+type AdminGetCategoriesRequest struct {
+	Page  int `json:"page"  validate:"min=1"`
+	Limit int `json:"limit" validate:"min=1,max=100"`
+}
+
 
 // CategoryResponse
 type AdminCategoryResponse struct {

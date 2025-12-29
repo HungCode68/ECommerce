@@ -31,6 +31,15 @@ type LoginRequest struct {
 	Password   string `json:"password"   validate:"required,min=6,max=30"`
 }
 
+// Lọc dữ liệu tài khoản
+type UserFilter struct {
+	Keyword   string 	`validate:"omitempty,max=100"`
+	Role      string 	`validate:"omitempty,oneof=admin user"`
+	IsActive  *bool  
+	IsDeleted *bool 
+	Page      int		`validate:"min=1"`
+	Limit     int		`validate:"min=1,max=100"`
+}
 
 // UserUpdateProfileRequest: Dùng khi user tự cập nhật thông tin cá nhân
 type UserUpdateProfileRequest struct {

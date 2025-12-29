@@ -229,21 +229,31 @@ func (c *userController) GetUserByID(id int64) (model.AdminUserResponse, error) 
 }
 
 // Hàm tìm kiếm user theo từ khóa
-func (c *userController) SearchUsers(keyword string) ([]model.AdminUserResponse, error) {
-	logger.InfoLogger.Printf("Tìm kiếm user với từ khóa: %s", keyword)
-	users, err := c.UserRepo.SearchUsers(keyword)
-	if err != nil {
-		logger.ErrorLogger.Printf("Lỗi tìm kiếm user: %v", err)
-		return nil, err
-	}
-	var response []model.AdminUserResponse
-	for _, u := range users {
-		response = append(response, model.AdminUserResponse{
-			ID: u.ID, Username: u.Username, Email: u.Email, Role: u.Role,
-			IsActive: u.IsActive, CreatedAt: u.CreatedAt, UpdatedAt: u.UpdatedAt, DeletedAt: u.DeletedAt,
-		})
-	}
-	return response, nil
+func (c *userController) SearchUsers(filter model.UserFilter) ([]model.AdminUserResponse, int, error) {
+	logger.InfoLogger.Printf("Controller: Searching users with Filter: %+v", filter)
+	// Gọi Repo
+    users, total, err := c.UserRepo.SearchUsers(filter)
+    if err != nil {
+		logger.ErrorLogger.Printf("Controller: Failed to search users. Error: %v", err)
+        return nil, 0, err
+    }
+
+    // Map sang Response (AdminUserResponse)
+    var response []model.AdminUserResponse
+    for _, u := range users {
+        response = append(response, model.AdminUserResponse{
+            ID:        u.ID,
+            Username:  u.Username,
+            Email:     u.Email,
+            Role:      u.Role,
+            IsActive:  u.IsActive,
+            CreatedAt: u.CreatedAt,
+            UpdatedAt: u.UpdatedAt,
+            DeletedAt: u.DeletedAt,
+        })
+    }
+	logger.InfoLogger.Printf("Controller: SearchUsers success. Returning %d users (Total found in DB: %d)", len(response), total)
+    return response, total, nil
 }
 
 // Hàm cập nhật thông tin user

@@ -8,7 +8,6 @@ import (
 	"golang/internal/validator"
 	"net/http"
 	"strconv"
-	"strings"
 )
 
 type userHandler struct {
@@ -144,31 +143,78 @@ func (h *userHandler) GetUserByID(w http.ResponseWriter, r *http.Request) {
 
 // SearchUsers - Tìm kiếm người dùng theo từ khóa
 func (h *userHandler) SearchUsers(w http.ResponseWriter, r *http.Request) {
-	rawKeyword := r.URL.Query().Get("q")
-	keyword := strings.TrimSpace(rawKeyword)
+	query := r.URL.Query()
 
-	if keyword == "" {
-		utils.WriteError(w, http.StatusBadRequest, "Thiếu từ khóa", "Vui lòng nhập từ khóa tìm kiếm (?q=...)")
+	//  Parse dữ liệu (String -> Struct Type)
+	keyword := query.Get("keyword")
+	role := query.Get("role")
+
+	// Parse IsActive
+	var isActive *bool
+	if val := query.Get("is_active"); val != "" {
+		b, err := strconv.ParseBool(val)
+		if err != nil {
+			// Nếu nhập sai (VD: "abc", "1234") -> Báo lỗi ngay
+			utils.WriteError(w, http.StatusBadRequest, "Tham số không hợp lệ", err.Error())
+			return
+		}
+		isActive = &b
+	}
+
+	// Parse IsDeleted
+	var isDeleted *bool
+	if val := query.Get("is_deleted"); val != "" {
+		b, err := strconv.ParseBool(val)
+		if err != nil {
+			utils.WriteError(w, http.StatusBadRequest, "Tham số không hợp lệ ", err.Error())
+			return
+		}
+		isDeleted = &b
+	}
+
+	// Parse Page (Mặc định 1)
+	page, err := strconv.Atoi(query.Get("page"))
+	if err != nil || page < 1 {
+		page = 1
+	}
+
+	// Parse Limit (Mặc định 10)
+	limit, err := strconv.Atoi(query.Get("limit"))
+	if err != nil || limit < 1 {
+		limit = 10
+	}
+
+	// 2. Tạo struct Filter
+	filter := model.UserFilter{
+		Keyword:   keyword,
+		Role:      role,
+		IsActive:  isActive,
+		IsDeleted: isDeleted,
+		Page:      page,
+		Limit:     limit,
+	}
+
+	if errs := validator.Validate(filter); errs != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Tham số lọc không hợp lệ", errs)
 		return
 	}
 
-	if len(keyword) < 2 {
-		utils.WriteError(w, http.StatusBadRequest, "Từ khóa quá ngắn", "Vui lòng nhập ít nhất 2 ký tự")
-		return
-	}
-
-	if len(keyword) > 50 {
-		utils.WriteError(w, http.StatusBadRequest, "Từ khóa quá dài", "Vui lòng nhập dưới 50 ký tự")
-		return
-	}
-
-	users, err := h.UserController.SearchUsers(keyword)
+	// Gọi Controller
+	users, total, err := h.UserController.SearchUsers(filter)
 	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Lỗi tìm kiếm", err.Error())
+		utils.WriteError(w, http.StatusInternalServerError, "Lỗi lấy danh sách user", err.Error())
 		return
 	}
 
-	utils.WriteJSON(w, http.StatusOK, "Tìm kiếm thành công", users)
+	// Trả về kết quả
+	utils.WriteJSON(w, http.StatusOK, "Thành công", map[string]interface{}{
+		"users": users,
+		"meta": map[string]interface{}{
+			"total": total,
+			"page":  page,
+			"limit": limit,
+		},
+	})
 }
 
 // UpdateUser - Cập nhật thông tin người dùng (Admin)

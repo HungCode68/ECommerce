@@ -85,42 +85,43 @@ func (r *CategoryDb) GetCategoryByID(id int64) (*model.Category, error) {
 }
 
 // AdminSearchCategories: Tìm kiếm danh mục theo tên (Lấy cả Active và Inactive)
-func (r *CategoryDb) SearchAllCategories(keyword string) ([]model.Category, error) {
-	logger.DebugLogger.Printf("Starting AdminSearchCategories with keyword: %s", keyword)
-
-	nameKeyword := "%" + keyword + "%"
-	slugKeyword := "%" + slug.Make(keyword) + "%"
-
+func (r *CategoryDb) SearchAllCategories(keyword string, isActive *bool) ([]model.Category, error) {
+	// Tìm theo Name hoặc Slug
 	query := `SELECT id, name, slug, description, is_active, created_at, updated_at 
 			  FROM categories 
-			  WHERE name LIKE ? OR slug LIKE ? 
-			  ORDER BY created_at DESC`
+			  WHERE (name LIKE ? OR slug LIKE ?)`
+	
+	// Chuẩn bị tham số
+	kw := "%" + keyword + "%"
+	args := []interface{}{kw, kw}
 
-	// Truyền 2 tham số vào
-	rows, err := r.db.Query(query, nameKeyword, slugKeyword)
+	
+	if isActive != nil {
+		query += " AND is_active = ?"
+		args = append(args, *isActive)
+	}
+
+	// Sắp xếp giảm dần theo ngày tạo
+	query += " ORDER BY created_at DESC"
+
+	logger.DebugLogger.Printf("Repo: Searching categories. Query: %s | Args: %v", query, args)
+
+	rows, err := r.db.Query(query, args...)
 	if err != nil {
-		logger.ErrorLogger.Printf("AdminSearchCategories Query Failed: %v", err)
+		logger.ErrorLogger.Printf("Repo: SearchAllCategories failed: %v", err)
 		return nil, err
 	}
 	defer rows.Close()
 
-	categories := []model.Category{}
-
+	var categories []model.Category
 	for rows.Next() {
 		var cat model.Category
-		err := rows.Scan(&cat.ID, &cat.Name, &cat.Slug, &cat.Description, &cat.IsActive, &cat.CreatedAt, &cat.UpdatedAt)
-		if err != nil {
-			logger.ErrorLogger.Printf("Scan Row Failed: %v", err)
+		if err := rows.Scan(&cat.ID, &cat.Name, &cat.Slug, &cat.Description, &cat.IsActive, &cat.CreatedAt, &cat.UpdatedAt); err != nil {
 			return nil, err
 		}
 		categories = append(categories, cat)
 	}
 
-	if err = rows.Err(); err != nil {
-		return nil, err
-	}
-
-	logger.InfoLogger.Printf("AdminSearchCategories success, found %d records", len(categories))
 	return categories, nil
 }
 
@@ -158,35 +159,38 @@ func (r *CategoryDb) SearchActiveCategories(keyword string) ([]model.Category, e
 }
 
 // Lấy tất cả danh mục
-func (r *CategoryDb) GetAllCategories() ([]model.Category, error) {
+func (r *CategoryDb) GetAllCategories(req model.AdminGetCategoriesRequest) ([]model.Category, int, error) {
 	logger.DebugLogger.Println("Starting GetAllCategories")
 
-	query := `SELECT id, name, slug, description, is_active, created_at, updated_at 
-			  FROM categories ORDER BY created_at DESC`
+	offset := (req.Page - 1) * req.Limit
+	var total int
+	countQuery := "SELECT COUNT(*) FROM categories"
+	if err := r.db.QueryRow(countQuery).Scan(&total); err != nil {
+		return nil, 0, err
+	}
 
-	rows, err := r.db.Query(query)
+	// 3. Query Lấy dữ liệu
+	query := `SELECT id, name, slug, description, is_active, created_at, updated_at 
+			  FROM categories 
+			  ORDER BY created_at DESC 
+			  LIMIT ? OFFSET ?`
+
+	rows, err := r.db.Query(query, req.Limit, offset)
 	if err != nil {
-		logger.ErrorLogger.Printf("Query GetAllCategories Failed: %v", err)
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 
 	var categories []model.Category
 	for rows.Next() {
 		var cat model.Category
-		err := rows.Scan(
-			&cat.ID, &cat.Name, &cat.Slug, &cat.Description,
-			&cat.IsActive, &cat.CreatedAt, &cat.UpdatedAt,
-		)
-		if err != nil {
-			logger.ErrorLogger.Printf("Scan Row Failed: %v", err)
-			return nil, err
+		if err := rows.Scan(&cat.ID, &cat.Name, &cat.Slug, &cat.Description, &cat.IsActive, &cat.CreatedAt, &cat.UpdatedAt); err != nil {
+			return nil, 0, err
 		}
 		categories = append(categories, cat)
 	}
 
-	logger.InfoLogger.Printf("GetAllCategories success, found %d records", len(categories))
-	return categories, nil
+	return categories, total, nil
 }
 
 // Lấy tất cả danh mục đang kích hoạt (Active)

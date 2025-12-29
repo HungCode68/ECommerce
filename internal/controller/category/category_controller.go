@@ -164,11 +164,11 @@ func (c *categoryController) DeleteCategoryHard(id int64) error {
 }
 
 // AdminGetAllCategories - Lấy tất cả (Active + Inactive)
-func (c *categoryController) AdminGetAllCategories() ([]model.AdminCategoryResponse, error) {
+func (c *categoryController) AdminGetAllCategories(req model.AdminGetCategoriesRequest) ([]model.AdminCategoryResponse, int, error) {
 	logger.InfoLogger.Println("Admin lấy tất cả danh mục")
-	cats, err := c.CategoryRepo.GetAllCategories()
+	cats, total, err := c.CategoryRepo.GetAllCategories(req)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	var response []model.AdminCategoryResponse
@@ -183,7 +183,12 @@ func (c *categoryController) AdminGetAllCategories() ([]model.AdminCategoryRespo
 			UpdatedAt:   cat.UpdatedAt,
 		})
 	}
-	return response, nil
+
+	if response == nil {
+		response = []model.AdminCategoryResponse{}
+	}
+
+	return response, total, nil
 }
 
 // AdminGetCategoryByID - Lấy chi tiết theo ID
@@ -205,11 +210,10 @@ func (c *categoryController) AdminGetCategoryByID(id int64) (model.AdminCategory
 }
 
 // AdminSearchCategories - Tìm kiếm (Active + Inactive)
-func (c *categoryController) AdminSearchCategories(keyword string) ([]model.AdminCategoryResponse, error) {
-	logger.InfoLogger.Printf("Admin tìm kiếm danh mục: %s", keyword)
-	
-	cats, err := c.CategoryRepo.SearchAllCategories(keyword)
+func (c *categoryController) AdminSearchCategories(keyword string, isActive *bool) ([]model.AdminCategoryResponse, error) {
+	cats, err := c.CategoryRepo.SearchAllCategories(keyword, isActive)
 	if err != nil {
+		logger.ErrorLogger.Printf("Controller: Failed to search categories. Error: %v", err)
 		return nil, err
 	}
 
@@ -220,11 +224,17 @@ func (c *categoryController) AdminSearchCategories(keyword string) ([]model.Admi
 			Name:        cat.Name,
 			Slug:        cat.Slug,
 			Description: cat.Description,
-			IsActive:    cat.IsActive,
+			IsActive:    cat.IsActive, 
 			CreatedAt:   cat.CreatedAt,
 			UpdatedAt:   cat.UpdatedAt,
 		})
 	}
+
+	// Trả về mảng rỗng thay vì nil nếu không tìm thấy
+	if response == nil {
+		response = []model.AdminCategoryResponse{}
+	}
+	logger.InfoLogger.Printf("Controller: AdminSearchCategories success. Found %d categories", len(response))
 	return response, nil
 }
 

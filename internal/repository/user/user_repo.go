@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"golang/internal/logger"
 	"golang/internal/model"
+	"strings"
 	"time"
 )
 
@@ -96,33 +97,84 @@ func (u *UserDb) GetUserByID(id int64) (model.User, error) {
 }
 
 // Hàm tìm kiếm Users theo từ khóa (username hoặc email)
-func (u *UserDb) SearchUsers(keyword string) ([]model.User, error) {
-	logger.DebugLogger.Printf("Starting SearchUsers with keyword: %s", keyword)
-	// Tìm kiếm theo từ khóa
-	searchTerm := "%" + keyword + "%"
+func (u *UserDb) SearchUsers(filter model.UserFilter) ([]model.User, int, error) {
+	logger.DebugLogger.Printf("Repo: Starting SearchUsers with Filter: %+v", filter)
+	query := `SELECT id, username, email, role, is_active, created_at, updated_at, deleted_at 
+              FROM users 
+              WHERE 1=1`
 
-	query := "SELECT id, username, email, role, is_active, created_at, updated_at, deleted_at FROM users WHERE (username LIKE ? OR email LIKE ?)"
+	var args []interface{}
 
-	rows, err := u.db.Query(query, searchTerm, searchTerm)
+	// Lọc theo Keyword (Username hoặc Email)
+	if filter.Keyword != "" {
+		query += " AND (username LIKE ? OR email LIKE ?)"
+		kw := "%" + filter.Keyword + "%"
+		args = append(args, kw, kw)
+	}
+
+	// Lọc theo Role
+	if filter.Role != "" {
+		query += " AND role = ?"
+		args = append(args, filter.Role)
+	}
+
+	// Lọc theo IsActive 
+	if filter.IsActive != nil {
+		query += " AND is_active = ?"
+		args = append(args, *filter.IsActive)
+	}
+
+	// Lọc theo DeletedAt 
+	if filter.IsDeleted != nil {
+		if *filter.IsDeleted {
+			query += " AND deleted_at IS NOT NULL"
+		} else {
+			query += " AND deleted_at IS NULL"
+		}
+	} else {
+		// Mặc định chỉ lấy user chưa xóa 
+		query += " AND deleted_at IS NULL"
+	}
+
+	// Đếm tổng số bản ghi để phân trang
+	countQuery := "SELECT COUNT(*) FROM users WHERE " + query[strings.Index(query, "WHERE")+6:]
+	var total int64
+
+	if err := u.db.QueryRow(countQuery, args...).Scan(&total); err != nil {
+		logger.ErrorLogger.Printf("Repo: Count query failed. Query: %s | Error: %v", countQuery, err)
+		return nil, 0, err
+	}
+
+	// Thêm Pagination và Sorting
+	query += " ORDER BY created_at DESC LIMIT ? OFFSET ?"
+	offset := (filter.Page - 1) * filter.Limit
+	args = append(args, filter.Limit, offset)
+
+	logger.DebugLogger.Printf("Repo: Executing Main Query: %s | Args: %v", query, args)
+
+	//  Thực thi Query chính
+	rows, err := u.db.Query(query, args...)
 	if err != nil {
-		logger.ErrorLogger.Printf("SearchUsers Query Failed: %v", err)
-		return nil, err
+		logger.ErrorLogger.Printf("Repo: Main query failed. Error: %v", err)
+		return nil, 0, err
 	}
 	defer rows.Close()
 
-	var userSlice []model.User
+	var users []model.User
 	for rows.Next() {
 		var user model.User
-		err := rows.Scan(&user.ID, &user.Username, &user.Email, &user.Role, &user.IsActive, &user.CreatedAt, &user.UpdatedAt, &user.DeletedAt)
+		err := rows.Scan(
+			&user.ID, &user.Username, &user.Email, &user.Role,
+			&user.IsActive, &user.CreatedAt, &user.UpdatedAt, &user.DeletedAt,
+		)
 		if err != nil {
-			logger.ErrorLogger.Printf("SearchUsers Row Scan Failed: %v", err)
-			return nil, err
+			logger.ErrorLogger.Printf("Repo: Row scan failed. Error: %v", err)
+			return nil, 0, err
 		}
-		userSlice = append(userSlice, user)
+		users = append(users, user)
 	}
-
-	logger.InfoLogger.Printf("SearchUsers found %d records for keyword '%s'", len(userSlice), keyword)
-	return userSlice, nil
+	logger.InfoLogger.Printf("Repo: SearchUsers success. Retrieved %d/%d users.", len(users), total)
+	return users, int(total), nil
 }
 
 // Hàm CreateUser (Tạo mới User)

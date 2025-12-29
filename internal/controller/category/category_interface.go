@@ -21,13 +21,13 @@ type CategoryController interface {
 	DeleteCategoryHard(id int64) error
 
 	// Lấy tất cả danh mục (kể cả đã xoá mềm)
-	AdminGetAllCategories() ([]model.AdminCategoryResponse, error)
+	AdminGetAllCategories(req model.AdminGetCategoriesRequest) ([]model.AdminCategoryResponse, int, error)
 
 	// Lấy chi tiết danh mục theo ID
 	AdminGetCategoryByID(id int64) (model.AdminCategoryResponse, error)
 
 	// Tìm kiếm danh mục
-	AdminSearchCategories(keyword string) ([]model.AdminCategoryResponse, error)
+	AdminSearchCategories(keyword string, isActive *bool) ([]model.AdminCategoryResponse, error)
 
 	// User Methods
 	// Lấy danh mục đang hoạt động

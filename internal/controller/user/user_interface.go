@@ -23,7 +23,7 @@ type UserController interface {
 	GetUserByID(id int64) (model.AdminUserResponse, error)
 
 	// Tìm kiếm người dùng
-	SearchUsers(keyword string) ([]model.AdminUserResponse, error)
+	SearchUsers(filter model.UserFilter) ([]model.AdminUserResponse, int, error)
 
 	// Cập nhật thông tin người dùng theo ID
 	UpdateUser(id int64, req model.AdminUpdateUserRequest) (model.AdminUserResponse, error)

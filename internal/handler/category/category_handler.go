@@ -150,13 +150,42 @@ func (h *categoryHandler) DeleteCategoryHard(w http.ResponseWriter, r *http.Requ
 
 // AdminGetAllCategories: Lấy tất cả danh mục (cho Admin)
 func (h *categoryHandler) AdminGetAllCategories(w http.ResponseWriter, r *http.Request) {
-	cats, err := h.CategoryController.AdminGetAllCategories()
+	query := r.URL.Query()
+
+	// Parse Page & Limit
+	page, _ := strconv.Atoi(query.Get("page"))
+	limit, _ := strconv.Atoi(query.Get("limit"))
+
+	// Gán mặc định nếu không gửi hoặc gửi sai
+	if page <= 0 { page = 1 }
+	if limit <= 0 { limit = 10 }
+
+	req := model.AdminGetCategoriesRequest{
+		Page:  page,
+		Limit: limit,
+	}
+
+	if errs := validator.Validate(req); errs != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Tham số phân trang không hợp lệ", errs)
+		return
+	}
+
+	//  Gọi Controller
+	cats, total, err := h.CategoryController.AdminGetAllCategories(req)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Lỗi lấy danh sách danh mục", err.Error())
 		return
 	}
 
-	utils.WriteJSON(w, http.StatusOK, "Lấy danh sách thành công", cats)
+	// Trả về kết quả
+	utils.WriteJSON(w, http.StatusOK, "Lấy danh sách thành công", map[string]interface{}{
+		"categories": cats,
+		"meta": map[string]interface{}{
+			"total": total,
+			"page":  req.Page,
+			"limit": req.Limit,
+		},
+	})
 }
 
 // AdminGetCategoryByID: Lấy chi tiết theo ID (cho Admin)
@@ -177,19 +206,29 @@ func (h *categoryHandler) AdminGetCategoryByID(w http.ResponseWriter, r *http.Re
 	utils.WriteJSON(w, http.StatusOK, "Lấy chi tiết thành công", cat)
 }
 
-// AdminSearchCategories: Tìm kiếm danh mục (cho Admin - All)
+// AdminSearchCategories: Tìm kiếm danh mục 
 func (h *categoryHandler) AdminSearchCategories(w http.ResponseWriter, r *http.Request) {
-	rawKeyword := r.URL.Query().Get("q")
+query := r.URL.Query()
+	
+	// Lấy Keyword
+	rawKeyword := query.Get("q")
 	keyword := strings.TrimSpace(rawKeyword)
 
-	if keyword == "" {
-		utils.WriteError(w, http.StatusBadRequest, "Thiếu từ khóa", "Vui lòng nhập từ khóa tìm kiếm (?q=...)")
-		return
+	//  Parse is_active (String -> *bool)
+	var isActive *bool
+	if val := query.Get("is_active"); val != "" {
+		b, err := strconv.ParseBool(val)
+		if err != nil {
+			utils.WriteError(w, http.StatusBadRequest, "Tham số không hợp lệ ", err.Error())
+			return
+		}
+		isActive = &b
 	}
 
-	cats, err := h.CategoryController.AdminSearchCategories(keyword)
+	//  Gọi Controller
+	cats, err := h.CategoryController.AdminSearchCategories(keyword, isActive)
 	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Lỗi tìm kiếm", err.Error())
+		utils.WriteError(w, http.StatusInternalServerError, "Lỗi tìm kiếm danh mục", err.Error())
 		return
 	}
 

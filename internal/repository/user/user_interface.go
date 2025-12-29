@@ -10,7 +10,7 @@ type UserRepo interface {
 	// Read Methods
 	GetAllUsers() ([]model.User, error)
 	GetUserByID(id int64) (model.User, error)
-	SearchUsers(keyword string) ([]model.User, error)
+	SearchUsers(filter model.UserFilter) ([]model.User, int, error)
 	GetUserByIdentifier(identifier string) (model.User, error)
 	GetUserByRefreshToken(refreshToken string) (model.User, error)
 
