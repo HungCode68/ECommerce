@@ -1,20 +1,33 @@
 package productreviews
 
 import (
+	"context"
+	"errors"
 	"golang/internal/model"
+	order "golang/internal/repository/order"
 	"golang/internal/repository/productreview"
 )
 
 type productReviewsController struct {
 	reviewRepo productreview.ProductReviewRepository
+	orderRepo  order.IOrderRepository
 }
 
 // NewProductReviewsController wires repository into controller layer.
-func NewProductReviewsController(repo productreview.ProductReviewRepository) ProductReviewsController {
-	return &productReviewsController{reviewRepo: repo}
+func NewProductReviewsController(repo productreview.ProductReviewRepository, orderRepo order.IOrderRepository) ProductReviewsController {
+	return &productReviewsController{reviewRepo: repo, orderRepo: orderRepo}
 }
 
-func (c *productReviewsController) CreateReview(req model.CreateProductReviewRequest, productID int64, userID int64) (*model.CreateProductReviewResponse, error) {
+func (c *productReviewsController) CreateReview(ctx context.Context, req model.CreateProductReviewRequest, productID int64, userID int64) (*model.CreateProductReviewResponse, error) {
+	// ===> LOGIC MỚI: KIỂM TRA ĐIỀU KIỆN MUA HÀNG <===
+	hasPurchased, err := c.orderRepo.HasUserPurchasedProduct(ctx, userID, productID)
+	if err != nil {
+		return nil, errors.New("lỗi hệ thống khi kiểm tra lịch sử mua hàng")
+	}
+
+	if !hasPurchased {
+		return nil, errors.New("bạn phải mua sản phẩm này và đơn hàng đã hoàn thành mới được đánh giá")
+	}
 	toCreate := &model.ProductReview{
 		ProductID: productID,
 		Body:      req.Body,

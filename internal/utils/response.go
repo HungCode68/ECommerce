@@ -2,9 +2,9 @@
 package utils
 
 import (
-    "encoding/json"
-    "net/http"
-    "golang/internal/model"
+	"encoding/json"
+	"golang/internal/model"
+	"net/http"
 )
 
 // writeJSON - Trả về response JSON thành công

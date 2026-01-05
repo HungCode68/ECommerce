@@ -1,9 +1,12 @@
 package productreviews
 
-import "golang/internal/model"
+import (
+	"context"
+	"golang/internal/model"
+)
 
 type ProductReviewsController interface {
-	CreateReview(req model.CreateProductReviewRequest, productID int64, userID int64) (*model.CreateProductReviewResponse, error)
+	CreateReview(ctx context.Context, req model.CreateProductReviewRequest, productID int64, userID int64) (*model.CreateProductReviewResponse, error)
 	ListReviews(productID int64) (*model.ProductReviewListResponse, error)
 	DeleteReview(reviewID int64) (*model.DeleteProductReviewResponse, error)
 }

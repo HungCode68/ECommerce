@@ -1,0 +1,648 @@
+openapi: 3.0.3
+info:
+  title: E-Commerce Order API
+  description: |-
+    Tài liệu API cho module Quản lý Đơn hàng (Đặt hàng, Xem lịch sử, Quản lý đơn hàng Admin).
+  version: 1.0.0
+tags:
+  - name: User Orders
+    description: Các API dành cho khách hàng (Đặt hàng, Xem đơn, Hủy đơn)
+  - name: Admin Orders
+    description: Các API dành cho Admin quản lý đơn hàng
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # --- Shared Models ---
+    OrderAddress:
+      type: object
+      properties:
+        recipient_name:
+          type: string
+        phone:
+          type: string
+        line1:
+          type: string
+        line2:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        country:
+          type: string
+
+    OrderItemResponse:
+      type: object
+      properties:
+        product_id:
+          type: integer
+        variant_id:
+          type: integer
+        title:
+          type: string
+          description: Tên hiển thị (Tên SP + Tên Variant)
+        sku:
+          type: string
+        quantity:
+          type: integer
+        unit_price:
+          type: number
+        line_subtotal:
+          type: number
+
+    OrderPaymentResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        method:
+          type: string
+          enum: [cod, bank_transfer]
+        amount:
+          type: number
+        status:
+          type: string
+        paid_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    OrderStatusHistoryResponse:
+      type: object
+      properties:
+        from_status:
+          type: string
+        to_status:
+          type: string
+        note:
+          type: string
+        changed_by:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    # --- Request Models ---
+    CreateOrderItemRequest:
+      type: object
+      required:
+        - product_id
+        - variant_id
+        - quantity
+      properties:
+        product_id:
+          type: integer
+          example: 101
+        variant_id:
+          type: integer
+          example: 205
+        quantity:
+          type: integer
+          example: 2
+
+    CreateOrderRequest:
+      type: object
+      required:
+        - address_id
+        - payment_method
+        - items
+      properties:
+        address_id:
+          type: integer
+          example: 1
+        payment_method:
+          type: string
+          enum: [cod, bank_transfer]
+          example: cod
+        note:
+          type: string
+          example: "Giao hàng vào giờ hành chính"
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CreateOrderItemRequest'
+
+    CancelOrderRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          example: "Đổi ý không muốn mua nữa"
+
+    AdminUpdateStatusRequest:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [pending, processing, shipped, completed, cancelled, refunded]
+          description: Chỉ cập nhật trạng thái vận hành.
+          example: shipped
+
+    ConfirmPaymentRequest:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [completed, failed, refunded]
+          description: Trạng thái giao dịch tiền tệ.
+          example: completed
+
+    # --- Response Models ---
+    OrderResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        order_number:
+          type: string
+          example: "ORD-170123456"
+        status:
+          type: string
+          enum: [pending, processing, paid, shipped, completed, cancelled, refunded]
+        payment_status:
+          type: string
+          enum: [unpaid, paid, partially_refunded, refunded]
+        total_amount:
+          type: number
+        note:
+          type: string
+        shipping_address:
+          $ref: '#/components/schemas/OrderAddress'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItemResponse'
+        payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderPaymentResponse'
+        placed_at:
+          type: string
+          format: date-time
+        paid_at:
+          type: string
+          format: date-time
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        cancelled_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    AdminOrderResponse:
+      allOf:
+        - $ref: '#/components/schemas/OrderResponse'
+        - type: object
+          properties:
+            user_id:
+              type: integer
+            status_history:
+              type: array
+              items:
+                $ref: '#/components/schemas/OrderStatusHistoryResponse'
+
+    # --- Wrapper Responses ---
+    SuccessResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 200
+        message:
+          type: string
+          example: Thành công
+        data:
+          type: object
+
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 400
+        message:
+          type: string
+          example: Lỗi dữ liệu
+        errors:
+          type: object
+
+paths:
+  # ================= USER ORDERS =================
+  /api/orders:
+    post:
+      tags:
+        - User Orders
+      summary: Tạo đơn hàng mới
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+      responses:
+        '201':
+          description: Đặt hàng thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - properties:
+                      data:
+                        $ref: '#/components/schemas/OrderResponse'
+        '400':
+          description: Lỗi Validate (Hết hàng, Sai Variant, Address...)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 400
+                message: Dữ liệu đầu vào không hợp lệ hoặc Hết hàng, Sai Variant, Address...
+        
+        '500':
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 500
+                message: Lỗi hệ thống
+                errors: "Database connection failed"
+
+    get:
+      tags:
+        - User Orders
+      summary: Lấy danh sách đơn hàng của tôi
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: status
+          in: query
+          description: Lọc theo trạng thái đơn (pending, completed...)
+          schema:
+            type: string
+        - name: payment_status
+          in: query
+          description: Lọc theo trạng thái thanh toán (paid, unpaid...)
+          schema:
+            type: string
+        - name: keyword
+          in: query
+          description: Tìm theo Tên sản phẩm
+          schema:
+            type: string
+        - name: order_id
+          in: query
+          description: Tìm theo Mã đơn hàng (VD ORD-123)
+          schema:
+            type: string
+        - name: start_date
+          in: query
+          description: Format YYYY-MM-DD
+          schema:
+            type: string
+        - name: end_date
+          in: query
+          description: Format YYYY-MM-DD
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - properties:
+                      data:
+                        type: object
+                        properties:
+                          orders:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/OrderResponse'
+                          total:
+                            type: integer
+
+        '404':
+          description: Không tìm thấy đơn hàng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+
+  /api/orders/{id}:
+    get:
+      tags:
+        - User Orders
+      summary: Xem chi tiết đơn hàng
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - properties:
+                      data:
+                        $ref: '#/components/schemas/OrderResponse'
+        '403':
+          description: Không có quyền xem đơn hàng của người khác
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+        '404':
+          description: Không tìm thấy đơn hàng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+
+  /api/orders/{id}/cancel:
+    post:
+      tags:
+        - User Orders
+      summary: Hủy đơn hàng (Chỉ khi trạng thái Pending)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelOrderRequest'
+      responses:
+        '200':
+          description: Hủy đơn thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Không thể hủy (Đơn đã xử lý)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ================= ADMIN ORDERS =================
+  /api/admin/orders:
+    get:
+      tags:
+        - Admin Orders
+      summary: Tìm kiếm và lọc tất cả đơn hàng
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: user_id
+          in: query
+          description: Lọc đơn của User cụ thể
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: payment_status
+          in: query
+          schema:
+            type: string
+        - name: keyword
+          in: query
+          description: Tìm theo Tên sản phẩm
+          schema:
+            type: string
+        - name: order_id
+          in: query
+          description: Tìm theo Mã đơn hàng
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - properties:
+                      data:
+                        type: object
+                        properties:
+                          orders:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/OrderResponse'
+                          total:
+                            type: integer
+        '403':
+          description: Không có quyền Admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 403
+                message: Forbidden
+                errors: "Bạn không có quyền thực hiện chức năng này (Admin only)"
+
+        '404':
+          description: Không tìm thấy đơn hàng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+
+  /api/admin/orders/{id}:
+    get:
+      tags:
+        - Admin Orders
+      summary: Admin xem chi tiết đơn hàng (Full Log History)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - properties:
+                      data:
+                        $ref: '#/components/schemas/AdminOrderResponse'
+
+        '403':
+          description: Không có quyền Admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 403
+                message: Forbidden
+                errors: "Bạn không có quyền thực hiện chức năng này (Admin only)"
+
+        '404':
+          description: Không tìm thấy danh mục
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+
+  /api/admin/orders/{id}/status:
+    put:
+      tags:
+        - Admin Orders
+      summary: Cập nhật trạng thái đơn hàng (Vận hành)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminUpdateStatusRequest'
+      responses:
+        '200':
+          description: Cập nhật thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+        '400':
+          description: Dữ liệu đầu vào không hợp lệ 
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 400
+                message: Dữ liệu đầu vào không hợp lệ 
+
+        '403':
+          description: Không có quyền Admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 403
+                message: Forbidden
+                errors: "Bạn không có quyền thực hiện chức năng này (Admin only)"
+
+  /api/admin/orders/{id}/confirm-payment:
+    post:
+      tags:
+        - Admin Orders
+      summary: Xác nhận thanh toán (Dòng tiền)
+      description: Dùng khi nhận tiền COD hoặc xác nhận chuyển khoản. Hệ thống tự cập nhật Amount từ đơn hàng.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmPaymentRequest'
+      responses:
+        '200':
+          description: Xác nhận thanh toán thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Lỗi (Ví dụ đã thanh toán rồi)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+        '403':
+          description: Không có quyền Admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 403
+                message: Forbidden
+                errors: "Bạn không có quyền thực hiện chức năng này (Admin only)"

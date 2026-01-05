@@ -32,6 +32,8 @@ func main() {
 
 	module.InitCartModule(db.Connection, mux)
 
+	module.InitOrderModule(db.Connection, mux)
+
 	// Chạy Server
 	srv := server.NewServer(mux)
 

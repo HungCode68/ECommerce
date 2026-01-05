@@ -58,7 +58,7 @@ func (h *productReviewHandler) CreateReviewHandler(w http.ResponseWriter, r *htt
 
 
 
-	resp, err := h.controller.CreateReview(req, productID, userID)
+	resp, err := h.controller.CreateReview(r.Context(), req, productID, userID)
 	if err != nil {
 		h.errJson(w, http.StatusInternalServerError, err.Error())
 		return
