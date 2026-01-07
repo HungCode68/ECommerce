@@ -211,7 +211,7 @@ func (r *OrderRepository) ConfirmPayment(ctx context.Context, orderID int64, pay
         return err
     }
 
-    
+
     queryInsertPayment := `
         INSERT INTO order_payments (order_id, method, amount, status, paid_at) 
         VALUES (?, ?, ?, ?, ?)`
@@ -234,7 +234,7 @@ func (r *OrderRepository) ConfirmPayment(ctx context.Context, orderID int64, pay
     return nil
 }
 
-//  Lấy thông tin cơ bản
+//  Lấy thông tin chung đơn hàng
 func (r *OrderRepository) GetOrderByID(ctx context.Context, id int64) (*model.Order, error) {
 	logger.DebugLogger.Printf("Starting GetOrderByID: %d", id)
 	query := `

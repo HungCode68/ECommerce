@@ -22,14 +22,21 @@ func NewDatabaseConnection() *DBConfig {
 
 	var err error
 
+	dbParams := os.Getenv("DB_PARAMS")
+
+	if dbParams == "" {
+		dbParams = "parseTime=true&loc=Local"
+	}
+
 	// Cấu hình Connection String cho MySQL
 	// Format: user:password@tcp(host:port)/dbname?parseTime=true&loc=Local
-	connStr := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true&loc=Local",
+	connStr := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?%s",
 		os.Getenv("DB_USER_MYSQL"),
 		os.Getenv("DB_PASSWORD_MYSQL"),
 		os.Getenv("DB_HOST_MYSQL"),
 		os.Getenv("DB_PORT_MYSQL"),
 		os.Getenv("DB_NAME"),
+		dbParams,
 	)
 
 	//  Mở kết nối

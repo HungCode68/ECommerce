@@ -34,6 +34,12 @@ func main() {
 
 	module.InitOrderModule(db.Connection, mux)
 
+	cronManager := module.InitStatsModule(db.Connection, mux)
+
+	// Kích hoạt Cron Job chạy ngầm
+	cronManager.Start()
+	defer cronManager.Stop() // Đảm bảo dừng khi tắt server
+
 	// Chạy Server
 	srv := server.NewServer(mux)
 

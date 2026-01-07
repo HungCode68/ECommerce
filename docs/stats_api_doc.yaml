@@ -1,0 +1,296 @@
+openapi: 3.0.3
+info:
+  title: E-Commerce Stats API
+  description: |-
+    Tài liệu API cho module Báo cáo & Thống kê doanh thu (Dành riêng cho Admin).
+    Bao gồm các chức năng: Dashboard tổng quan, Top sản phẩm, Biểu đồ chi tiết và Đồng bộ dữ liệu.
+  version: 1.0.0
+tags:
+  - name: Admin Stats
+    description: Các API báo cáo thống kê dành cho Admin
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # --- Response Models ---
+    
+    # 1. Dashboard Overview
+    DashboardOverviewResponse:
+      type: object
+      properties:
+        estimated_revenue:
+          type: string
+          description: Doanh thu ước tính (GMV) từ bảng Orders (Real-time). Đã format tiền tệ.
+          example: "15.500.000 ₫"
+        estimated_orders:
+          type: integer
+          description: Tổng số đơn hàng ước tính (trừ đơn hủy).
+          example: 25
+        real_revenue:
+          type: string
+          description: Doanh thu thực tế (Đã chốt/Paid/Completed). Đã format tiền tệ.
+          example: "12.000.000 ₫"
+        real_orders:
+          type: integer
+          description: Tổng số đơn thực tế (Completed).
+          example: 18
+
+    # 2. Top Products
+    ProductSalesStatsResponse:
+      type: object
+      description: Thông tin sản phẩm trong danh sách Top bán chạy.
+      properties:
+        product_id:
+          type: integer
+          example: 101
+        variant_id:
+          type: integer
+          example: 205
+        product_name:
+          type: string
+          example: "Áo Thun Basic"
+        variant_title:
+          type: string
+          example: "Màu Đen - Size L"
+        sku:
+          type: string
+          example: "TSHIRT-BLK-L"
+        total_units_sold:
+          type: integer
+          description: Tổng số lượng sản phẩm bán ra.
+          example: 150
+        total_revenue:
+          type: number
+          description: Tổng doanh thu mang lại (Số float, chưa format).
+          example: 15000000
+        total_orders:
+          type: integer
+          description: Số đơn hàng có chứa sản phẩm này.
+          example: 120
+
+    # 3. Product Daily Chart
+    ProductDailyStatsResponse:
+      type: object
+      description: Dữ liệu từng ngày để vẽ biểu đồ Line Chart cho 1 sản phẩm.
+      properties:
+        date:
+          type: string
+          format: date
+          example: "2024-01-05"
+        units_sold:
+          type: integer
+          example: 5
+        revenue:
+          type: number
+          example: 500000
+        order_count:
+          type: integer
+          example: 3
+
+    # --- Wrapper Responses ---
+    SuccessResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 200
+        message:
+          type: string
+          example: Thành công
+        data:
+          type: object
+
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 400
+        message:
+          type: string
+          example: Lỗi dữ liệu
+        errors:
+          type: object
+
+paths:
+  # ================= ADMIN STATS =================
+  
+  /api/admin/stats/dashboard:
+    get:
+      tags:
+        - Admin Stats
+      summary: Lấy số liệu tổng quan Dashboard
+      description: |
+        Trả về 2 loại chỉ số: 
+        1. Estimated (Ước tính - Realtime): Dựa trên đơn hàng vừa đặt (trừ hủy).
+        2. Real (Thực tế): Dựa trên đơn hàng đã hoàn thành và job thống kê đã chạy.
+        Nếu không truyền ngày, mặc định lấy Estimated (Hôm nay) và Real (Từ đầu tháng).
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: start_date
+          in: query
+          description: Ngày bắt đầu (Format YYYY-MM-DD)
+          schema:
+            type: string
+            example: "2024-01-01"
+        - name: end_date
+          in: query
+          description: Ngày kết thúc (Format YYYY-MM-DD)
+          schema:
+            type: string
+            example: "2024-01-31"
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - properties:
+                      data:
+                        $ref: '#/components/schemas/DashboardOverviewResponse'
+        '400':
+          description: Sai định dạng ngày tháng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Không có quyền Admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/admin/stats/top-products:
+    get:
+      tags:
+        - Admin Stats
+      summary: Lấy danh sách Top sản phẩm bán chạy
+      description: Sắp xếp theo số lượng bán (units_sold) giảm dần. Mặc định lấy Top 10 trong 30 ngày qua nếu không truyền tham số.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          description: Số lượng sản phẩm muốn lấy (Mặc định 10)
+          schema:
+            type: integer
+            default: 10
+        - name: start_date
+          in: query
+          description: Format YYYY-MM-DD
+          schema:
+            type: string
+        - name: end_date
+          in: query
+          description: Format YYYY-MM-DD
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/ProductSalesStatsResponse'
+
+        '400':
+          description: Sai định dạng ngày tháng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                
+        '403':
+          description: Không có quyền Admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/admin/stats/products/{id}:
+    get:
+      tags:
+        - Admin Stats
+      summary: Xem biểu đồ thống kê chi tiết của 1 sản phẩm
+      description: Trả về mảng dữ liệu theo ngày để vẽ biểu đồ Line Chart (Doanh thu/Số lượng) cho sản phẩm cụ thể.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID của sản phẩm (Product ID)
+          schema:
+            type: integer
+        - name: start_date
+          in: query
+          description: Format YYYY-MM-DD (Mặc định 30 ngày trước)
+          schema:
+            type: string
+        - name: end_date
+          in: query
+          description: Format YYYY-MM-DD (Mặc định hôm nay)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/ProductDailyStatsResponse'
+        '404':
+          description: Không tìm thấy sản phẩm hoặc chưa có dữ liệu bán
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/admin/stats/sync:
+    post:
+      tags:
+        - Admin Stats
+      summary: Kích hoạt cập nhật báo cáo thủ công (Manual Trigger)
+      description: |
+        Chạy Stored Procedure để tính toán lại số liệu thống kê (Real Revenue) cho ngày hôm qua hoặc cập nhật lại nếu dữ liệu bị sai.
+        API này tương đương với việc Cron Job chạy lúc 00:30.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Đã gửi lệnh cập nhật thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                code: 200
+                message: "Đã cập nhật dữ liệu báo cáo thành công (Data refreshed)"
+                data: null
+        '500':
+          description: Lỗi Server (Procedure lỗi)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
