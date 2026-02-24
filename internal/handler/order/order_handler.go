@@ -6,10 +6,14 @@ import (
 	"strconv"
 
 	"golang/internal/controller/order"
+	"golang/internal/middleware"
 	"golang/internal/model"
-	"golang/internal/utils"     
-	"golang/internal/validator" 
+	"golang/internal/utils"
+	"golang/internal/validator"
 )
+
+// Request body size limit (1MB)
+const maxBodySize = 1 << 20
 
 type orderHandler struct {
 	OrderController order.OrderController
@@ -21,41 +25,34 @@ func NewOrderHandler(controller order.OrderController) OrderHandler {
 	}
 }
 
-// Helper: Lấy UserID từ Context
-func getUserIDFromContext(r *http.Request) int64 {
-	userID, ok := r.Context().Value("userID").(int64)
-	if !ok {
-		return 0
-	}
-	return userID
-}
-
-
 // Tạo đơn hàng mới
 func (h *orderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
-	userID := getUserIDFromContext(r)
-	if userID == 0 {
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	if !ok || userID == 0 {
 		utils.WriteError(w, http.StatusUnauthorized, "Unauthorized", nil)
 		return
 	}
 
-	//  Parse Body
+	// Limit request body size
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
+
+	// Parse Body
 	var req model.CreateOrderRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu JSON lỗi", err.Error())
+		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu JSON lỗi", nil) // Không trả err.Error() ra client
 		return
 	}
 
-	//  Validate
+	// Validate
 	if errs := validator.Validate(req); errs != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu không hợp lệ", errs)
 		return
 	}
 
-	//  Gọi Controller
+	// Gọi Controller
 	resp, err := h.OrderController.CreateOrder(r.Context(), userID, req)
 	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Tạo đơn hàng thất bại", err.Error())
+		utils.WriteError(w, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
 
@@ -64,8 +61,8 @@ func (h *orderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 
 // Danh sách đơn hàng của tôi
 func (h *orderHandler) GetMyListOrders(w http.ResponseWriter, r *http.Request) {
-	userID := getUserIDFromContext(r)
-	if userID == 0 {
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	if !ok || userID == 0 {
 		utils.WriteError(w, http.StatusUnauthorized, "Unauthorized", nil)
 		return
 	}
@@ -84,10 +81,10 @@ func (h *orderHandler) GetMyListOrders(w http.ResponseWriter, r *http.Request) {
 	filter := model.OrderFilter{
 		Page:          page,
 		Limit:         limit,
-		Status:        query.Get("status"),         
-		PaymentStatus: query.Get("payment_status"), 
+		Status:        query.Get("status"),
+		PaymentStatus: query.Get("payment_status"),
 		Keyword:       query.Get("keyword"),
-		OrderID:       query.Get("order_id"),       
+		OrderID:       query.Get("order_id"),
 		StartDate:     query.Get("start_date"),
 		EndDate:       query.Get("end_date"),
 	}
@@ -99,7 +96,7 @@ func (h *orderHandler) GetMyListOrders(w http.ResponseWriter, r *http.Request) {
 
 	orders, total, err := h.OrderController.GetMyListOrders(r.Context(), userID, filter)
 	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Lỗi lấy danh sách đơn hàng", err.Error())
+		utils.WriteError(w, http.StatusInternalServerError, "Lỗi lấy danh sách đơn hàng", nil)
 		return
 	}
 
@@ -113,8 +110,8 @@ func (h *orderHandler) GetMyListOrders(w http.ResponseWriter, r *http.Request) {
 
 // Chi tiết đơn hàng
 func (h *orderHandler) GetMyOrderDetail(w http.ResponseWriter, r *http.Request) {
-	userID := getUserIDFromContext(r)
-	if userID == 0 {
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	if !ok || userID == 0 {
 		utils.WriteError(w, http.StatusUnauthorized, "Unauthorized", nil)
 		return
 	}
@@ -129,7 +126,7 @@ func (h *orderHandler) GetMyOrderDetail(w http.ResponseWriter, r *http.Request) 
 
 	order, err := h.OrderController.GetMyOrder(r.Context(), userID, orderID)
 	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Không thể lấy chi tiết đơn hàng", err.Error())
+		utils.WriteError(w, http.StatusBadRequest, "Không thể lấy chi tiết đơn hàng", nil)
 		return
 	}
 
@@ -138,11 +135,13 @@ func (h *orderHandler) GetMyOrderDetail(w http.ResponseWriter, r *http.Request) 
 
 // Hủy đơn hàng
 func (h *orderHandler) CancelOrder(w http.ResponseWriter, r *http.Request) {
-	userID := getUserIDFromContext(r)
-	if userID == 0 {
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	if !ok || userID == 0 {
 		utils.WriteError(w, http.StatusUnauthorized, "Unauthorized", nil)
 		return
 	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
 
 	idStr := r.PathValue("id")
 	orderID, err := strconv.ParseInt(idStr, 10, 64)
@@ -156,7 +155,7 @@ func (h *orderHandler) CancelOrder(w http.ResponseWriter, r *http.Request) {
 		Reason string `json:"reason"`
 	}
 	var req CancelReq
-	_ = json.NewDecoder(r.Body).Decode(&req) 
+	_ = json.NewDecoder(r.Body).Decode(&req)
 
 	if req.Reason == "" {
 		req.Reason = "Không có lý do"
@@ -164,15 +163,14 @@ func (h *orderHandler) CancelOrder(w http.ResponseWriter, r *http.Request) {
 
 	err = h.OrderController.CancelOrder(r.Context(), userID, orderID, req.Reason)
 	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Hủy đơn thất bại", err.Error())
+		utils.WriteError(w, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
 
 	utils.WriteJSON(w, http.StatusOK, "Hủy đơn hàng thành công", nil)
 }
 
-
-// Tìm kiếm đơn hàng + list đơn hàng 
+// Tìm kiếm đơn hàng + list đơn hàng
 func (h *orderHandler) SearchOrders(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 	page, _ := strconv.Atoi(query.Get("page"))
@@ -193,7 +191,7 @@ func (h *orderHandler) SearchOrders(w http.ResponseWriter, r *http.Request) {
 		Status:        query.Get("status"),
 		PaymentStatus: query.Get("payment_status"),
 		OrderID:       query.Get("order_id"),
-		UserID:        targetUserID, 
+		UserID:        targetUserID,
 		StartDate:     query.Get("start_date"),
 		EndDate:       query.Get("end_date"),
 	}
@@ -215,7 +213,7 @@ func (h *orderHandler) SearchOrders(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// Chi tiết đơn hàng 
+// Chi tiết đơn hàng
 func (h *orderHandler) GetAdminOrderDetail(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	orderID, err := strconv.ParseInt(idStr, 10, 64)
@@ -233,13 +231,15 @@ func (h *orderHandler) GetAdminOrderDetail(w http.ResponseWriter, r *http.Reques
 	utils.WriteJSON(w, http.StatusOK, "Chi tiết đơn hàng (Admin)", orderDetail)
 }
 
-// Cập nhật trạng thái đơn hàng 
+// Cập nhật trạng thái đơn hàng
 func (h *orderHandler) UpdateOrderStatus(w http.ResponseWriter, r *http.Request) {
-	userID := getUserIDFromContext(r)
-	if userID == 0 {
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	if !ok || userID == 0 {
 		utils.WriteError(w, http.StatusUnauthorized, "Unauthorized", nil)
 		return
 	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
 
 	idStr := r.PathValue("id")
 	orderID, err := strconv.ParseInt(idStr, 10, 64)
@@ -250,7 +250,7 @@ func (h *orderHandler) UpdateOrderStatus(w http.ResponseWriter, r *http.Request)
 
 	var req model.AdminUpdateOrderRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "JSON lỗi", err.Error())
+		utils.WriteError(w, http.StatusBadRequest, "JSON lỗi", nil)
 		return
 	}
 
@@ -261,7 +261,7 @@ func (h *orderHandler) UpdateOrderStatus(w http.ResponseWriter, r *http.Request)
 
 	err = h.OrderController.UpdateOrderStatus(r.Context(), orderID, req, userID)
 	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Cập nhật thất bại", err.Error())
+		utils.WriteError(w, http.StatusInternalServerError, "Cập nhật thất bại", nil)
 		return
 	}
 
@@ -270,11 +270,13 @@ func (h *orderHandler) UpdateOrderStatus(w http.ResponseWriter, r *http.Request)
 
 // Xác nhận thanh toán đơn hàng
 func (h *orderHandler) ConfirmPayment(w http.ResponseWriter, r *http.Request) {
-	userID := getUserIDFromContext(r)
-	if userID == 0 {
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	if !ok || userID == 0 {
 		utils.WriteError(w, http.StatusUnauthorized, "Unauthorized", nil)
 		return
 	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
 
 	idStr := r.PathValue("id")
 	orderID, err := strconv.ParseInt(idStr, 10, 64)
@@ -285,7 +287,7 @@ func (h *orderHandler) ConfirmPayment(w http.ResponseWriter, r *http.Request) {
 
 	var req model.ConfirmPaymentRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "JSON lỗi", err.Error())
+		utils.WriteError(w, http.StatusBadRequest, "JSON lỗi", nil)
 		return
 	}
 
@@ -296,7 +298,7 @@ func (h *orderHandler) ConfirmPayment(w http.ResponseWriter, r *http.Request) {
 
 	err = h.OrderController.ConfirmPayment(r.Context(), orderID, req.Status, userID)
 	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Xác nhận thanh toán thất bại", err.Error())
+		utils.WriteError(w, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
 

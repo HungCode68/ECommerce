@@ -3,12 +3,16 @@ package user
 import (
 	"encoding/json"
 	"golang/internal/controller/user"
+	"golang/internal/middleware"
 	"golang/internal/model"
 	"golang/internal/utils"
 	"golang/internal/validator"
 	"net/http"
 	"strconv"
 )
+
+// Request body size limit (1MB)
+const maxBodySize = 1 << 20
 
 type userHandler struct {
 	UserController user.UserController
@@ -23,10 +27,11 @@ func NewUserHandler(userController user.UserController) UserHandler {
 
 // Register - Đăng ký tài khoản mới
 func (h *userHandler) Register(w http.ResponseWriter, r *http.Request) {
-	var req model.RegisterRequest
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
 
+	var req model.RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu JSON không hợp lệ", err.Error())
+		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu JSON không hợp lệ", nil)
 		return
 	}
 
@@ -37,7 +42,7 @@ func (h *userHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	res, err := h.UserController.Register(req)
 	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Lỗi đăng ký tài khoản", err.Error())
+		utils.WriteError(w, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
 
@@ -46,10 +51,11 @@ func (h *userHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 // Login - Đăng nhập tài khoản
 func (h *userHandler) Login(w http.ResponseWriter, r *http.Request) {
-	var req model.LoginRequest
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
 
+	var req model.LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu JSON không hợp lệ", err.Error())
+		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu JSON không hợp lệ", nil)
 		return
 	}
 
@@ -60,7 +66,7 @@ func (h *userHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	res, err := h.UserController.Login(req)
 	if err != nil {
-		utils.WriteError(w, http.StatusUnauthorized, "Đăng nhập thất bại", err.Error())
+		utils.WriteError(w, http.StatusUnauthorized, "Đăng nhập thất bại", nil)
 		return
 	}
 
@@ -69,15 +75,15 @@ func (h *userHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 // Logout - Đăng xuất tài khoản
 func (h *userHandler) Logout(w http.ResponseWriter, r *http.Request) {
-	userID, ok := r.Context().Value("userID").(int64)
-	if !ok {
-		utils.WriteError(w, http.StatusUnauthorized, "Không xác định được người dùng", "Token lỗi")
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	if !ok || userID == 0 {
+		utils.WriteError(w, http.StatusUnauthorized, "Không xác định được người dùng", nil)
 		return
 	}
 
 	err := h.UserController.Logout(userID)
 	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Lỗi khi đăng xuất", err.Error())
+		utils.WriteError(w, http.StatusInternalServerError, "Lỗi khi đăng xuất", nil)
 		return
 	}
 
@@ -86,10 +92,11 @@ func (h *userHandler) Logout(w http.ResponseWriter, r *http.Request) {
 
 // CreateAdmin - Tạo tài khoản Admin
 func (h *userHandler) CreateAdmin(w http.ResponseWriter, r *http.Request) {
-	var req model.RegisterRequest
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
 
+	var req model.RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu JSON không hợp lệ", err.Error())
+		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu JSON không hợp lệ", nil)
 		return
 	}
 
@@ -100,7 +107,7 @@ func (h *userHandler) CreateAdmin(w http.ResponseWriter, r *http.Request) {
 
 	res, err := h.UserController.CreateAdmin(req)
 	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Lỗi tạo tài khoản Admin", err.Error())
+		utils.WriteError(w, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
 
@@ -248,15 +255,17 @@ func (h *userHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 
 // UpdateUserProfile - Người dùng tự cập nhật thông tin cá nhân
 func (h *userHandler) UpdateUserProfile(w http.ResponseWriter, r *http.Request) {
-	userID, ok := r.Context().Value("userID").(int64)
-	if !ok {
-		utils.WriteError(w, http.StatusUnauthorized, "Không xác định được người dùng", "Token lỗi")
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	if !ok || userID == 0 {
+		utils.WriteError(w, http.StatusUnauthorized, "Không xác định được người dùng", nil)
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
+
 	var req model.UserUpdateProfileRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu JSON không hợp lệ", err.Error())
+		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu JSON không hợp lệ", nil)
 		return
 	}
 
@@ -268,10 +277,10 @@ func (h *userHandler) UpdateUserProfile(w http.ResponseWriter, r *http.Request) 
 	res, err := h.UserController.UpdateUserProfile(userID, req)
 	if err != nil {
 		if err.Error() == "tên đăng nhập đã được sử dụng" || err.Error() == "email đã được sử dụng" {
-			utils.WriteError(w, http.StatusConflict, "Dữ liệu trùng lặp", err.Error())
+			utils.WriteError(w, http.StatusConflict, "Dữ liệu trùng lặp", nil)
 			return
 		}
-		utils.WriteError(w, http.StatusInternalServerError, "Lỗi cập nhật profile", err.Error())
+		utils.WriteError(w, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
 
@@ -280,15 +289,15 @@ func (h *userHandler) UpdateUserProfile(w http.ResponseWriter, r *http.Request) 
 
 // DeleteMyAccount - Người dùng tự xóa tài khoản của mình
 func (h *userHandler) DeleteMyAccount(w http.ResponseWriter, r *http.Request) {
-	userID, ok := r.Context().Value("userID").(int64)
-	if !ok {
-		utils.WriteError(w, http.StatusUnauthorized, "Không xác định được người dùng", "Token lỗi")
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	if !ok || userID == 0 {
+		utils.WriteError(w, http.StatusUnauthorized, "Không xác định được người dùng", nil)
 		return
 	}
 
 	err := h.UserController.DeleteMyAccount(userID)
 	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Lỗi xóa tài khoản", err.Error())
+		utils.WriteError(w, http.StatusInternalServerError, "Lỗi xóa tài khoản", nil)
 		return
 	}
 

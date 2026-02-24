@@ -18,7 +18,7 @@ func NewOrderRepository(db *sql.DB) IOrderRepository {
 	return &OrderRepository{db: db}
 }
 
-// CreateOrder: Tạo đơn hàng
+// CreateOrder: Tạo đơn hàng với stock locking và deduction
 func (r *OrderRepository) CreateOrder(ctx context.Context, order *model.Order, items []model.OrderItem, address *model.OrderAddress, initialPayment *model.OrderPayment) error {
 	logger.DebugLogger.Printf("Starting CreateOrder for UserID: %d, TotalAmount: %.2f", order.UserID, order.TotalAmount)
 	// Bắt đầu Transaction
@@ -30,7 +30,29 @@ func (r *OrderRepository) CreateOrder(ctx context.Context, order *model.Order, i
 
 	defer tx.Rollback()
 
-	//  Insert vào bảng ORDERS
+	// BƯỚC 1: Lock và kiểm tra tồn kho cho tất cả variants (SELECT FOR UPDATE)
+	// Điều này ngăn race condition khi nhiều user đặt hàng cùng lúc
+	for _, item := range items {
+		if item.VariantID == nil {
+			continue
+		}
+
+		var currentStock int
+		queryLockStock := `SELECT stock_quantity FROM product_variants WHERE id = ? FOR UPDATE`
+		err := tx.QueryRowContext(ctx, queryLockStock, *item.VariantID).Scan(&currentStock)
+		if err != nil {
+			logger.ErrorLogger.Printf("CreateOrder: Failed to lock variant %d: %v", *item.VariantID, err)
+			return fmt.Errorf("không thể kiểm tra tồn kho sản phẩm")
+		}
+
+		// Kiểm tra tồn kho sau khi lock
+		if currentStock < item.Quantity {
+			logger.WarnLogger.Printf("CreateOrder: Insufficient stock for variant %d (need: %d, have: %d)", *item.VariantID, item.Quantity, currentStock)
+			return fmt.Errorf("sản phẩm '%s' không đủ số lượng (còn: %d, cần: %d)", item.Title, currentStock, item.Quantity)
+		}
+	}
+
+	// BƯỚC 2: Insert vào bảng ORDERS
 	queryOrder := `
 		INSERT INTO orders (order_number, user_id, status, total_amount, payment_status, note, placed_at) 
 		VALUES (?, ?, ?, ?, ?, ?, ?)`
@@ -41,7 +63,7 @@ func (r *OrderRepository) CreateOrder(ctx context.Context, order *model.Order, i
 	)
 	if err != nil {
 		logger.ErrorLogger.Printf("CreateOrder: Insert Orders failed: %v", err)
-		return fmt.Errorf("failed to insert order: %v", err)
+		return fmt.Errorf("failed to insert order: %w", err)
 	}
 
 	// Lấy ID đơn hàng vừa tạo
@@ -52,31 +74,50 @@ func (r *OrderRepository) CreateOrder(ctx context.Context, order *model.Order, i
 	}
 	order.ID = orderID
 
-	//  Insert vào bảng ORDER_ITEMS
+	// BƯỚC 3: Insert vào bảng ORDER_ITEMS
 	queryItem := `
 		INSERT INTO order_items (order_id, product_id, variant_id, sku, title, option_values, unit_price, quantity, line_subtotal)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	stmtItem, err := tx.PrepareContext(ctx, queryItem) // Prepare statement cho tối ưu vì loop nhiều lần
-
 	if err != nil {
 		logger.ErrorLogger.Printf("CreateOrder: Prepare stmtItem failed: %v", err)
 		return err
 	}
 	defer stmtItem.Close()
 
+	// BƯỚC 4: Trừ tồn kho
+	queryDeductStock := `UPDATE product_variants SET stock_quantity = stock_quantity - ?, updated_at = NOW() WHERE id = ?`
+	stmtDeduct, err := tx.PrepareContext(ctx, queryDeductStock)
+	if err != nil {
+		logger.ErrorLogger.Printf("CreateOrder: Prepare stmtDeduct failed: %v", err)
+		return err
+	}
+	defer stmtDeduct.Close()
+
 	for _, item := range items {
+		// Insert order item
 		_, err := stmtItem.ExecContext(ctx,
 			orderID, item.ProductID, item.VariantID, item.SKU, item.Title,
 			item.OptionValues, item.UnitPrice, item.Quantity, item.LineSubtotal,
 		)
 		if err != nil {
 			logger.ErrorLogger.Printf("CreateOrder: Insert Item (ProductID: %d) failed: %v", item.ProductID, err)
-			return fmt.Errorf("failed to insert order item: %v", err)
+			return fmt.Errorf("failed to insert order item: %w", err)
+		}
+
+		// Trừ tồn kho cho variant
+		if item.VariantID != nil {
+			_, err = stmtDeduct.ExecContext(ctx, item.Quantity, *item.VariantID)
+			if err != nil {
+				logger.ErrorLogger.Printf("CreateOrder: Deduct stock for variant %d failed: %v", *item.VariantID, err)
+				return fmt.Errorf("failed to deduct stock: %w", err)
+			}
+			logger.DebugLogger.Printf("CreateOrder: Deducted %d units from variant %d", item.Quantity, *item.VariantID)
 		}
 	}
 
-	//  Insert vào bảng ORDER_ADDRESSES 
+	//  Insert vào bảng ORDER_ADDRESSES
 	queryAddress := `
 		INSERT INTO order_addresses (order_id, type, recipient_name, phone, line1, line2, city, state, country)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
@@ -168,73 +209,70 @@ func (r *OrderRepository) UpdateOrderStatus(ctx context.Context, orderID int64, 
 	return tx.Commit()
 }
 
-
 // xác nhận thanh toán
 func (r *OrderRepository) ConfirmPayment(ctx context.Context, orderID int64, payment *model.OrderPayment) error {
-    logger.InfoLogger.Printf("Repo: Starting ConfirmPayment Transaction for OrderID: %d", orderID)
+	logger.InfoLogger.Printf("Repo: Starting ConfirmPayment Transaction for OrderID: %d", orderID)
 
-    // Bắt đầu Transaction
-    tx, err := r.db.BeginTx(ctx, nil)
-    if err != nil {
-        return err
-    }
-   
-    defer tx.Rollback() 
+	// Bắt đầu Transaction
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	defer tx.Rollback()
 
 	var queryUpdateOrder string
-    var newOrderPaymentStatus string
+	var newOrderPaymentStatus string
 
-    if payment.Status == "completed" {
-        newOrderPaymentStatus = model.PaymentStatusPaid
-        queryUpdateOrder = `
+	if payment.Status == "completed" {
+		newOrderPaymentStatus = model.PaymentStatusPaid
+		queryUpdateOrder = `
             UPDATE orders 
             SET payment_status = ?, updated_at = NOW(), paid_at = NOW() 
             WHERE id = ?`
 
 	} else if payment.Status == "refunded" {
-        newOrderPaymentStatus = model.PaymentStatusRefunded
-        queryUpdateOrder = `
+		newOrderPaymentStatus = model.PaymentStatusRefunded
+		queryUpdateOrder = `
             UPDATE orders 
             SET payment_status = ?, updated_at = NOW() 
             WHERE id = ?`
-    } else {
-        newOrderPaymentStatus = model.PaymentStatusUnpaid
-        queryUpdateOrder = `
+	} else {
+		newOrderPaymentStatus = model.PaymentStatusUnpaid
+		queryUpdateOrder = `
             UPDATE orders 
             SET payment_status = ?, updated_at = NOW() 
             WHERE id = ?`
-    }
-    
-    _, err = tx.ExecContext(ctx, queryUpdateOrder, newOrderPaymentStatus, orderID)
-    if err != nil {
-        logger.ErrorLogger.Printf("ConfirmPayment: Update Orders failed: %v", err)
-        return err
-    }
+	}
 
+	_, err = tx.ExecContext(ctx, queryUpdateOrder, newOrderPaymentStatus, orderID)
+	if err != nil {
+		logger.ErrorLogger.Printf("ConfirmPayment: Update Orders failed: %v", err)
+		return err
+	}
 
-    queryInsertPayment := `
+	queryInsertPayment := `
         INSERT INTO order_payments (order_id, method, amount, status, paid_at) 
         VALUES (?, ?, ?, ?, ?)`
-    
-    _, err = tx.ExecContext(ctx, queryInsertPayment, 
-        payment.OrderID, payment.Method, payment.Amount, payment.Status, payment.PaidAt,
-    )
-    if err != nil {
-        logger.ErrorLogger.Printf("ConfirmPayment: Insert OrderPayments failed: %v", err)
-        return err
-    }
 
-    
-    if err := tx.Commit(); err != nil {
-        logger.ErrorLogger.Printf("ConfirmPayment: Commit failed: %v", err)
-        return err
-    }
+	_, err = tx.ExecContext(ctx, queryInsertPayment,
+		payment.OrderID, payment.Method, payment.Amount, payment.Status, payment.PaidAt,
+	)
+	if err != nil {
+		logger.ErrorLogger.Printf("ConfirmPayment: Insert OrderPayments failed: %v", err)
+		return err
+	}
 
-    logger.InfoLogger.Printf("ConfirmPayment Transaction Success for OrderID: %d", orderID)
-    return nil
+	if err := tx.Commit(); err != nil {
+		logger.ErrorLogger.Printf("ConfirmPayment: Commit failed: %v", err)
+		return err
+	}
+
+	logger.InfoLogger.Printf("ConfirmPayment Transaction Success for OrderID: %d", orderID)
+	return nil
 }
 
-//  Lấy thông tin chung đơn hàng
+// Lấy thông tin chung đơn hàng
 func (r *OrderRepository) GetOrderByID(ctx context.Context, id int64) (*model.Order, error) {
 	logger.DebugLogger.Printf("Starting GetOrderByID: %d", id)
 	query := `
@@ -260,7 +298,7 @@ func (r *OrderRepository) GetOrderByID(ctx context.Context, id int64) (*model.Or
 	return &o, nil
 }
 
-//  Tìm theo mã đơn hàng
+// Tìm theo mã đơn hàng
 func (r *OrderRepository) GetByOrderNumber(ctx context.Context, orderNumber string) (*model.Order, error) {
 	logger.DebugLogger.Printf("Starting GetByOrderNumber: %s", orderNumber)
 	query := `
@@ -286,10 +324,10 @@ func (r *OrderRepository) GetByOrderNumber(ctx context.Context, orderNumber stri
 	return &o, nil
 }
 
-//  Lọc và Phân trang 
+// Lọc và Phân trang
 func (r *OrderRepository) GetOrders(ctx context.Context, filter model.OrderFilter) ([]model.Order, int, error) {
 	logger.DebugLogger.Printf("Starting GetOrders with Filter: %+v", filter)
-	
+
 	whereClauses := []string{"1=1"}
 	args := []interface{}{}
 
@@ -305,7 +343,7 @@ func (r *OrderRepository) GetOrders(ctx context.Context, filter model.OrderFilte
 		whereClauses = append(whereClauses, "payment_status = ?")
 		args = append(args, filter.PaymentStatus)
 	}
-	if filter.OrderID != "" { 
+	if filter.OrderID != "" {
 		whereClauses = append(whereClauses, "order_number LIKE ?")
 		args = append(args, "%"+filter.OrderID+"%")
 	}
@@ -329,9 +367,9 @@ func (r *OrderRepository) GetOrders(ctx context.Context, filter model.OrderFilte
 			)
 		)`
 		whereClauses = append(whereClauses, searchCondition)
-		
+
 		kw := "%" + filter.Keyword + "%"
-		args = append(args, kw, kw) 
+		args = append(args, kw, kw)
 	}
 
 	whereQuery := strings.Join(whereClauses, " AND ")
@@ -370,7 +408,7 @@ func (r *OrderRepository) GetOrders(ctx context.Context, filter model.OrderFilte
 	var orders []model.Order
 	for rows.Next() {
 		var o model.Order
-		if err := rows.Scan(&o.ID, &o.OrderNumber, &o.UserID, &o.Status, &o.TotalAmount, &o.PaymentStatus, &o.PlacedAt, &o.CreatedAt,&o.PaidAt, &o.CompletedAt, &o.CancelledAt,); err != nil {
+		if err := rows.Scan(&o.ID, &o.OrderNumber, &o.UserID, &o.Status, &o.TotalAmount, &o.PaymentStatus, &o.PlacedAt, &o.CreatedAt, &o.PaidAt, &o.CompletedAt, &o.CancelledAt); err != nil {
 			logger.ErrorLogger.Printf("GetOrders: Scan row failed: %v", err)
 			return nil, 0, err
 		}
@@ -421,7 +459,7 @@ func (r *OrderRepository) GetOrderAddress(ctx context.Context, orderID int64) (*
 	)
 	if err == sql.ErrNoRows {
 		logger.WarnLogger.Printf("GetOrderAddress: No address found for OrderID: %d", orderID)
-		return nil, nil 
+		return nil, nil
 	}
 	if err != nil {
 		logger.ErrorLogger.Printf("GetOrderAddress failed: %v", err)
@@ -493,7 +531,7 @@ func (r *OrderRepository) HasUserPurchasedProduct(ctx context.Context, userID in
 
 	var exists int
 	err := r.db.QueryRowContext(ctx, query, userID, productID).Scan(&exists)
-	
+
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return false, nil // Chưa mua hoặc chưa hoàn thành

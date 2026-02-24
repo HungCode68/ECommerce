@@ -30,11 +30,11 @@ func NewCartController(
 	}
 }
 
-// GetCart: Lấy chi tiết giỏ hàng
+// GetCart: Lấy chi tiết giỏ hàng (Sử dụng JOIN query để tránh N+1)
 func (c *cartController) GetCart(ctx context.Context, userID int64) (model.CartResponse, error) {
 	logger.DebugLogger.Printf("Controller: Getting cart for user %d", userID)
 
-	//  Lấy ID giỏ hàng
+	// Lấy ID giỏ hàng
 	cartID, err := c.CartRepo.GetCartIDByUserID(ctx, userID)
 	if err != nil {
 		return model.CartResponse{}, err
@@ -44,72 +44,22 @@ func (c *cartController) GetCart(ctx context.Context, userID int64) (model.CartR
 		return model.CartResponse{UserID: userID, Items: []model.CartItemResponse{}}, nil
 	}
 
-	// Lấy danh sách items thô
-	rawItems, err := c.CartRepo.GetCartItems(ctx, cartID)
+	// Sử dụng method mới với JOIN query - không còn N+1 nữa
+	items, err := c.CartRepo.GetCartItemsWithDetails(ctx, cartID)
 	if err != nil {
+		logger.ErrorLogger.Printf("Controller: Failed to get cart items: %v", err)
 		return model.CartResponse{}, err
 	}
 
-	var responseItems []model.CartItemResponse
-
-	// Duyệt và map dữ liệu
-	for _, item := range rawItems {
-		// Lấy Variant
-		variant, err := c.VariantRepo.GetVariantByID(item.VariantID)
-		if err != nil || variant == nil {
-			logger.WarnLogger.Printf("Variant ID %d not found, skipping...", item.VariantID)
-			continue
-		}
-
-		// Lấy Product
-		product, err := c.ProductRepo.GetProductByID(item.ProductID)
-		if err != nil || product == nil {
-			logger.WarnLogger.Printf("Product ID %d not found, skipping...", item.ProductID)
-			continue
-		}
-
-
-		// Xử lý Giá (Price)
-		var currentPrice float64
-		// Nếu PriceOverride có giá trị (không nil) -> Dùng nó
-		if variant.PriceOverride != nil {
-			currentPrice = *variant.PriceOverride // Dereference (*) để lấy giá trị thực
-		} else {
-			currentPrice = product.MinPrice
-		}
-
-		var variantName string
-		// Nếu Title có giá trị -> Dùng nó
-		if variant.Title != nil {
-			variantName = *variant.Title 
-		} else {
-			variantName = variant.SKU
-		}
-
-
-		subTotal := currentPrice * float64(item.Quantity)
-		stockCheck := item.Quantity <= variant.StockQuantity
-
-		resItem := model.CartItemResponse{
-			ItemID:        item.ID,
-			ProductID:     product.ID,
-			ProductName:   product.Name,
-			VariantID:     variant.ID,
-			VariantName:   variantName, 
-			Price:         currentPrice, 
-			Quantity:      item.Quantity,
-			SubTotal:      subTotal,
-			StockCheck:    stockCheck,
-			StockQuantity: variant.StockQuantity,
-		}
-
-		responseItems = append(responseItems, resItem)
+	// Nếu items nil, khởi tạo slice trống
+	if items == nil {
+		items = []model.CartItemResponse{}
 	}
 
 	return model.CartResponse{
 		ID:     cartID,
 		UserID: userID,
-		Items:  responseItems,
+		Items:  items,
 	}, nil
 }
 
@@ -140,7 +90,7 @@ func (c *cartController) AddToCart(ctx context.Context, userID int64, req model.
 		req.ProductID = variant.ProductID
 	}
 
-	// Kiểm tra tồn kho 
+	// Kiểm tra tồn kho
 	if req.Quantity > variant.StockQuantity {
 		return errors.New("số lượng yêu cầu vượt quá tồn kho hiện tại")
 	}
@@ -154,7 +104,7 @@ func (c *cartController) AddToCart(ctx context.Context, userID int64, req model.
 	return nil
 }
 
-//  UpdateCartItem: Cập nhật số lượng 
+// UpdateCartItem: Cập nhật số lượng
 func (c *cartController) UpdateCartItem(ctx context.Context, userID int64, variantID int64, req model.UpdateCartItemRequest) error {
 	//  Tìm giỏ hàng
 	cartID, err := c.CartRepo.GetCartIDByUserID(ctx, userID)
@@ -167,7 +117,7 @@ func (c *cartController) UpdateCartItem(ctx context.Context, userID int64, varia
 	if err != nil || variant == nil {
 		return errors.New("sản phẩm không tồn tại")
 	}
-	
+
 	// Check số lượng tồn kho (req.Quantity lấy từ Body JSON)
 	if req.Quantity > variant.StockQuantity {
 		return errors.New("số lượng trong kho không đủ")
@@ -187,9 +137,9 @@ func (c *cartController) RemoveCartItems(ctx context.Context, userID int64, req 
 	return c.CartRepo.RemoveItems(ctx, cartID, req.VariantIDs)
 }
 
-//  CalculateCheckoutPreview: Tính tiền cho các món được chọn
+// CalculateCheckoutPreview: Tính tiền cho các món được chọn
 func (c *cartController) CalculateCheckoutPreview(ctx context.Context, userID int64, req model.CheckoutPreviewRequest) (model.CheckoutPreviewResponse, error) {
-	//  Lấy toàn bộ giỏ hàng 
+	//  Lấy toàn bộ giỏ hàng
 	fullCart, err := c.GetCart(ctx, userID)
 	if err != nil {
 		return model.CheckoutPreviewResponse{}, err
@@ -208,7 +158,7 @@ func (c *cartController) CalculateCheckoutPreview(ctx context.Context, userID in
 	// Lọc ra những món user chọn và tính tổng
 	for _, item := range fullCart.Items {
 		if selectedMap[item.VariantID] {
-			// Check lại tồn kho 
+			// Check lại tồn kho
 			if !item.StockCheck {
 				return model.CheckoutPreviewResponse{}, errors.New("một số sản phẩm đã hết hàng, vui lòng kiểm tra lại")
 			}

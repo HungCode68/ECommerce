@@ -6,19 +6,19 @@ import (
 	"fmt"
 	"strings"
 
-	"golang/internal/logger" 
+	"golang/internal/logger"
 	"golang/internal/model"
 )
 
 type cartRepository struct {
-	db *sql.DB 
+	db *sql.DB
 }
 
 func NewCartRepository(db *sql.DB) ICartRepository {
 	return &cartRepository{db: db}
 }
 
-//Lấy CartID dựa trên UserID
+// Lấy CartID dựa trên UserID
 func (r *cartRepository) GetCartIDByUserID(ctx context.Context, userID int64) (int64, error) {
 	logger.DebugLogger.Printf("Repo: Getting CartID for UserID: %d", userID)
 
@@ -38,7 +38,7 @@ func (r *cartRepository) GetCartIDByUserID(ctx context.Context, userID int64) (i
 	return id, nil
 }
 
-//  Tạo giỏ hàng mới
+// Tạo giỏ hàng mới
 func (r *cartRepository) CreateCart(ctx context.Context, userID int64) (int64, error) {
 	logger.DebugLogger.Printf("Repo: Creating new cart for UserID: %d", userID)
 
@@ -60,7 +60,7 @@ func (r *cartRepository) CreateCart(ctx context.Context, userID int64) (int64, e
 	return id, nil
 }
 
-// Lấy danh sách items (Raw data)
+// Lấy danh sách items với JOIN để tránh N+1 Query
 func (r *cartRepository) GetCartItems(ctx context.Context, cartID int64) ([]model.CartItem, error) {
 	logger.DebugLogger.Printf("Repo: Getting items for CartID: %d", cartID)
 
@@ -107,6 +107,71 @@ func (r *cartRepository) GetCartItems(ctx context.Context, cartID int64) ([]mode
 	return items, nil
 }
 
+// GetCartItemsWithDetails - Lấy cart items với thông tin Product và Variant (JOIN để tránh N+1)
+func (r *cartRepository) GetCartItemsWithDetails(ctx context.Context, cartID int64) ([]model.CartItemResponse, error) {
+	logger.DebugLogger.Printf("Repo: Getting cart items with details for CartID: %d", cartID)
+
+	query := `
+		SELECT 
+			ci.id as item_id,
+			ci.product_id,
+			p.name as product_name,
+			ci.variant_id,
+			COALESCE(pv.title, pv.sku) as variant_name,
+			COALESCE(pv.price_override, p.min_price) as price,
+			ci.quantity,
+			pv.stock_quantity
+		FROM cart_items ci
+		JOIN products p ON ci.product_id = p.id
+		JOIN product_variants pv ON ci.variant_id = pv.id
+		WHERE ci.cart_id = ?
+		ORDER BY ci.created_at DESC
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, cartID)
+	if err != nil {
+		logger.ErrorLogger.Printf("Repo: Error query cart items with details: %v", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []model.CartItemResponse
+	for rows.Next() {
+		var item model.CartItemResponse
+		var stockQuantity int
+
+		err := rows.Scan(
+			&item.ItemID,
+			&item.ProductID,
+			&item.ProductName,
+			&item.VariantID,
+			&item.VariantName,
+			&item.Price,
+			&item.Quantity,
+			&stockQuantity,
+		)
+		if err != nil {
+			logger.ErrorLogger.Printf("Repo: Error scanning row: %v", err)
+			return nil, err
+		}
+
+		// Tính toán các giá trị
+		item.SubTotal = item.Price * float64(item.Quantity)
+		item.StockCheck = item.Quantity <= stockQuantity
+		item.StockQuantity = stockQuantity
+
+		items = append(items, item)
+	}
+
+	if err = rows.Err(); err != nil {
+		logger.ErrorLogger.Printf("Repo: Error iterating rows: %v", err)
+		return nil, err
+	}
+
+	logger.InfoLogger.Printf("Repo: Found %d cart items for CartID: %d", len(items), cartID)
+	return items, nil
+}
+
 // Thêm hoặc Cộng dồn số lượng (user bấm thêm vào giỏ ở trang chi tiết sản phẩm)
 func (r *cartRepository) UpsertCartItem(ctx context.Context, cartID int64, req model.AddToCartRequest) error {
 	logger.DebugLogger.Printf("Repo: Upserting item for CartID: %d, VariantID: %d", cartID, req.VariantID)
@@ -145,7 +210,7 @@ func (r *cartRepository) UpdateItemQuantity(ctx context.Context, cartID int64, v
 	return nil
 }
 
-// Xóa 1 hoặc nhiều sản phẩm 
+// Xóa 1 hoặc nhiều sản phẩm
 func (r *cartRepository) RemoveItems(ctx context.Context, cartID int64, variantIDs []int64) error {
 	if len(variantIDs) == 0 {
 		return nil
@@ -156,9 +221,9 @@ func (r *cartRepository) RemoveItems(ctx context.Context, cartID int64, variantI
 	// Vì database/sql không hỗ trợ truyền slice vào IN trực tiếp như sqlx
 	placeholders := make([]string, len(variantIDs))
 	args := make([]interface{}, len(variantIDs)+1)
-	
+
 	args[0] = cartID // Tham số đầu tiên là cart_id
-	
+
 	for i, id := range variantIDs {
 		placeholders[i] = "?"
 		args[i+1] = id // Các tham số tiếp theo là variant_id
@@ -166,7 +231,7 @@ func (r *cartRepository) RemoveItems(ctx context.Context, cartID int64, variantI
 
 	// Ghép chuỗi: "DELETE ... WHERE cart_id = ? AND variant_id IN (?,?,?)"
 	query := fmt.Sprintf(
-		"DELETE FROM cart_items WHERE cart_id = ? AND variant_id IN (%s)", 
+		"DELETE FROM cart_items WHERE cart_id = ? AND variant_id IN (%s)",
 		strings.Join(placeholders, ","),
 	)
 
@@ -179,12 +244,11 @@ func (r *cartRepository) RemoveItems(ctx context.Context, cartID int64, variantI
 	return nil
 }
 
-
-//  Đếm số loại sản phẩm
+// Đếm số loại sản phẩm
 func (r *cartRepository) CountCartItems(ctx context.Context, cartID int64) (int, error) {
 	var count int
 	query := `SELECT COUNT(*) FROM cart_items WHERE cart_id = ?`
-	
+
 	err := r.db.QueryRowContext(ctx, query, cartID).Scan(&count)
 	if err != nil {
 		logger.ErrorLogger.Printf("Repo: Failed to count items: %v", err)

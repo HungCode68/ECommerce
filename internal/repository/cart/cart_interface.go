@@ -15,6 +15,9 @@ type ICartRepository interface {
 	// Lấy danh sách item thô trong giỏ (chưa join product)
 	GetCartItems(ctx context.Context, cartID int64) ([]model.CartItem, error)
 
+	// Lấy danh sách items với JOIN để tránh N+1 Query (bao gồm thông tin Product và Variant)
+	GetCartItemsWithDetails(ctx context.Context, cartID int64) ([]model.CartItemResponse, error)
+
 	// Thêm sản phẩm vào giỏ (Nếu đã có thì cộng dồn số lượng)
 	UpsertCartItem(ctx context.Context, cartID int64, req model.AddToCartRequest) error
 
@@ -23,7 +26,7 @@ type ICartRepository interface {
 
 	// Xóa sản phẩm
 	RemoveItems(ctx context.Context, cartID int64, variantIDs []int64) error
-	
+
 	// Đếm số lượng loại sản phẩm trong giỏ (để hiện badge trên icon giỏ hàng nếu cần)
 	CountCartItems(ctx context.Context, cartID int64) (int, error)
 }
