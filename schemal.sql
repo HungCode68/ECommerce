@@ -1,12 +1,12 @@
 -- ECommerce - MySQL 8.x version
-DROP DATABASE IF EXISTS ECommerce;
+
 CREATE DATABASE ECommerce CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE ECommerce;
 
 ----------------------------------------------------
 -- PHẦN 1: TẠO BẢNG
 ----------------------------------------------------
-drop table users;
+
 -- Bảng users (Người dùng)
 CREATE TABLE users (
   id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,

@@ -72,6 +72,15 @@ func NewDatabaseConnection() *DBConfig {
 
 	log.Printf("Kết nối MySQL database thành công! Pool: MaxOpen=%d, MaxIdle=%d", maxOpenConns, maxIdleConns)
 
+	rows, err := db.Query("SHOW TABLES")
+	if err == nil {
+		log.Println("Các bảng hiện có trong DB:")
+		for rows.Next() {
+			var tableName string
+			rows.Scan(&tableName)
+			log.Printf("- %s", tableName)
+		}
+	}
 	return &DBConfig{
 		Connection: db,
 	}

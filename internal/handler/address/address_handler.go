@@ -3,6 +3,7 @@ package address
 import (
 	"encoding/json"
 	"golang/internal/controller/address"
+	"golang/internal/middleware"
 	"golang/internal/model"
 	"golang/internal/utils"
 	"golang/internal/validator"
@@ -24,7 +25,7 @@ func NewAddressHandler(addressController address.AddressController) AddressHandl
 // Tạo địa chỉ mới
 func (h *addressHandler) CreateAddress(w http.ResponseWriter, r *http.Request) {
 	// Lấy UserID từ Context (Bắt buộc phải đăng nhập)
-	userID, ok := r.Context().Value("userID").(int64)
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
 	if !ok {
 		utils.WriteError(w, http.StatusUnauthorized, "Không xác định được người dùng", "Token lỗi")
 		return
@@ -55,7 +56,7 @@ func (h *addressHandler) CreateAddress(w http.ResponseWriter, r *http.Request) {
 
 // Lấy danh sách địa chỉ của tôi
 func (h *addressHandler) GetMyAddresses(w http.ResponseWriter, r *http.Request) {
-	userID, ok := r.Context().Value("userID").(int64)
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
 	if !ok {
 		utils.WriteError(w, http.StatusUnauthorized, "Token không hợp lệ", nil)
 		return
@@ -72,7 +73,7 @@ func (h *addressHandler) GetMyAddresses(w http.ResponseWriter, r *http.Request) 
 
 // Lấy chi tiết 1 địa chỉ
 func (h *addressHandler) GetAddressByID(w http.ResponseWriter, r *http.Request) {
-	userID, ok := r.Context().Value("userID").(int64)
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
 	if !ok {
 		utils.WriteError(w, http.StatusUnauthorized, "Token không hợp lệ", nil)
 		return
@@ -96,7 +97,7 @@ func (h *addressHandler) GetAddressByID(w http.ResponseWriter, r *http.Request) 
 
 // Cập nhật địa chỉ
 func (h *addressHandler) UpdateAddress(w http.ResponseWriter, r *http.Request) {
-	userID, ok := r.Context().Value("userID").(int64)
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
 	if !ok {
 		utils.WriteError(w, http.StatusUnauthorized, "Token không hợp lệ", nil)
 		return
@@ -131,7 +132,7 @@ func (h *addressHandler) UpdateAddress(w http.ResponseWriter, r *http.Request) {
 
 // Xóa địa chỉ
 func (h *addressHandler) DeleteAddress(w http.ResponseWriter, r *http.Request) {
-	userID, ok := r.Context().Value("userID").(int64)
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
 	if !ok {
 		utils.WriteError(w, http.StatusUnauthorized, "Token không hợp lệ", nil)
 		return
@@ -155,7 +156,7 @@ func (h *addressHandler) DeleteAddress(w http.ResponseWriter, r *http.Request) {
 
 // Đặt làm địa chỉ mặc định
 func (h *addressHandler) SetDefaultAddress(w http.ResponseWriter, r *http.Request) {
-	userID, ok := r.Context().Value("userID").(int64)
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
 	if !ok {
 		utils.WriteError(w, http.StatusUnauthorized, "Token không hợp lệ", nil)
 		return

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"golang/internal/controller/productreviews"
+	"golang/internal/middleware"
 	"golang/internal/model"
 	"golang/internal/validator"
 	"net/http"
@@ -38,8 +39,7 @@ func (h *productReviewHandler) CreateReviewHandler(w http.ResponseWriter, r *htt
 	}
 
 	// userID is stored by AuthMiddleware
-	userIDVal := r.Context().Value("userID")
-	userID, ok := userIDVal.(int64)
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
 	if !ok || userID == 0 {
 		h.errJson(w, http.StatusUnauthorized, "Unauthorized")
 		return

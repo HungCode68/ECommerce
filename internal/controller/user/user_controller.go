@@ -6,7 +6,9 @@ import (
 	"golang/internal/model"
 	"golang/internal/repository/user"
 	"os"
+	"strconv"
 	"time"
+
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -232,28 +234,28 @@ func (c *userController) GetUserByID(id int64) (model.AdminUserResponse, error) 
 func (c *userController) SearchUsers(filter model.UserFilter) ([]model.AdminUserResponse, int, error) {
 	logger.InfoLogger.Printf("Controller: Searching users with Filter: %+v", filter)
 	// Gọi Repo
-    users, total, err := c.UserRepo.SearchUsers(filter)
-    if err != nil {
+	users, total, err := c.UserRepo.SearchUsers(filter)
+	if err != nil {
 		logger.ErrorLogger.Printf("Controller: Failed to search users. Error: %v", err)
-        return nil, 0, err
-    }
+		return nil, 0, err
+	}
 
-    // Map sang Response (AdminUserResponse)
-    var response []model.AdminUserResponse
-    for _, u := range users {
-        response = append(response, model.AdminUserResponse{
-            ID:        u.ID,
-            Username:  u.Username,
-            Email:     u.Email,
-            Role:      u.Role,
-            IsActive:  u.IsActive,
-            CreatedAt: u.CreatedAt,
-            UpdatedAt: u.UpdatedAt,
-            DeletedAt: u.DeletedAt,
-        })
-    }
+	// Map sang Response (AdminUserResponse)
+	var response []model.AdminUserResponse
+	for _, u := range users {
+		response = append(response, model.AdminUserResponse{
+			ID:        u.ID,
+			Username:  u.Username,
+			Email:     u.Email,
+			Role:      u.Role,
+			IsActive:  u.IsActive,
+			CreatedAt: u.CreatedAt,
+			UpdatedAt: u.UpdatedAt,
+			DeletedAt: u.DeletedAt,
+		})
+	}
 	logger.InfoLogger.Printf("Controller: SearchUsers success. Returning %d users (Total found in DB: %d)", len(response), total)
-    return response, total, nil
+	return response, total, nil
 }
 
 // Hàm cập nhật thông tin user
@@ -368,7 +370,7 @@ func generateTokens(userID int64, role string) (string, string, error) {
 	// Refresh Token (7 ngày)
 	refreshClaims := jwt.RegisteredClaims{
 		ExpiresAt: jwt.NewNumericDate(time.Now().Add(7 * 24 * time.Hour)),
-		Subject:   string(rune(userID)),
+		Subject:   strconv.Itoa(int(userID)),
 	}
 	refreshTokenObj := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
 	refreshToken, err := refreshTokenObj.SignedString(jwtSecret)

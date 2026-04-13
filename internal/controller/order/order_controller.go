@@ -14,6 +14,7 @@ import (
 	"golang/internal/repository/product"
 	"golang/internal/repository/productvariant"
 	"golang/internal/utils"
+	"golang/internal/controller/coupons"
 )
 
 type orderController struct {
@@ -21,6 +22,7 @@ type orderController struct {
 	ProductRepo        product.ProductRepository
 	ProductVariantRepo productvariant.ProductVariantsRepository
 	AddressRepo        address.AddressRepo
+	CouponsCtrl        coupons.CouponsController
 }
 
 func NewOrderController(
@@ -28,12 +30,14 @@ func NewOrderController(
 	productRepo product.ProductRepository,
 	variantRepo productvariant.ProductVariantsRepository,
 	addrRepo address.AddressRepo,
+	couponsCtrl coupons.CouponsController,
 ) OrderController {
 	return &orderController{
 		OrderRepo:          orderRepo,
 		ProductRepo:        productRepo,
 		ProductVariantRepo: variantRepo,
 		AddressRepo:        addrRepo,
+		CouponsCtrl:        couponsCtrl,
 	}
 }
 
@@ -137,6 +141,32 @@ func (c *orderController) CreateOrder(ctx context.Context, userID int64, req mod
 		orderItems = append(orderItems, item)
 	}
 
+	var couponID *int64
+	var discountAmount float64 = 0
+
+	// Xác thực mã giảm giá nếu có
+	if req.CouponCode != nil && *req.CouponCode != "" {
+		valReq := model.ValidateCouponRequest{
+			Code:        *req.CouponCode,
+			UserID:      userID,
+			OrderAmount: totalAmount,
+		}
+		couponResp, err := c.CouponsCtrl.ValidateCoupon(ctx, valReq)
+		if err != nil {
+			return nil, fmt.Errorf("lỗi kiểm tra mã giảm giá: %v", err)
+		}
+		if !couponResp.IsValid {
+			return nil, fmt.Errorf("mã giảm giá không hợp lệ: %s", couponResp.Message)
+		}
+		discountAmount = couponResp.DiscountAmount
+		couponID = &couponResp.CouponID
+	}
+
+	finalTotalAmount := totalAmount - discountAmount
+	if finalTotalAmount < 0 {
+		finalTotalAmount = 0
+	}
+
 	orderNumber := fmt.Sprintf("ORD-%d", time.Now().UnixNano())
 
 	newOrder := &model.Order{
@@ -144,7 +174,7 @@ func (c *orderController) CreateOrder(ctx context.Context, userID int64, req mod
 		UserID:        userID,
 		Status:        model.OrderStatusPending,
 		PaymentStatus: model.PaymentStatusUnpaid,
-		TotalAmount:   totalAmount,
+		TotalAmount:   finalTotalAmount,
 		Note:          &req.Note,
 		PlacedAt:      time.Now(),
 	}
@@ -152,11 +182,11 @@ func (c *orderController) CreateOrder(ctx context.Context, userID int64, req mod
 	// Tạo Payment
 	initialPayment := &model.OrderPayment{
 		Method: req.PaymentMethod,
-		Amount: totalAmount,
+		Amount: finalTotalAmount,
 		Status: model.PaymentTransStatusPending,
 	}
 
-	err = c.OrderRepo.CreateOrder(ctx, newOrder, orderItems, addressSnapshot, initialPayment)
+	err = c.OrderRepo.CreateOrder(ctx, newOrder, orderItems, addressSnapshot, initialPayment, couponID)
 	if err != nil {
 		logger.ErrorLogger.Printf("CreateOrder failed for user %d: %v", userID, err)
 		return nil, err
@@ -174,7 +204,7 @@ func (c *orderController) CreateOrder(ctx context.Context, userID int64, req mod
 			{
 				ID:     initialPayment.ID,
 				Method: req.PaymentMethod,
-				Amount: utils.FormatVND(totalAmount),
+				Amount: utils.FormatVND(finalTotalAmount),
 				Status: model.PaymentTransStatusPending,
 			},
 		},

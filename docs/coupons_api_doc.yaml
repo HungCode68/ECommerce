@@ -1,0 +1,358 @@
+openapi: 3.0.0
+info:
+  title: Coupons API
+  description: Tài liệu API quản lý Mã giảm giá (Coupons) cho hệ thống E-commerce
+  version: 1.0.0
+
+tags:
+  - name: Admin Coupons
+    description: Các API quản lý mã giảm giá dành cho Admin
+  - name: User Coupons
+    description: Các API xử lý mã giảm giá dành cho người dùng cuối (User)
+
+paths:
+  /api/admin/coupons:
+    get:
+      tags:
+        - Admin Coupons
+      summary: Lấy danh sách mã giảm giá (phân trang + tìm kiếm)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          description: "active, inactive, expired"
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CouponListResponse'
+    post:
+      tags:
+        - Admin Coupons
+      summary: Tạo mã giảm giá mới
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCouponRequest'
+      responses:
+        "201":
+          description: Tạo thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CouponResponse'
+
+  /api/admin/coupons/{id}:
+    get:
+      tags:
+        - Admin Coupons
+      summary: Xem chi tiết một mã giảm giá
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CouponResponse'
+    put:
+      tags:
+        - Admin Coupons
+      summary: Cập nhật mã giảm giá
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCouponRequest'
+      responses:
+        "200":
+          description: Cập nhật thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CouponResponse'
+    delete:
+      tags:
+        - Admin Coupons
+      summary: Xoá mã giảm giá
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Xoá thành công
+
+  /api/admin/coupons/bulk-delete:
+    post:
+      tags:
+        - Admin Coupons
+      summary: Xoá nhiều mã giảm giá cùng lúc
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkDeleteCouponsRequest'
+      responses:
+        "200":
+          description: Xoá thành công
+
+  /api/coupons/available:
+    get:
+      tags:
+        - User Coupons
+      summary: Lấy danh sách mã giảm giá khả dụng cho user
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: order_amount
+          in: query
+          required: true
+          description: "Tổng tiền đơn hàng để lọc đúng mã đủ điều kiện"
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CouponResponse'
+
+  /api/coupons/validate:
+    post:
+      tags:
+        - User Coupons
+      summary: Kiểm tra tính hợp lệ của mã giảm giá khi ở giỏ hàng
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidateCouponRequest'
+      responses:
+        "200":
+          description: Trả về trạng thái hợp lệ và số tiền được giảm
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidateCouponResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    CouponResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+        description:
+          type: string
+        discount_type:
+          type: string
+          enum: [percentage, fixed_amount]
+        discount_value:
+          type: number
+        min_order_value:
+          type: number
+        max_discount_amount:
+          type: number
+        usage_limit:
+          type: integer
+        usage_count:
+          type: integer
+        use_usage_limit:
+          type: boolean
+        is_active:
+          type: boolean
+        start_date:
+          type: string
+          format: date-time
+        end_date:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateCouponRequest:
+      type: object
+      required:
+        - code
+        - description
+        - discount_type
+        - discount_value
+      properties:
+        code:
+          type: string
+          example: "TET2025"
+        description:
+          type: string
+          example: "Giảm 10% dịp Tết"
+        discount_type:
+          type: string
+          enum: [percentage, fixed_amount]
+        discount_value:
+          type: number
+          example: 10.0
+        min_order_value:
+          type: number
+          example: 200000.0
+        max_discount_amount:
+          type: number
+          example: 50000.0
+        usage_limit:
+          type: integer
+          example: 1000
+        use_usage_limit:
+          type: boolean
+          example: true
+        is_active:
+          type: boolean
+          example: true
+        start_date:
+          type: string
+          format: date-time
+        end_date:
+          type: string
+          format: date-time
+
+    UpdateCouponRequest:
+      type: object
+      properties:
+        code:
+          type: string
+        description:
+          type: string
+        discount_type:
+          type: string
+          enum: [percentage, fixed_amount]
+        min_order_value:
+          type: number
+        max_discount_amount:
+          type: number
+        usage_limit:
+          type: integer
+        use_usage_limit:
+          type: boolean
+        is_active:
+          type: boolean
+        start_date:
+          type: string
+          format: date-time
+        end_date:
+          type: string
+          format: date-time
+
+    BulkDeleteCouponsRequest:
+      type: object
+      required:
+        - ids
+      properties:
+        ids:
+          type: array
+          items:
+            type: integer
+          example: [1, 2, 3]
+
+    CouponListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/CouponResponse'
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        total_pages:
+          type: integer
+
+    ValidateCouponRequest:
+      type: object
+      required:
+        - code
+        - user_id
+        - order_amount
+      properties:
+        code:
+          type: string
+        user_id:
+          type: integer
+        order_amount:
+          type: number
+
+    ValidateCouponResponse:
+      type: object
+      properties:
+        is_valid:
+          type: boolean
+        message:
+          type: string
+        discount_amount:
+          type: number
+        final_amount:
+          type: number

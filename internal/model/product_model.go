@@ -30,6 +30,7 @@ type Product struct {
 	CreatedAt  time.Time          `db:"created_at"`
 	UpdatedAt  time.Time          `db:"updated_at"`
 	DeletedAt  *time.Time         `db:"deleted_at"` // Có thể NULL
+	IsCouponEligible bool               `db:"is_coupon_eligible"`
 	Categories []Category         `json:"categories,omitempty"`
 	Variants   []ProductsVariants `json:"variants,omitempty"`
 	Reviews    []ProductReview    `json:"reviews,omitempty"`
@@ -54,6 +55,7 @@ type CreateProductRequest struct {
 	Brand            string  `json:"brand" validate:"omitempty,max=100"`
 	Status           string  `json:"status" validate:"omitempty,oneof=draft active inactive archived"`
 	IsPublished      bool    `json:"is_published"`
+	IsCouponEligible bool    `json:"is_coupon_eligible"`
 	PublishedAt      string  `json:"published_at" validate:"omitempty,datetime=2006-01-02T15:04:05Z07:00"`
 	CategoryIDs      []int64 `json:"category_ids" validate:"required,min=1"`
 }
@@ -71,6 +73,7 @@ type UpdateProductRequest struct {
 	PublishedAt      string   `json:"published_at" validate:"omitempty,datetime=2006-01-02T15:04:05Z07:00"`
 	Note             string   `json:"note" validate:"required,max=1000"`
 	CategoryIDs      []int64  `json:"category_ids" validate:"omitempty,min=1"`
+	IsCouponEligible *bool    `json:"is_coupon_eligible"`
 }
 
 // DeleteProductRequest dùng cho việc xóa sản phẩm (Admin)

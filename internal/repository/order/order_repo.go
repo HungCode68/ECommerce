@@ -19,7 +19,7 @@ func NewOrderRepository(db *sql.DB) IOrderRepository {
 }
 
 // CreateOrder: Tạo đơn hàng với stock locking và deduction
-func (r *OrderRepository) CreateOrder(ctx context.Context, order *model.Order, items []model.OrderItem, address *model.OrderAddress, initialPayment *model.OrderPayment) error {
+func (r *OrderRepository) CreateOrder(ctx context.Context, order *model.Order, items []model.OrderItem, address *model.OrderAddress, initialPayment *model.OrderPayment, couponID *int64) error {
 	logger.DebugLogger.Printf("Starting CreateOrder for UserID: %d, TotalAmount: %.2f", order.UserID, order.TotalAmount)
 	// Bắt đầu Transaction
 	tx, err := r.db.BeginTx(ctx, nil)
@@ -145,6 +145,28 @@ func (r *OrderRepository) CreateOrder(ctx context.Context, order *model.Order, i
 		payID, err := resPay.LastInsertId()
 		if err == nil {
 			initialPayment.ID = payID // Gán ngược lại ID thanh toán
+		}
+	}
+
+	// BƯỚC 4.5: Ghi nhận Coupon (Cần thực hiện trước khi Commit)
+	if couponID != nil {
+		queryCoupon := `UPDATE coupons SET usage_count = COALESCE(usage_count, 0) + 1 WHERE id = ? AND (usage_limit IS NULL OR usage_count < usage_limit)`
+		resCoupon, err := tx.ExecContext(ctx, queryCoupon, *couponID)
+		if err != nil {
+			logger.ErrorLogger.Printf("CreateOrder: Deduct coupon failed: %v", err)
+			return fmt.Errorf("không thể cập nhật lượt dùng mã giảm giá: %v", err)
+		}
+		rowsAffected, _ := resCoupon.RowsAffected()
+		if rowsAffected == 0 {
+			logger.ErrorLogger.Printf("CreateOrder: Coupon usage limit exceeded for ID %d", *couponID)
+			return fmt.Errorf("mã giảm giá đã hết lượt sử dụng hoặc không tồn tại")
+		}
+
+		queryUserCoupon := `INSERT INTO user_coupons (coupon_id, user_id, order_id, used_at) VALUES (?, ?, ?, NOW())`
+		_, err = tx.ExecContext(ctx, queryUserCoupon, *couponID, order.UserID, orderID)
+		if err != nil {
+			logger.ErrorLogger.Printf("CreateOrder: Insert user coupon failed: %v", err)
+			return fmt.Errorf("không thể lưu lại lịch sử dùng mã giảm giá: %v", err)
 		}
 	}
 

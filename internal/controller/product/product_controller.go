@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"golang/internal/middleware"
 	"golang/internal/model"
 	product "golang/internal/repository/product"
 	producthistory "golang/internal/repository/producthistory"
@@ -496,19 +497,9 @@ func (prt *productController) UpdateProductController(ctx context.Context, req m
 			// === 1. KHAI BÁO BIẾN ADMIN ID ===
 			var adminID *int64 // Mặc định là nil
 
-			// === 2. GỌI ADMIN ID TỪ CONTEXT (Dùng key "userID" như trong middleware) ===
-			if val := ctx.Value("userID"); val != nil {
-				// Cần ép kiểu vì ctx.Value trả về interface{}
-				// JWT thường lưu số dưới dạng float64, nên cần kiểm tra cả 2 trường hợp
-				if idFloat, ok := val.(float64); ok {
-					v := int64(idFloat)
-					adminID = &v
-				} else if idInt, ok := val.(int64); ok {
-					adminID = &idInt
-				} else if idInt, ok := val.(int); ok {
-					v := int64(idInt)
-					adminID = &v
-				}
+			// === 2. GỌI ADMIN ID TỪ CONTEXT (Dùng typed key từ middleware) ===
+			if id, ok := middleware.GetUserIDFromContext(ctx); ok {
+				adminID = &id
 			}
 			var note *string
 			if req.Note != "" {

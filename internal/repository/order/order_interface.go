@@ -8,7 +8,7 @@ import (
 type IOrderRepository interface {
 
 	// Tạo đơn hàng 
-	CreateOrder(ctx context.Context, order *model.Order, items []model.OrderItem, address *model.OrderAddress, initialPayment *model.OrderPayment) error
+	CreateOrder(ctx context.Context, order *model.Order, items []model.OrderItem, address *model.OrderAddress, initialPayment *model.OrderPayment, couponID *int64) error
 
 	//  Cập nhật trạng thái đơn hàng.
 	UpdateOrderStatus(ctx context.Context, orderID int64, newStatus string, note string, changedBy *int64) error

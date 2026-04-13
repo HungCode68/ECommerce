@@ -56,7 +56,7 @@ type CreateOrderRequest struct {
 	Note      string `json:"note"       validate:"omitempty,max=1000"`
 	PaymentMethod string `json:"payment_method" validate:"required,oneof=cod bank_transfer"`
 	Items []CreateOrderItemRequest `json:"items" validate:"required,min=1,dive"`
-	
+	CouponCode *string `json:"coupon_code" validate:"omitempty"`
 }
 
 // Admin cập nhật trạng thái đơn hàng
