@@ -1,0 +1,103 @@
+Name,Slug,MinPrice,DiscountPercent,ShortDescription,Description,Brand,Status,CategoryIDs
+iPhone 15 Pro Max 2156GB,iphone-15-pro-max-256gb,1199,10,Flagship Apple với chip A17 Pro,Flagship Apple với chip A17 Pro,Apple,active,1
+iPhone 15 Pro 128GB,iphone-15-pro-128gb,999,5,iPhone Pro với camera 48MP,iPhone Pro với camera 48MP,Apple,active,1
+iPhone 15 128GB,iphone-15-128gb,799,8,iPhone tiêu chuẩn với Dynamic Island,iPhone tiêu chuẩn với Dynamic Island,Apple,active,1
+iPhone 14 128GB,iphone-14-128gb,699,15,"iPhone thế hệ trước, giá tốt","iPhone thế hệ trước, giá tốt",Apple,active,1
+iPhone SE 2022 64GB,iphone-se-2022-64gb,429,20,iPhone giá rẻ với chip A15,iPhone giá rẻ với chip A15,Apple,active,1
+Samsung Galaxy S24 Ultra 256GB,samsung-galaxy-s24-ultra-256gb,1299,12,Flagship Samsung với S Pen tích hợp,Flagship Samsung với S Pen tích hợp,Samsung,active,1
+Samsung Galaxy S24+ 256GB,samsung-galaxy-s24-256gb,999,10,Galaxy S24 Plus màn hình lớn,Galaxy S24 Plus màn hình lớn,Samsung,active,1
+Samsung Galaxy S24 128GB,samsung-galaxy-s24-128gb,799,8,Galaxy AI tích hợp sẵn,Galaxy AI tích hợp sẵn,Samsung,active,1
+Samsung Galaxy Z Fold5 256GB,samsung-galaxy-z-fold5-256gb,1799,15,Điện thoại gập cao cấp,Điện thoại gập cao cấp,Samsung,active,1
+Samsung Galaxy Z Flip5 128GB,samsung-galaxy-z-flip5-128gb,999,18,Điện thoại gập nhỏ gọn,Điện thoại gập nhỏ gọn,Samsung,active,1
+Samsung Galaxy A54 128GB,samsung-galaxy-a54-128gb,449,10,Tầm trung Samsung bán chạy nhất,Tầm trung Samsung bán chạy nhất,Samsung,active,1
+Samsung Galaxy A34 128GB,samsung-galaxy-a34-128gb,349,12,Galaxy A series giá hời,Galaxy A series giá hời,Samsung,active,1
+Xiaomi 14 Ultra 512GB,xiaomi-14-ultra-512gb,1099,10,Flagship Xiaomi với camera Leica,Flagship Xiaomi với camera Leica,Xiaomi,active,1
+Xiaomi 14 256GB,xiaomi-14-256gb,699,8,Xiaomi 14 Snapdragon 8 Gen 3,Xiaomi 14 Snapdragon 8 Gen 3,Xiaomi,active,1
+Xiaomi Redmi Note 13 Pro 128GB,xiaomi-redmi-note-13-pro-128gb,299,5,Redmi tầm trung camera 200MP,Redmi tầm trung camera 200MP,Xiaomi,active,1
+Xiaomi Redmi Note 13 128GB,xiaomi-redmi-note-13-128gb,199,10,Redmi phổ thông giá rẻ,Redmi phổ thông giá rẻ,Xiaomi,active,1
+Xiaomi POCO F6 Pro 256GB,xiaomi-poco-f6-pro-256gb,449,15,POCO hiệu năng cao giá tốt,POCO hiệu năng cao giá tốt,Xiaomi,active,1
+Google Pixel 8 Pro 128GB,google-pixel-8-pro-128gb,999,10,Pixel với AI Google tích hợp,Pixel với AI Google tích hợp,Google,active,1
+Google Pixel 8 128GB,google-pixel-8-128gb,699,12,Pixel 8 với Tensor G3,Pixel 8 với Tensor G3,Google,active,1
+Google Pixel 7a 128GB,google-pixel-7a-128gb,499,20,Pixel giá rẻ camera xuất sắc,Pixel giá rẻ camera xuất sắc,Google,active,1
+OPPO Find X7 Ultra 256GB,oppo-find-x7-ultra-256gb,999,10,OPPO flagship camera Hasselblad,OPPO flagship camera Hasselblad,OPPO,active,1
+OPPO Reno 11 Pro 256GB,oppo-reno-11-pro-256gb,499,8,OPPO tầm trung cao cấp,OPPO tầm trung cao cấp,OPPO,active,1
+OPPO A79 128GB,oppo-a79-128gb,249,5,OPPO phổ thông pin lớn,OPPO phổ thông pin lớn,OPPO,active,1
+OnePlus 12 256GB,oneplus-12-256gb,799,10,OnePlus flagship sạc nhanh 100W,OnePlus flagship sạc nhanh 100W,OnePlus,active,1
+OnePlus Nord CE4 128GB,oneplus-nord-ce4-128gb,299,12,OnePlus tầm trung giá tốt,OnePlus tầm trung giá tốt,OnePlus,active,1
+MacBook Air M3 13 inch 256GB,macbook-air-m3-13-inch-256gb,1099,5,MacBook Air mỏng nhẹ chip M3,MacBook Air mỏng nhẹ chip M3,Apple,active,2
+MacBook Air M3 15 inch 512GB,macbook-air-m3-15-inch-512gb,1499,8,MacBook Air màn hình lớn,MacBook Air màn hình lớn,Apple,active,2
+MacBook Pro M3 Pro 14 inch 512GB,macbook-pro-m3-pro-14-inch-512gb,1999,5,MacBook Pro cho chuyên gia,MacBook Pro cho chuyên gia,Apple,active,2
+MacBook Pro M3 Max 16 inch 1TB,macbook-pro-m3-max-16-inch-1tb,3499,3,MacBook Pro hiệu năng cực đỉnh,MacBook Pro hiệu năng cực đỉnh,Apple,active,2
+Dell XPS 15 i7 16GB 512GB,dell-xps-15-i7-16gb-512gb,1399,10,Ultrabook Dell cao cấp,Ultrabook Dell cao cấp,Dell,active,2
+Dell XPS 13 i5 8GB 256GB,dell-xps-13-i5-8gb-256gb,999,12,Dell XPS nhỏ gọn,Dell XPS nhỏ gọn,Dell,active,2
+Dell Inspiron 15 i5 8GB 512GB,dell-inspiron-15-i5-8gb-512gb,699,15,Laptop Dell phổ thông,Laptop Dell phổ thông,Dell,active,2
+Lenovo ThinkPad X1 Carbon Gen 11,lenovo-thinkpad-x1-carbon-gen-11,1599,10,ThinkPad doanh nhân cao cấp,ThinkPad doanh nhân cao cấp,Lenovo,active,2
+Lenovo IdeaPad Slim 5 i5 16GB,lenovo-ideapad-slim-5-i5-16gb,799,8,Lenovo tầm trung cho sinh viên,Lenovo tầm trung cho sinh viên,Lenovo,active,2
+Lenovo Legion Pro 5 RTX 4070,lenovo-legion-pro-5-rtx-4070,1799,10,Laptop gaming Lenovo mạnh mẽ,Laptop gaming Lenovo mạnh mẽ,Lenovo,active,2
+HP Spectre x360 14 i7 16GB,hp-spectre-x360-14-i7-16gb,1499,8,HP 2-in-1 cao cấp,HP 2-in-1 cao cấp,HP,active,2
+HP Pavilion 15 i5 8GB 512GB,hp-pavilion-15-i5-8gb-512gb,649,12,HP phổ thông đa năng,HP phổ thông đa năng,HP,active,2
+ASUS ROG Strix G16 RTX 4060,asus-rog-strix-g16-rtx-4060,1399,10,Laptop gaming ASUS ROG,Laptop gaming ASUS ROG,ASUS,active,2
+ASUS ZenBook 14 OLED i7,asus-zenbook-14-oled-i7,1099,8,ASUS ultrabook OLED,ASUS ultrabook OLED,ASUS,active,2
+ASUS VivoBook 15 i3 8GB,asus-vivobook-15-i3-8gb,449,15,ASUS laptop giá rẻ,ASUS laptop giá rẻ,ASUS,active,2
+iPad Pro M4 11 inch 256GB,ipad-pro-m4-11-inch-256gb,1099,5,iPad mạnh nhất với chip M4,iPad mạnh nhất với chip M4,Apple,active,3
+iPad Pro M4 13 inch 512GB,ipad-pro-m4-13-inch-512gb,1599,5,iPad Pro màn hình lớn Ultra Retina,iPad Pro màn hình lớn Ultra Retina,Apple,active,3
+iPad Air M2 11 inch 128GB,ipad-air-m2-11-inch-128gb,599,8,iPad Air chip M2 mạnh mẽ,iPad Air chip M2 mạnh mẽ,Apple,active,3
+iPad 10th Gen 64GB,ipad-10th-gen-64gb,449,10,iPad tiêu chuẩn USB-C,iPad tiêu chuẩn USB-C,Apple,active,3
+iPad Mini 6 64GB,ipad-mini-6-64gb,499,12,iPad nhỏ gọn 8.3 inch,iPad nhỏ gọn 8.3 inch,Apple,active,3
+Samsung Galaxy Tab S9 Ultra 256GB,samsung-galaxy-tab-s9-ultra-256gb,1199,10,Tablet Samsung cao cấp nhất,Tablet Samsung cao cấp nhất,Samsung,active,3
+Samsung Galaxy Tab S9+ 256GB,samsung-galaxy-tab-s9-256gb,999,12,Tab S9 Plus AMOLED 12.4 inch,Tab S9 Plus AMOLED 12.4 inch,Samsung,active,3
+Samsung Galaxy Tab A9 64GB,samsung-galaxy-tab-a9-64gb,229,10,Tablet Samsung giá rẻ,Tablet Samsung giá rẻ,Samsung,active,3
+Xiaomi Pad 6 128GB,xiaomi-pad-6-128gb,349,15,Tablet Xiaomi giá tốt,Tablet Xiaomi giá tốt,Xiaomi,active,3
+Lenovo Tab P12 128GB,lenovo-tab-p12-128gb,299,10,Tablet Lenovo màn hình lớn,Tablet Lenovo màn hình lớn,Lenovo,active,3
+AirPods Pro 2 USB-C,airpods-pro-2-usb-c,249,10,Tai nghe ANC tốt nhất của Apple,Tai nghe ANC tốt nhất của Apple,Apple,active,4
+AirPods 3rd Gen,airpods-3rd-gen,179,8,AirPods spatial audio,AirPods spatial audio,Apple,active,4
+AirPods Max Silver,airpods-max-silver,549,5,Tai nghe over-ear cao cấp Apple,Tai nghe over-ear cao cấp Apple,Apple,active,4
+Samsung Galaxy Buds3 Pro,samsung-galaxy-buds3-pro,249,10,Tai nghe ANC Samsung cao cấp,Tai nghe ANC Samsung cao cấp,Samsung,active,4
+Samsung Galaxy Buds FE,samsung-galaxy-buds-fe,99,15,Tai nghe Samsung giá tốt,Tai nghe Samsung giá tốt,Samsung,active,4
+Sony WH-1000XM5,sony-wh-1000xm5,349,12,Tai nghe chống ồn tốt nhất thế giới,Tai nghe chống ồn tốt nhất thế giới,Sony,active,4
+Sony WF-1000XM5,sony-wf-1000xm5,299,10,True wireless ANC Sony,True wireless ANC Sony,Sony,active,4
+Sony WH-CH720N,sony-wh-ch720n,149,12,Tai nghe Sony ANC giá rẻ,Tai nghe Sony ANC giá rẻ,Sony,active,4
+JBL Tune 770NC,jbl-tune-770nc,99,10,Tai nghe JBL chống ồn,Tai nghe JBL chống ồn,JBL,active,4
+JBL Live Pro 2 TWS,jbl-live-pro-2-tws,149,15,True wireless JBL cao cấp,True wireless JBL cao cấp,JBL,active,4
+Bose QuietComfort Ultra Headphones,bose-quietcomfort-ultra-headphones,429,8,Tai nghe Bose ANC cao cấp nhất,Tai nghe Bose ANC cao cấp nhất,Bose,active,4
+Bose QuietComfort Ultra Earbuds,bose-quietcomfort-ultra-earbuds,299,10,True wireless Bose ANC,True wireless Bose ANC,Bose,active,4
+Apple Watch Series 9 45mm,apple-watch-series-9-45mm,429,8,Apple Watch mới nhất,Apple Watch mới nhất,Apple,active,5
+Apple Watch Ultra 2,apple-watch-ultra-2,799,5,Apple Watch thể thao mạo hiểm,Apple Watch thể thao mạo hiểm,Apple,active,5
+Apple Watch SE 2023 44mm,apple-watch-se-2023-44mm,279,10,Apple Watch giá tốt,Apple Watch giá tốt,Apple,active,5
+Samsung Galaxy Watch 6 Classic 47mm,samsung-galaxy-watch-6-classic-47mm,399,12,Galaxy Watch viền xoay classic,Galaxy Watch viền xoay classic,Samsung,active,5
+Samsung Galaxy Watch 6 44mm,samsung-galaxy-watch-6-44mm,329,10,Galaxy Watch mỏng nhẹ,Galaxy Watch mỏng nhẹ,Samsung,active,5
+Samsung Galaxy Watch FE,samsung-galaxy-watch-fe,199,15,Galaxy Watch giá rẻ,Galaxy Watch giá rẻ,Samsung,active,5
+Garmin Venu 3S,garmin-venu-3s,449,8,Smartwatch Garmin thể thao,Smartwatch Garmin thể thao,Garmin,active,5
+Garmin Forerunner 265,garmin-forerunner-265,449,5,Garmin chạy bộ chuyên nghiệp,Garmin chạy bộ chuyên nghiệp,Garmin,active,5
+Xiaomi Watch S3,xiaomi-watch-s3,129,10,Smartwatch Xiaomi giá tốt,Smartwatch Xiaomi giá tốt,Xiaomi,active,5
+Amazfit GTR 4,amazfit-gtr-4,199,12,Smartwatch Amazfit pin 14 ngày,Smartwatch Amazfit pin 14 ngày,Amazfit,active,5
+Sony PlayStation 5 Slim,sony-playstation-5-slim,499,0,Console PS5 phiên bản mỏng,Console PS5 phiên bản mỏng,Sony,active,6
+Sony PlayStation 5 Digital Edition,sony-playstation-5-digital-edition,449,5,PS5 không ổ đĩa,PS5 không ổ đĩa,Sony,active,6
+Sony DualSense Wireless Controller,sony-dualsense-wireless-controller,69,10,Tay cầm PS5 chính hãng,Tay cầm PS5 chính hãng,Sony,active,6
+Nintendo Switch OLED,nintendo-switch-oled,349,5,Console Nintendo màn OLED,Console Nintendo màn OLED,Nintendo,active,6
+Nintendo Switch Lite,nintendo-switch-lite,199,10,Nintendo Switch cầm tay,Nintendo Switch cầm tay,Nintendo,active,6
+Xbox Series X 1TB,xbox-series-x-1tb,499,8,Console Microsoft mạnh nhất,Console Microsoft mạnh nhất,Microsoft,active,6
+Xbox Series S 512GB,xbox-series-s-512gb,299,12,Xbox giá rẻ nhỏ gọn,Xbox giá rẻ nhỏ gọn,Microsoft,active,6
+Xbox Wireless Controller,xbox-wireless-controller,59,8,Tay cầm Xbox chính hãng,Tay cầm Xbox chính hãng,Microsoft,active,6
+Sony WF-C700N,sony-wf-c700n,119,10,True wireless Sony ANC giá rẻ,True wireless Sony ANC giá rẻ,Sony,active,4
+Logitech MX Master 3S,logitech-mx-master-3s,99,8,Chuột không dây cao cấp,Chuột không dây cao cấp,Logitech,active,7
+Logitech MX Keys S,logitech-mx-keys-s,109,10,Bàn phím không dây thông minh,Bàn phím không dây thông minh,Logitech,active,7
+Logitech G Pro X Superlight 2,logitech-g-pro-x-superlight-2,159,5,Chuột gaming siêu nhẹ,Chuột gaming siêu nhẹ,Logitech,active,7
+Razer DeathAdder V3 Pro,razer-deathadder-v3-pro,149,10,Chuột gaming Razer ergonomic,Chuột gaming Razer ergonomic,Razer,active,7
+Razer BlackWidow V4 Pro,razer-blackwidow-v4-pro,229,8,Bàn phím cơ Razer RGB,Bàn phím cơ Razer RGB,Razer,active,7
+Samsung T7 Shield SSD 1TB,samsung-t7-shield-ssd-1tb,109,12,SSD di động chống sốc,SSD di động chống sốc,Samsung,active,7
+Samsung T7 SSD 2TB,samsung-t7-ssd-2tb,179,10,SSD di động dung lượng lớn,SSD di động dung lượng lớn,Samsung,active,7
+SanDisk Extreme Pro 1TB,sandisk-extreme-pro-1tb,129,8,SSD di động tốc độ cao,SSD di động tốc độ cao,SanDisk,active,7
+Anker 737 Power Bank 24000mAh,anker-737-power-bank-24000mah,109,10,Pin sạc dự phòng 140W,Pin sạc dự phòng 140W,Anker,active,7
+Anker Nano II 65W Charger,anker-nano-ii-65w-charger,35,5,Sạc nhanh GaN nhỏ gọn,Sạc nhanh GaN nhỏ gọn,Anker,active,7
+Apple MagSafe Charger,apple-magsafe-charger,39,0,Sạc không dây MagSafe,Sạc không dây MagSafe,Apple,active,7
+DJI Mini 4 Pro,dji-mini-4-pro,759,5,Drone DJI nhỏ gọn 4K,Drone DJI nhỏ gọn 4K,DJI,active,7
+DJI Osmo Pocket 3,dji-osmo-pocket-3,519,8,Camera gimbal bỏ túi,Camera gimbal bỏ túi,DJI,active,7
+GoPro HERO12 Black,gopro-hero12-black,399,10,Action camera 5.3K,Action camera 5.3K,GoPro,active,7
+Sony Alpha A7 IV Body,sony-alpha-a7-iv-body,2499,5,Mirrorless full-frame Sony,Mirrorless full-frame Sony,Sony,active,7
+Canon EOS R6 Mark II Body,canon-eos-r6-mark-ii-body,2499,8,Mirrorless Canon chuyên nghiệp,Mirrorless Canon chuyên nghiệp,Canon,active,7
+Fujifilm X-T5 Body,fujifilm-x-t5-body,1699,5,Mirrorless retro Fujifilm,Mirrorless retro Fujifilm,Fujifilm,active,7
+LG C3 OLED 55 inch,lg-c3-oled-55-inch,1299,15,TV OLED LG 4K 120Hz,TV OLED LG 4K 120Hz,LG,active,8
+LG C3 OLED 65 inch,lg-c3-oled-65-inch,1799,12,TV OLED LG màn lớn,TV OLED LG màn lớn,LG,active,8
+Samsung QN90C Neo QLED 55 inch,samsung-qn90c-neo-qled-55-inch,1199,10,TV Neo QLED Samsung 4K,TV Neo QLED Samsung 4K,Samsung,active,8
+Sony Bravia XR A80L 55 inch,sony-bravia-xr-a80l-55-inch,1499,10,TV OLED Sony Bravia,TV OLED Sony Bravia,Sony,active,8

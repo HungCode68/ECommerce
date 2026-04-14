@@ -1,0 +1,16 @@
+Name,Slug,MinPrice,DiscountPercent,ShortDescription,Description,Brand,Status,CategoryIDs
+iPhone 15 Pro Max 256GB,iphone-15-pro-max-256gb,1199,10,Flagship Apple với chip A17 Pro,Flagship Apple với chip A17 Pro,Apple,active,1;2
+iPhone 15 Pro 128GB,iphone-15-pro-128gb,999,5,iPhone Pro với camera 48MP,iPhone Pro với camera 48MP,Apple,active,1
+iPhone 15 128GB,iphone-15-128gb,799,8,iPhone tiêu chuẩn với Dynamic Island,iPhone tiêu chuẩn với Dynamic Island,Apple,active,1
+Samsung Galaxy S24 Ultra 256GB,samsung-galaxy-s24-ultra-256gb,1299,12,Flagship Samsung với S Pen tích hợp,Flagship Samsung với S Pen tích hợp,Samsung,active,1
+Samsung Galaxy S24+ 256GB,samsung-galaxy-s24-plus-256gb,999,10,Galaxy S24 Plus màn hình lớn,Galaxy S24 Plus màn hình lớn,Samsung,active,1
+Xiaomi 14 Ultra 512GB,xiaomi-14-ultra-512gb,1099,10,Flagship Xiaomi với camera Leica,Flagship Xiaomi với camera Leica,Xiaomi,active,1
+OPPO Find X7 Ultra 256GB,oppo-find-x7-ultra-256gb,999,10,OPPO flagship camera Hasselblad,OPPO flagship camera Hasselblad,OPPO,active,1
+MacBook Air M3 13 inch 256GB,macbook-air-m3-13-inch-256gb,1099,5,MacBook Air mỏng nhẹ chip M3,MacBook Air mỏng nhẹ chip M3,Apple,active,2
+Dell XPS 15 i7 16GB 512GB,dell-xps-15-i7-16gb-512gb,1399,10,Ultrabook Dell cao cấp,Ultrabook Dell cao cấp,Dell,active,2
+ASUS ROG Strix G16 RTX 4060,asus-rog-strix-g16-rtx-4060,1399,10,Laptop gaming ASUS ROG,Laptop gaming ASUS ROG,ASUS,active,2
+iPad Pro M4 11 inch 256GB,ipad-pro-m4-11-inch-256gb,1099,5,iPad mạnh nhất với chip M4,iPad mạnh nhất với chip M4,Apple,active,3
+Sony WH-1000XM5,sony-wh-1000xm5,349,12,Tai nghe chống ồn tốt nhất thế giới,Tai nghe chống ồn tốt nhất thế giới,Sony,active,4
+Apple Watch Series 9 45mm,apple-watch-series-9-45mm,429,8,Apple Watch mới nhất,Apple Watch mới nhất,Apple,active,5
+Sony PlayStation 5 Slim,sony-playstation-5-slim,499,0,Console PS5 phiên bản mỏng,Console PS5 phiên bản mỏng,Sony,active,6
+Logitech MX Master 3S,logitech-mx-master-3s,99,8,Chuột không dây cao cấp,Chuột không dây cao cấp,Logitech,active,7

@@ -21,10 +21,11 @@ type Product struct {
 
 	PublishedAt *time.Time `db:"published_at"` // Có thể NULL
 
-	MinPrice    float64 `db:"min_price"`
-	AvgRating   float64 `db:"avg_rating"`
-	RatingCount int     `db:"rating_count"`
-	CreatedBy   *int64  `db:"created_by"` // Có thể NULL
+	MinPrice        float64 `db:"min_price"`
+	DiscountPercent float64 `db:"discount_percent"`
+	AvgRating       float64 `db:"avg_rating"`
+	RatingCount     int     `db:"rating_count"`
+	CreatedBy       *int64  `db:"created_by"` // Có thể NULL
 	UpdatedBy   *int64  `db:"updated_by"` // Có thể NULL
 
 	CreatedAt  time.Time          `db:"created_at"`
@@ -50,6 +51,7 @@ type CreateProductRequest struct {
 	Name             string  `json:"name" validate:"required,min=3,max=255"`
 	Slug             string  `json:"slug" validate:"omitempty,min=3,max=255"`
 	MinPrice         float64 `json:"min_price" validate:"required,gt=0"`
+	DiscountPercent  float64 `json:"discount_percent" validate:"omitempty,gte=0,lte=100"`
 	ShortDescription string  `json:"short_description" validate:"omitempty,max=500"`
 	Description      string  `json:"description" validate:"omitempty"`
 	Brand            string  `json:"brand" validate:"omitempty,max=100"`
@@ -65,6 +67,7 @@ type UpdateProductRequest struct {
 	Name             string   `json:"name" validate:"omitempty,min=3,max=255"`
 	Slug             string   `json:"slug" validate:"omitempty,min=3,max=255"`
 	MinPrice         *float64 `json:"min_price" validate:"omitempty,min=0"`
+	DiscountPercent  *float64 `json:"discount_percent" validate:"omitempty,gte=0,lte=100"`
 	ShortDescription string   `json:"short_description" validate:"omitempty,max=500"`
 	Description      string   `json:"description" validate:"omitempty"`
 	Brand            string   `json:"brand" validate:"omitempty,max=100"`
@@ -91,11 +94,25 @@ type GetManyProductsRequest struct {
 	IDs []int64 `json:"ids" validate:"required,min=1,max=100,dive,min=1"`
 }
 
-// SearchProductsRequest - Tìm kiếm sản phẩm đơn giản
+// SearchProductsRequest - Tìm kiếm sản phẩm (hỗ trợ lọc giá + phân trang + sắp xếp)
 type SearchProductsRequest struct {
-	Search     string `json:"search" validate:"omitempty,max=255"`
-	Brand      string `json:"brand" validate:"omitempty,max=100"`
-	CategoryID int64  `json:"category_id" validate:"omitempty,min=1"`
+	Search         string   `json:"search" validate:"omitempty,max=255"`
+	Brand          string   `json:"brand" validate:"omitempty,max=100"`
+	CategoryID     int64    `json:"category_id" validate:"omitempty,min=1"`
+	MinPriceFilter *float64 `json:"min_price" validate:"omitempty,gte=0"`
+	MaxPriceFilter *float64 `json:"max_price" validate:"omitempty,gte=0"`
+	Page           int      `json:"page" validate:"omitempty,min=1"`
+	Limit          int      `json:"limit" validate:"omitempty,min=1,max=100"`
+	SortBy         string   `json:"sort_by" validate:"omitempty,oneof=price rating newest name"`
+	SortOrder      string   `json:"sort_order" validate:"omitempty,oneof=asc desc"`
+}
+
+// PaginationMeta - Thông tin phân trang trong response
+type PaginationMeta struct {
+	Page       int `json:"page"`
+	Limit      int `json:"limit"`
+	Total      int `json:"total"`
+	TotalPages int `json:"total_pages"`
 }
 
 // =================================================================
@@ -104,16 +121,19 @@ type SearchProductsRequest struct {
 
 // UserProductResponse - Thông tin sản phẩm cho User
 type UserProductResponse struct {
-	ID       int64   `json:"id"`
-	Name     string  `json:"name"`
-	Brand    *string `json:"brand,omitempty"`
-	MinPrice float64 `json:"min_price"`
+	ID              int64   `json:"id"`
+	Name            string  `json:"name"`
+	Brand           *string `json:"brand,omitempty"`
+	MinPrice        float64 `json:"min_price"`
+	DiscountPercent float64 `json:"discount_percent"`
+	FinalPrice      float64 `json:"final_price"`
 }
 
 // UserProductListResponse - Danh sách sản phẩm cho User
 type UserProductListResponse struct {
-	Message  string                `json:"message,omitempty"`
-	Products []UserProductResponse `json:"products"`
+	Message    string                `json:"message,omitempty"`
+	Products   []UserProductResponse `json:"products"`
+	Pagination *PaginationMeta       `json:"pagination,omitempty"`
 }
 
 // UserProductDetailResponse - Chi tiết sản phẩm cho User
@@ -125,6 +145,8 @@ type UserProductDetailResponse struct {
 	Description      *string    `json:"description,omitempty"`
 	Brand            *string    `json:"brand,omitempty"`
 	MinPrice         float64    `json:"min_price"`
+	DiscountPercent  float64    `json:"discount_percent"`
+	FinalPrice       float64    `json:"final_price"`
 	AvgRating        float64    `json:"avg_rating"`
 	RatingCount      int        `json:"rating_count"`
 	PublishedAt      *time.Time `json:"published_at,omitempty"`
@@ -150,6 +172,8 @@ type AdminProductResponse struct {
 	IsPublished      bool               `json:"is_published"`
 	PublishedAt      *time.Time         `json:"published_at,omitempty"`
 	MinPrice         float64            `json:"min_price"`
+	DiscountPercent  float64            `json:"discount_percent"`
+	FinalPrice       float64            `json:"final_price"`
 	AvgRating        float64            `json:"avg_rating"`
 	RatingCount      int                `json:"rating_count"`
 	CreatedBy        *int64             `json:"created_by,omitempty"`
@@ -164,8 +188,9 @@ type AdminProductResponse struct {
 
 // AdminProductListResponse - Danh sách sản phẩm cho Admin
 type AdminProductListResponse struct {
-	Message  string                 `json:"message,omitempty"`
-	Products []AdminProductResponse `json:"products"`
+	Message    string                 `json:"message,omitempty"`
+	Products   []AdminProductResponse `json:"products"`
+	Pagination *PaginationMeta        `json:"pagination,omitempty"`
 }
 
 // AdminProductDetailResponse - Chi tiết sản phẩm cho Admin
@@ -173,6 +198,13 @@ type AdminProductDetailResponse struct {
 	Message  string                 `json:"message,omitempty"`
 	Product  AdminProductResponse   `json:"product"`
 	Variants []AdminVariantResponse `json:"variants,omitempty"`
+}
+
+// AdminImportProductsResponse - Kết quả import file CSV
+type AdminImportProductsResponse struct {
+	Message      string   `json:"message"`
+	TotalCreated int      `json:"total_created"`
+	Errors       []string `json:"errors,omitempty"`
 }
 
 // AdminCreateProductResponse - Response sau khi tạo sản phẩm mới

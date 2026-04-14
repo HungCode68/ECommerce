@@ -15,6 +15,7 @@ func NewProductRouter(mux *http.ServeMux, h product.ProductHandler) http.Handler
 	adminGroup.HandleFunc("POST", "/product", h.CreateProductHandler)                          // Tạo mới
 	adminGroup.HandleFunc("GET", "/product/{id}", h.AdminGetProductHandler)                    // Chi tiết (ID)          
 	adminGroup.HandleFunc("GET", "/product/all", h.AdminGetAllProductHandler)				  // Lấy tất cả (cả đã xóa mềm)
+	adminGroup.HandleFunc("POST", "/products/import-csv", h.AdminImportProductsCSVHandler)    // Import từ CSV
 	adminGroup.HandleFunc("POST", "/products", h.AdminGetManyProductHandler)                  // Lấy nhiều (Active)
 	adminGroup.HandleFunc("PUT", "/product/update/{id}", h.UpdateProductHandler)               // Cập nhật
 	

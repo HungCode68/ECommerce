@@ -6,8 +6,9 @@ import (
 
 // ProductRepository - Interface định nghĩa các phương thức
 type ProductRepository interface {
-	// Create & Update
+	// Admin Create Logic
 	CreateProduct(product *model.Product, categoryIDs []int64) (*model.Product, error)
+	BulkCreateProducts(products []*model.Product, categoryIDsMapping [][]int64) error
 	UpdateProduct(product *model.Product, categoryIDs []int64) (*model.Product, error)
 
 	// Check Conflict
@@ -19,8 +20,8 @@ type ProductRepository interface {
 	GetProductByName(name string) (*model.Product, error)
 	GetProductBySlug(slug string) (*model.Product, error)
 	GetManyProduct(ids []int64) ([]model.Product, error)
-	GetAllProducts() ([]model.Product, error)
-	SearchProducts(req *model.SearchProductsRequest) ([]model.Product, error)
+	GetAllProducts(req *model.SearchProductsRequest) ([]model.Product, int, error)
+	SearchProducts(req *model.SearchProductsRequest) ([]model.Product, int, error)
 	
 	// Helper
 	GetCategoriesByProductID(productID int64) ([]model.Category, error)

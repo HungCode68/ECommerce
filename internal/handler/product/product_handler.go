@@ -1,6 +1,7 @@
 package product
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"golang/internal/controller/product"
@@ -8,7 +9,25 @@ import (
 	"golang/internal/validator"
 	"net/http"
 	"strconv"
+	"strings"
 )
+
+func parsePaginationParams(r *http.Request) (page int, limit int, sortBy string, sortOrder string) {
+	pageStr := r.URL.Query().Get("page")
+	limitStr := r.URL.Query().Get("limit")
+	sortBy = r.URL.Query().Get("sort_by")
+	sortOrder = r.URL.Query().Get("sort_order")
+
+	page = 1
+	limit = 20
+	if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
+		page = p
+	}
+	if l, err := strconv.Atoi(limitStr); err == nil && l > 0 && l <= 100 {
+		limit = l
+	}
+	return
+}
 
 // ProductHandler - Struct xử lý các HTTP request liên quan đến sản phẩm
 type productHandler struct {
@@ -59,6 +78,89 @@ func (h *productHandler) CreateProductHandler(w http.ResponseWriter, r *http.Req
 	h.writeJson(w, http.StatusCreated, productResponse)
 }
 
+// AdminImportProductsCSVHandler - API lấy file CSV và map thành đối tượng
+func (h *productHandler) AdminImportProductsCSVHandler(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseMultipartForm(10 << 20); err != nil { // Max 10MB
+		h.errJson(w, http.StatusBadRequest, "Failed to parse form data")
+		return
+	}
+
+	file, _, err := r.FormFile("csv_file")
+	if err != nil {
+		h.errJson(w, http.StatusBadRequest, "Missing 'csv_file' in form-data")
+		return
+	}
+	defer file.Close()
+
+	csvReader := csv.NewReader(file)
+	records, err := csvReader.ReadAll()
+	if err != nil {
+		h.errJson(w, http.StatusBadRequest, "Failed to read CSV file")
+		return
+	}
+
+	if len(records) < 2 {
+		h.errJson(w, http.StatusBadRequest, "CSV file is empty or missing data rows")
+		return
+	}
+
+	var reqs []model.CreateProductRequest
+	for i, row := range records {
+		if i == 0 {
+			continue // Skip dòng tiêu đề
+		}
+		
+		// Dự kiến 9 cột: Name, Slug, MinPrice, DiscountPercent, ShortDescription, Description, Brand, Status, CategoryIDs
+		if len(row) < 9 {
+			h.errJson(w, http.StatusBadRequest, fmt.Sprintf("Row %d: Missing columns (expected at least 9)", i+1))
+			return
+		}
+
+		minPrice, _ := strconv.ParseFloat(strings.TrimSpace(row[2]), 64)
+		discountPercent, _ := strconv.ParseFloat(strings.TrimSpace(row[3]), 64)
+		isPublished := true // Mặc định true
+		
+		var categoryIDs []int64
+		catStr := strings.TrimSpace(row[8])
+		if catStr != "" {
+			parts := strings.Split(catStr, ";")
+			for _, part := range parts {
+				id, _ := strconv.ParseInt(strings.TrimSpace(part), 10, 64)
+				if id > 0 {
+					categoryIDs = append(categoryIDs, id)
+				}
+			}
+		}
+
+		req := model.CreateProductRequest{
+			Name:             strings.TrimSpace(row[0]),
+			Slug:             strings.TrimSpace(row[1]),
+			MinPrice:         minPrice,
+			DiscountPercent:  discountPercent,
+			ShortDescription: strings.TrimSpace(row[4]),
+			Description:      strings.TrimSpace(row[5]),
+			Brand:            strings.TrimSpace(row[6]),
+			Status:           strings.TrimSpace(row[7]),
+			IsPublished:      isPublished,
+			CategoryIDs:      categoryIDs,
+		}
+		reqs = append(reqs, req)
+	}
+
+	response, err := h.PrtController.AdminImportProductsController(reqs)
+	if err != nil {
+		h.errJson(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	if len(response.Errors) > 0 {
+		h.writeJson(w, http.StatusBadRequest, response) // Trả JSON errors về cho Client hiển thị
+		return
+	}
+
+	h.writeJson(w, http.StatusCreated, response)
+}
+
 // UpdateProductHandler - Cập nhật sản phẩm
 func (h *productHandler) UpdateProductHandler(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
@@ -78,7 +180,7 @@ func (h *productHandler) UpdateProductHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	adminReponse, err := h.PrtController.UpdateProductController(r.Context(),req, id)
+	adminReponse, err := h.PrtController.UpdateProductController(r.Context(), req, id)
 	if err != nil {
 		if err.Error() == "Product not found" {
 			h.errJson(w, http.StatusNotFound, err.Error())
@@ -222,6 +324,8 @@ func (h *productHandler) UserSearchProductHandler(w http.ResponseWriter, r *http
 	searchParam := r.URL.Query().Get("name")          // ?name=Samsung
 	brandParam := r.URL.Query().Get("brand")          // ?brand=Apple
 	categoryIDStr := r.URL.Query().Get("category_id") // ?category_id=1
+	minPriceStr := r.URL.Query().Get("min_price")     // ?min_price=50
+	maxPriceStr := r.URL.Query().Get("max_price")     // ?max_price=200
 
 	var categoryID int64 = 0
 	if categoryIDStr != "" {
@@ -233,16 +337,46 @@ func (h *productHandler) UserSearchProductHandler(w http.ResponseWriter, r *http
 		categoryID = parsedID
 	}
 
-	// [VALIDATION]: Ít nhất phải có 1 tham số tìm kiếm
-	if searchParam == "" && brandParam == "" && categoryID == 0 {
-		h.errJson(w, http.StatusBadRequest, "At least one search parameter (name, brand, or category_id) is required")
+	var minPrice, maxPrice *float64
+	if minPriceStr != "" {
+		v, err := strconv.ParseFloat(minPriceStr, 64)
+		if err != nil || v < 0 {
+			h.errJson(w, http.StatusBadRequest, "Invalid min_price: must be a non-negative number")
+			return
+		}
+		minPrice = &v
+	}
+	if maxPriceStr != "" {
+		v, err := strconv.ParseFloat(maxPriceStr, 64)
+		if err != nil || v < 0 {
+			h.errJson(w, http.StatusBadRequest, "Invalid max_price: must be a non-negative number")
+			return
+		}
+		maxPrice = &v
+	}
+	if minPrice != nil && maxPrice != nil && *maxPrice < *minPrice {
+		h.errJson(w, http.StatusBadRequest, "max_price must be greater than or equal to min_price")
 		return
 	}
 
+	// [VALIDATION]: Ít nhất phải có 1 tham số tìm kiếm
+	if searchParam == "" && brandParam == "" && categoryID == 0 && minPrice == nil && maxPrice == nil {
+		h.errJson(w, http.StatusBadRequest, "At least one search parameter (name, brand, category_id, min_price, or max_price) is required")
+		return
+	}
+
+	page, limit, sortBy, sortOrder := parsePaginationParams(r)
+
 	req := &model.SearchProductsRequest{
-		Search:     searchParam,
-		Brand:      brandParam,
-		CategoryID: categoryID,
+		Search:         searchParam,
+		Brand:          brandParam,
+		CategoryID:     categoryID,
+		MinPriceFilter: minPrice,
+		MaxPriceFilter: maxPrice,
+		Page:           page,
+		Limit:          limit,
+		SortBy:         sortBy,
+		SortOrder:      sortOrder,
 	}
 
 	// Validate struct nếu cần (tùy logic validator của bạn)
@@ -266,6 +400,8 @@ func (h *productHandler) AdminSearchProductsHandler(w http.ResponseWriter, r *ht
 	searchParam := r.URL.Query().Get("name")
 	brandParam := r.URL.Query().Get("brand")
 	categoryIDStr := r.URL.Query().Get("category_id")
+	minPriceStr := r.URL.Query().Get("min_price")
+	maxPriceStr := r.URL.Query().Get("max_price")
 
 	var categoryID int64 = 0
 	if categoryIDStr != "" {
@@ -277,15 +413,45 @@ func (h *productHandler) AdminSearchProductsHandler(w http.ResponseWriter, r *ht
 		categoryID = parsedID
 	}
 
-	if searchParam == "" && brandParam == "" && categoryID == 0 {
-		h.errJson(w, http.StatusBadRequest, "At least one search parameter (name, brand, or category_id) is required")
+	var minPrice, maxPrice *float64
+	if minPriceStr != "" {
+		v, err := strconv.ParseFloat(minPriceStr, 64)
+		if err != nil || v < 0 {
+			h.errJson(w, http.StatusBadRequest, "Invalid min_price: must be a non-negative number")
+			return
+		}
+		minPrice = &v
+	}
+	if maxPriceStr != "" {
+		v, err := strconv.ParseFloat(maxPriceStr, 64)
+		if err != nil || v < 0 {
+			h.errJson(w, http.StatusBadRequest, "Invalid max_price: must be a non-negative number")
+			return
+		}
+		maxPrice = &v
+	}
+	if minPrice != nil && maxPrice != nil && *maxPrice < *minPrice {
+		h.errJson(w, http.StatusBadRequest, "max_price must be greater than or equal to min_price")
 		return
 	}
 
+	if searchParam == "" && brandParam == "" && categoryID == 0 && minPrice == nil && maxPrice == nil {
+		h.errJson(w, http.StatusBadRequest, "At least one search parameter (name, brand, category_id, min_price, or max_price) is required")
+		return
+	}
+
+	page, limit, sortBy, sortOrder := parsePaginationParams(r)
+
 	req := &model.SearchProductsRequest{
-		Search:     searchParam,
-		Brand:      brandParam,
-		CategoryID: categoryID,
+		Search:         searchParam,
+		Brand:          brandParam,
+		CategoryID:     categoryID,
+		MinPriceFilter: minPrice,
+		MaxPriceFilter: maxPrice,
+		Page:           page,
+		Limit:          limit,
+		SortBy:         sortBy,
+		SortOrder:      sortOrder,
 	}
 
 	if err := validator.Validate(req); err != nil {
@@ -323,7 +489,14 @@ func (h *productHandler) AdminGetManyProductHandler(w http.ResponseWriter, r *ht
 
 // AdminGetAllProductHandler - Lấy tất cả (trừ xóa mềm)
 func (h *productHandler) AdminGetAllProductHandler(w http.ResponseWriter, r *http.Request) {
-	productsResponse, err := h.PrtController.AdminGetAllProductsController()
+	page, limit, sortBy, sortOrder := parsePaginationParams(r)
+	req := &model.SearchProductsRequest{
+		Page:      page,
+		Limit:     limit,
+		SortBy:    sortBy,
+		SortOrder: sortOrder,
+	}
+	productsResponse, err := h.PrtController.AdminGetAllProductsController(req)
 	if err != nil {
 		h.errJson(w, http.StatusInternalServerError, err.Error())
 		return

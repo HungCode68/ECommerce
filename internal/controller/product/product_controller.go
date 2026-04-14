@@ -41,6 +41,31 @@ func stringToPtr(s string) *string {
 	return &s
 }
 
+func calcFinalPrice(minPrice, discountPercent float64) float64 {
+	return minPrice * (1 - discountPercent/100)
+}
+
+func buildPaginationMeta(req *model.SearchProductsRequest, total int) *model.PaginationMeta {
+	page := req.Page
+	limit := req.Limit
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 20
+	}
+	totalPages := total / limit
+	if total%limit > 0 {
+		totalPages++
+	}
+	return &model.PaginationMeta{
+		Page:       page,
+		Limit:      limit,
+		Total:      total,
+		TotalPages: totalPages,
+	}
+}
+
 // CreateProductController - Tạo sản phẩm mới kèm danh mục
 func (prt *productController) CreateProductController(product model.CreateProductRequest) (*model.AdminCreateProductResponse, error) {
 	// 1. Check trùng tên
@@ -96,6 +121,7 @@ func (prt *productController) CreateProductController(product model.CreateProduc
 		IsPublished:      product.IsPublished,
 		PublishedAt:      publishedAt,
 		MinPrice:         product.MinPrice,
+		DiscountPercent:  product.DiscountPercent,
 	}
 
 	createdProduct, err := prt.Repo.CreateProduct(productToCreate, product.CategoryIDs)
@@ -121,10 +147,94 @@ func (prt *productController) CreateProductController(product model.CreateProduc
 			IsPublished:      createdProduct.IsPublished,
 			PublishedAt:      createdProduct.PublishedAt,
 			MinPrice:         createdProduct.MinPrice,
+			DiscountPercent:  createdProduct.DiscountPercent,
+			FinalPrice:       calcFinalPrice(createdProduct.MinPrice, createdProduct.DiscountPercent),
 			CreatedAt:        createdProduct.CreatedAt,
 			UpdatedAt:        createdProduct.UpdatedAt,
 			Categories:       createdProduct.Categories,
 		},
+	}, nil
+}
+
+// AdminImportProductsController - Xử lý mảng dữ liệu sản phẩm từ CSV
+func (prt *productController) AdminImportProductsController(reqs []model.CreateProductRequest) (*model.AdminImportProductsResponse, error) {
+	var errDetails []string
+	var productsToInsert []*model.Product
+	var categoryMappings [][]int64
+
+	for i, req := range reqs {
+		rowNum := i + 2 // Vì dòng 1 trêm CSV thường là header
+
+		if req.Name == "" {
+			errDetails = append(errDetails, fmt.Sprintf("Row %d: Name is required", rowNum))
+			continue
+		}
+		if req.MinPrice <= 0 {
+			errDetails = append(errDetails, fmt.Sprintf("Row %d: MinPrice must be > 0", rowNum))
+			continue
+		}
+
+		if req.Slug == "" {
+			req.Slug = slug.Make(req.Name)
+		}
+
+		existingName, _ := prt.Repo.GetProductByName(req.Name)
+		if existingName != nil {
+			errDetails = append(errDetails, fmt.Sprintf("Row %d: Product name '%s' already exists", rowNum, req.Name))
+			continue
+		}
+
+		existingSlug, _ := prt.Repo.GetProductBySlug(req.Slug)
+		if existingSlug != nil {
+			errDetails = append(errDetails, fmt.Sprintf("Row %d: Product slug '%s' already exists", rowNum, req.Slug))
+			continue
+		}
+
+		now := time.Now()
+		var publishedAt *time.Time
+		if req.IsPublished {
+			publishedAt = &now
+		}
+		if req.Status == "" {
+			req.Status = "active" // Default
+		}
+
+		productEntity := &model.Product{
+			Name:             req.Name,
+			Slug:             req.Slug,
+			ShortDescription: stringToPtr(req.ShortDescription),
+			Description:      stringToPtr(req.Description),
+			Brand:            stringToPtr(req.Brand),
+			Status:           req.Status,
+			IsPublished:      req.IsPublished,
+			PublishedAt:      publishedAt,
+			MinPrice:         req.MinPrice,
+			DiscountPercent:  req.DiscountPercent,
+			AvgRating:        0,
+			RatingCount:      0,
+		}
+
+		productsToInsert = append(productsToInsert, productEntity)
+		categoryMappings = append(categoryMappings, req.CategoryIDs)
+	}
+
+	if len(errDetails) > 0 {
+		return &model.AdminImportProductsResponse{
+			Message:      "Import failed due to validation errors",
+			TotalCreated: 0,
+			Errors:       errDetails,
+		}, nil
+	}
+
+	err := prt.Repo.BulkCreateProducts(productsToInsert, categoryMappings)
+	if err != nil {
+		return nil, fmt.Errorf("bulk insert failed: %w", err)
+	}
+
+	return &model.AdminImportProductsResponse{
+		Message:      "Products imported successfully",
+		TotalCreated: len(productsToInsert),
+		Errors:       nil,
 	}, nil
 }
 
@@ -226,6 +336,8 @@ func (prt *productController) AdminGetProductController(reqProduct *model.GetPro
 			IsPublished:      pro.IsPublished,
 			PublishedAt:      pro.PublishedAt,
 			MinPrice:         minPrice,
+			DiscountPercent:  pro.DiscountPercent,
+			FinalPrice:       calcFinalPrice(minPrice, pro.DiscountPercent),
 			AvgRating:        pro.AvgRating,
 			RatingCount:      pro.RatingCount,
 			CreatedBy:        pro.CreatedBy,
@@ -305,6 +417,8 @@ func (prt *productController) UserGetProductDetailController(reqProduct *model.G
 		Description:      pro.Description,
 		Brand:            pro.Brand,
 		MinPrice:         minPrice,
+		DiscountPercent:  pro.DiscountPercent,
+		FinalPrice:       calcFinalPrice(minPrice, pro.DiscountPercent),
 		AvgRating:        pro.AvgRating,
 		RatingCount:      pro.RatingCount,
 		PublishedAt:      pro.PublishedAt,
@@ -349,6 +463,11 @@ func (prt *productController) UpdateProductController(ctx context.Context, req m
 		finalName = req.Name
 	}
 
+	finalDiscountPercent := existingProduct.DiscountPercent
+	if req.DiscountPercent != nil {
+		finalDiscountPercent = *req.DiscountPercent
+	}
+
 	finalMinPrice := existingProduct.MinPrice
 	if req.MinPrice != nil {
 		finalMinPrice = *req.MinPrice
@@ -379,6 +498,7 @@ func (prt *productController) UpdateProductController(ctx context.Context, req m
 		IsPublished:      finalIsPublished,
 		PublishedAt:      finalPublishedAt,
 		MinPrice:         finalMinPrice,
+		DiscountPercent:  finalDiscountPercent,
 		UpdatedAt:        time.Now(),
 	}
 
@@ -535,6 +655,8 @@ func (prt *productController) UpdateProductController(ctx context.Context, req m
 		IsPublished:      updatedProduct.IsPublished,
 		PublishedAt:      updatedProduct.PublishedAt,
 		MinPrice:         updatedProduct.MinPrice,
+		DiscountPercent:  updatedProduct.DiscountPercent,
+		FinalPrice:       calcFinalPrice(updatedProduct.MinPrice, updatedProduct.DiscountPercent),
 		AvgRating:        updatedProduct.AvgRating,
 		RatingCount:      updatedProduct.RatingCount,
 		CreatedBy:        existingProduct.CreatedBy,
@@ -552,8 +674,8 @@ func (prt *productController) UpdateProductController(ctx context.Context, req m
 }
 
 // AdminGetAllProductsController - Lấy tất cả sản phẩm kèm danh mục cho Admin
-func (prt *productController) AdminGetAllProductsController() (*model.AdminProductListResponse, error) {
-	products, err := prt.Repo.GetAllProducts()
+func (prt *productController) AdminGetAllProductsController(req *model.SearchProductsRequest) (*model.AdminProductListResponse, error) {
+	products, total, err := prt.Repo.GetAllProducts(req)
 	if err != nil {
 		return nil, err
 	}
@@ -570,6 +692,8 @@ func (prt *productController) AdminGetAllProductsController() (*model.AdminProdu
 			IsPublished:      pro.IsPublished,
 			PublishedAt:      pro.PublishedAt,
 			MinPrice:         pro.MinPrice,
+			DiscountPercent:  pro.DiscountPercent,
+			FinalPrice:       calcFinalPrice(pro.MinPrice, pro.DiscountPercent),
 			AvgRating:        pro.AvgRating,
 			RatingCount:      pro.RatingCount,
 			CreatedBy:        pro.CreatedBy,
@@ -581,14 +705,15 @@ func (prt *productController) AdminGetAllProductsController() (*model.AdminProdu
 		})
 	}
 	return &model.AdminProductListResponse{
-		Message:  "Products retrieved successfully",
-		Products: responses,
+		Message:    "Products retrieved successfully",
+		Products:   responses,
+		Pagination: buildPaginationMeta(req, total),
 	}, nil
 }
 
 // UserGetAllProductsController - Lấy danh sách sản phẩm đã publish cho User
-func (prt *productController) UserGetAllProductsController() (*model.UserProductListResponse, error) {
-	products, err := prt.Repo.GetAllProducts()
+func (prt *productController) UserGetAllProductsController(req *model.SearchProductsRequest) (*model.UserProductListResponse, error) {
+	products, total, err := prt.Repo.GetAllProducts(req)
 	if err != nil {
 		return nil, err
 	}
@@ -598,21 +723,24 @@ func (prt *productController) UserGetAllProductsController() (*model.UserProduct
 			continue
 		}
 		responses = append(responses, model.UserProductResponse{
-			ID:       pro.ID,
-			Name:     pro.Name,
-			Brand:    pro.Brand,
-			MinPrice: pro.MinPrice,
+			ID:              pro.ID,
+			Name:            pro.Name,
+			Brand:           pro.Brand,
+			MinPrice:        pro.MinPrice,
+			DiscountPercent: pro.DiscountPercent,
+			FinalPrice:      calcFinalPrice(pro.MinPrice, pro.DiscountPercent),
 		})
 	}
 	return &model.UserProductListResponse{
-		Message:  "Products retrieved successfully",
-		Products: responses,
+		Message:    "Products retrieved successfully",
+		Products:   responses,
+		Pagination: buildPaginationMeta(req, total),
 	}, nil
 }
 
 // UserSearchProductByNameController - Tìm kiếm sản phẩm đã publish cho User
 func (prt *productController) UserSearchProductByNameController(req *model.SearchProductsRequest) (*model.UserProductListResponse, error) {
-	products, err := prt.Repo.SearchProducts(req)
+	products, total, err := prt.Repo.SearchProducts(req)
 	if err != nil {
 		return nil, err
 	}
@@ -622,21 +750,24 @@ func (prt *productController) UserSearchProductByNameController(req *model.Searc
 			continue
 		}
 		res = append(res, model.UserProductResponse{
-			ID:       pro.ID,
-			Name:     pro.Name,
-			Brand:    pro.Brand,
-			MinPrice: pro.MinPrice,
+			ID:              pro.ID,
+			Name:            pro.Name,
+			Brand:           pro.Brand,
+			MinPrice:        pro.MinPrice,
+			DiscountPercent: pro.DiscountPercent,
+			FinalPrice:      calcFinalPrice(pro.MinPrice, pro.DiscountPercent),
 		})
 	}
 	return &model.UserProductListResponse{
-		Message:  "Products retrieved successfully",
-		Products: res,
+		Message:    "Products retrieved successfully",
+		Products:   res,
+		Pagination: buildPaginationMeta(req, total),
 	}, nil
 }
 
 // AdminSearchProductsController - Tìm kiếm sản phẩm cho Admin
 func (prt *productController) AdminSearchProductsController(req *model.SearchProductsRequest) (*model.AdminProductListResponse, error) {
-	products, err := prt.Repo.SearchProducts(req)
+	products, total, err := prt.Repo.SearchProducts(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search products: %w", err)
 	}
@@ -653,6 +784,8 @@ func (prt *productController) AdminSearchProductsController(req *model.SearchPro
 			IsPublished:      pro.IsPublished,
 			PublishedAt:      pro.PublishedAt,
 			MinPrice:         pro.MinPrice,
+			DiscountPercent:  pro.DiscountPercent,
+			FinalPrice:       calcFinalPrice(pro.MinPrice, pro.DiscountPercent),
 			AvgRating:        pro.AvgRating,
 			RatingCount:      pro.RatingCount,
 			CreatedBy:        pro.CreatedBy,
@@ -664,8 +797,9 @@ func (prt *productController) AdminSearchProductsController(req *model.SearchPro
 		})
 	}
 	return &model.AdminProductListResponse{
-		Message:  "Products retrieved successfully",
-		Products: adminProducts,
+		Message:    "Products retrieved successfully",
+		Products:   adminProducts,
+		Pagination: buildPaginationMeta(req, total),
 	}, nil
 }
 
@@ -688,6 +822,8 @@ func (prt *productController) AdminGetManyProductByIDController(ids []int64) ([]
 			IsPublished:      pro.IsPublished,
 			PublishedAt:      pro.PublishedAt,
 			MinPrice:         pro.MinPrice,
+			DiscountPercent:  pro.DiscountPercent,
+			FinalPrice:       calcFinalPrice(pro.MinPrice, pro.DiscountPercent),
 			AvgRating:        pro.AvgRating,
 			RatingCount:      pro.RatingCount,
 			CreatedBy:        pro.CreatedBy,
@@ -712,10 +848,12 @@ func (prt *productController) UserGetProductController(reqProduct *model.GetProd
 		return nil, fmt.Errorf("product not available")
 	}
 	return &model.UserProductResponse{
-		ID:       pro.ID,
-		Name:     pro.Name,
-		Brand:    pro.Brand,
-		MinPrice: pro.MinPrice,
+		ID:              pro.ID,
+		Name:            pro.Name,
+		Brand:           pro.Brand,
+		MinPrice:        pro.MinPrice,
+		DiscountPercent: pro.DiscountPercent,
+		FinalPrice:      calcFinalPrice(pro.MinPrice, pro.DiscountPercent),
 	}, nil
 }
 
@@ -743,6 +881,8 @@ func (prt *productController) AdminGetAllSoftDeletedProductsController() (*model
 			IsPublished:      pro.IsPublished,
 			PublishedAt:      pro.PublishedAt,
 			MinPrice:         pro.MinPrice,
+			DiscountPercent:  pro.DiscountPercent,
+			FinalPrice:       calcFinalPrice(pro.MinPrice, pro.DiscountPercent),
 			AvgRating:        pro.AvgRating,
 			RatingCount:      pro.RatingCount,
 			CreatedBy:        pro.CreatedBy,

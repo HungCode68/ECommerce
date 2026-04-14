@@ -7,6 +7,7 @@ type ProductHandler interface {
 	// Create & Update
 	CreateProductHandler(w http.ResponseWriter, r *http.Request) 		// Tạo sản phẩm mới
 	UpdateProductHandler(w http.ResponseWriter, r *http.Request) 		// Cập nhật sản phẩm
+	AdminImportProductsCSVHandler(w http.ResponseWriter, r *http.Request) 		// Import sản phẩm từ CSV
 
 	// Get Details
 	AdminGetProductHandler(w http.ResponseWriter, r *http.Request) 		// Lấy chi tiết sản phẩm theo ID (Admin)
