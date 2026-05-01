@@ -86,7 +86,7 @@ func (pr *ProductRepo) BulkCreateProducts(products []*model.Product, categoryIDs
 	}
 	defer stmt.Close()
 
-	catQuery := `INSERT INTO product_categories (product_id, category_id) VALUES (?, ?)`
+	catQuery := `INSERT IGNORE INTO product_categories (product_id, category_id) VALUES (?, ?)`
 	catStmt, err := tx.Prepare(catQuery)
 	if err != nil {
 		tx.Rollback()
@@ -107,7 +107,7 @@ func (pr *ProductRepo) BulkCreateProducts(products []*model.Product, categoryIDs
 			return fmt.Errorf("could not get last insert id for %s: %w", product.Name, err)
 		}
 		product.ID = id
-		
+
 		categoryIDs := categoryIDsMapping[i]
 		if len(categoryIDs) > 0 {
 			for _, catID := range categoryIDs {
@@ -404,6 +404,28 @@ func (pr *ProductRepo) UpdateProduct(product *model.Product, categoryIDs []int64
 	}
 
 	return product, nil
+}
+
+// UpdateProductMinPrice - Cập nhật giá gốc của sản phẩm
+func (pr *ProductRepo) UpdateProductMinPrice(productID int64, minPrice float64) error {
+	result, err := pr.DB.Exec(`
+		UPDATE products
+		SET min_price = ?, updated_at = NOW()
+		WHERE id = ? AND deleted_at IS NULL`,
+		minPrice, productID)
+	if err != nil {
+		return fmt.Errorf("cannot update product min price: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("cannot check updated product min price rows: %w", err)
+	}
+	if rowsAffected == 0 {
+		return fmt.Errorf("product not found or already deleted")
+	}
+
+	return nil
 }
 
 // GetCategoriesByProductID - Hàm hỗ trợ lấy danh mục cho sp

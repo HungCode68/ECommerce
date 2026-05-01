@@ -19,7 +19,7 @@ func NewOrderRepository(db *sql.DB) IOrderRepository {
 }
 
 // CreateOrder: Tạo đơn hàng với stock locking và deduction
-func (r *OrderRepository) CreateOrder(ctx context.Context, order *model.Order, items []model.OrderItem, address *model.OrderAddress, initialPayment *model.OrderPayment, couponID *int64) error {
+func (r *OrderRepository) CreateOrder(ctx context.Context, order *model.Order, items []model.OrderItem, address *model.OrderAddress, initialPayment *model.OrderPayment, couponIDs []int64) error {
 	logger.DebugLogger.Printf("Starting CreateOrder for UserID: %d, TotalAmount: %.2f", order.UserID, order.TotalAmount)
 	// Bắt đầu Transaction
 	tx, err := r.db.BeginTx(ctx, nil)
@@ -149,21 +149,21 @@ func (r *OrderRepository) CreateOrder(ctx context.Context, order *model.Order, i
 	}
 
 	// BƯỚC 4.5: Ghi nhận Coupon (Cần thực hiện trước khi Commit)
-	if couponID != nil {
+	for _, couponID := range couponIDs {
 		queryCoupon := `UPDATE coupons SET usage_count = COALESCE(usage_count, 0) + 1 WHERE id = ? AND (usage_limit IS NULL OR usage_count < usage_limit)`
-		resCoupon, err := tx.ExecContext(ctx, queryCoupon, *couponID)
+		resCoupon, err := tx.ExecContext(ctx, queryCoupon, couponID)
 		if err != nil {
 			logger.ErrorLogger.Printf("CreateOrder: Deduct coupon failed: %v", err)
 			return fmt.Errorf("không thể cập nhật lượt dùng mã giảm giá: %v", err)
 		}
 		rowsAffected, _ := resCoupon.RowsAffected()
 		if rowsAffected == 0 {
-			logger.ErrorLogger.Printf("CreateOrder: Coupon usage limit exceeded for ID %d", *couponID)
+			logger.ErrorLogger.Printf("CreateOrder: Coupon usage limit exceeded for ID %d", couponID)
 			return fmt.Errorf("mã giảm giá đã hết lượt sử dụng hoặc không tồn tại")
 		}
 
 		queryUserCoupon := `INSERT INTO user_coupons (coupon_id, user_id, order_id, used_at) VALUES (?, ?, ?, NOW())`
-		_, err = tx.ExecContext(ctx, queryUserCoupon, *couponID, order.UserID, orderID)
+		_, err = tx.ExecContext(ctx, queryUserCoupon, couponID, order.UserID, orderID)
 		if err != nil {
 			logger.ErrorLogger.Printf("CreateOrder: Insert user coupon failed: %v", err)
 			return fmt.Errorf("không thể lưu lại lịch sử dùng mã giảm giá: %v", err)
@@ -298,13 +298,29 @@ func (r *OrderRepository) ConfirmPayment(ctx context.Context, orderID int64, pay
 func (r *OrderRepository) GetOrderByID(ctx context.Context, id int64) (*model.Order, error) {
 	logger.DebugLogger.Printf("Starting GetOrderByID: %d", id)
 	query := `
-		SELECT id, order_number, user_id, status, total_amount, payment_status, note, 
-		       placed_at, created_at, updated_at, paid_at, completed_at, cancelled_at
-		FROM orders WHERE id = ?`
+		SELECT o.id, o.order_number, o.user_id, COALESCE(u.username, '') AS customer_name,
+		       COALESCE((
+				SELECT oi.title
+				FROM order_items oi
+				WHERE oi.order_id = o.id
+				ORDER BY oi.id ASC
+				LIMIT 1
+		       ), '') AS first_item_title,
+		       COALESCE((
+				SELECT COUNT(*)
+				FROM order_items oi
+				WHERE oi.order_id = o.id
+		       ), 0) AS item_count,
+		       o.status, o.total_amount, o.payment_status, o.note, 
+		       o.placed_at, o.created_at, o.updated_at, o.paid_at, o.completed_at, o.cancelled_at
+		FROM orders o
+		LEFT JOIN users u ON u.id = o.user_id
+		WHERE o.id = ?`
 
 	var o model.Order
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
-		&o.ID, &o.OrderNumber, &o.UserID, &o.Status, &o.TotalAmount, &o.PaymentStatus, &o.Note,
+		&o.ID, &o.OrderNumber, &o.UserID, &o.CustomerName, &o.FirstItemTitle, &o.ItemCount,
+		&o.Status, &o.TotalAmount, &o.PaymentStatus, &o.Note,
 		&o.PlacedAt, &o.CreatedAt, &o.UpdatedAt,
 		&o.PaidAt, &o.CompletedAt, &o.CancelledAt,
 	)
@@ -324,13 +340,29 @@ func (r *OrderRepository) GetOrderByID(ctx context.Context, id int64) (*model.Or
 func (r *OrderRepository) GetByOrderNumber(ctx context.Context, orderNumber string) (*model.Order, error) {
 	logger.DebugLogger.Printf("Starting GetByOrderNumber: %s", orderNumber)
 	query := `
-		SELECT id, order_number, user_id, status, total_amount, payment_status, note, 
-		       placed_at, created_at, updated_at, paid_at, completed_at, cancelled_at
-		FROM orders WHERE order_number = ?`
+		SELECT o.id, o.order_number, o.user_id, COALESCE(u.username, '') AS customer_name,
+		       COALESCE((
+				SELECT oi.title
+				FROM order_items oi
+				WHERE oi.order_id = o.id
+				ORDER BY oi.id ASC
+				LIMIT 1
+		       ), '') AS first_item_title,
+		       COALESCE((
+				SELECT COUNT(*)
+				FROM order_items oi
+				WHERE oi.order_id = o.id
+		       ), 0) AS item_count,
+		       o.status, o.total_amount, o.payment_status, o.note, 
+		       o.placed_at, o.created_at, o.updated_at, o.paid_at, o.completed_at, o.cancelled_at
+		FROM orders o
+		LEFT JOIN users u ON u.id = o.user_id
+		WHERE o.order_number = ?`
 
 	var o model.Order
 	err := r.db.QueryRowContext(ctx, query, orderNumber).Scan(
-		&o.ID, &o.OrderNumber, &o.UserID, &o.Status, &o.TotalAmount, &o.PaymentStatus, &o.Note,
+		&o.ID, &o.OrderNumber, &o.UserID, &o.CustomerName, &o.FirstItemTitle, &o.ItemCount,
+		&o.Status, &o.TotalAmount, &o.PaymentStatus, &o.Note,
 		&o.PlacedAt, &o.CreatedAt, &o.UpdatedAt,
 		&o.PaidAt, &o.CompletedAt, &o.CancelledAt,
 	)
@@ -410,11 +442,25 @@ func (r *OrderRepository) GetOrders(ctx context.Context, filter model.OrderFilte
 	offset := (filter.Page - 1) * limit
 
 	dataQuery := fmt.Sprintf(`
-		SELECT id, order_number, user_id, status, total_amount, payment_status, 
-		       placed_at, created_at, paid_at, completed_at, cancelled_at
-		FROM orders
+		SELECT o.id, o.order_number, o.user_id, COALESCE(u.username, '') AS customer_name,
+		       COALESCE((
+				SELECT oi.title
+				FROM order_items oi
+				WHERE oi.order_id = o.id
+				ORDER BY oi.id ASC
+				LIMIT 1
+		       ), '') AS first_item_title,
+		       COALESCE((
+				SELECT COUNT(*)
+				FROM order_items oi
+				WHERE oi.order_id = o.id
+		       ), 0) AS item_count,
+		       o.status, o.total_amount, o.payment_status,
+		       o.placed_at, o.created_at, o.paid_at, o.completed_at, o.cancelled_at
+		FROM orders o
+		LEFT JOIN users u ON u.id = o.user_id
 		WHERE %s 
-		ORDER BY placed_at DESC 
+		ORDER BY o.placed_at DESC 
 		LIMIT ? OFFSET ?`, whereQuery)
 
 	// Thêm tham số limit, offset vào args
@@ -430,7 +476,22 @@ func (r *OrderRepository) GetOrders(ctx context.Context, filter model.OrderFilte
 	var orders []model.Order
 	for rows.Next() {
 		var o model.Order
-		if err := rows.Scan(&o.ID, &o.OrderNumber, &o.UserID, &o.Status, &o.TotalAmount, &o.PaymentStatus, &o.PlacedAt, &o.CreatedAt, &o.PaidAt, &o.CompletedAt, &o.CancelledAt); err != nil {
+		if err := rows.Scan(
+			&o.ID,
+			&o.OrderNumber,
+			&o.UserID,
+			&o.CustomerName,
+			&o.FirstItemTitle,
+			&o.ItemCount,
+			&o.Status,
+			&o.TotalAmount,
+			&o.PaymentStatus,
+			&o.PlacedAt,
+			&o.CreatedAt,
+			&o.PaidAt,
+			&o.CompletedAt,
+			&o.CancelledAt,
+		); err != nil {
 			logger.ErrorLogger.Printf("GetOrders: Scan row failed: %v", err)
 			return nil, 0, err
 		}

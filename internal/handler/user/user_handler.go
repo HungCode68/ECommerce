@@ -345,6 +345,29 @@ func (h *userHandler) DeleteSoftUsers(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, http.StatusOK, "Xóa danh sách user thành công", nil)
 }
 
+// RestoreSoftUsers - Bỏ chặn nhiều người dùng cùng lúc (Admin)
+func (h *userHandler) RestoreSoftUsers(w http.ResponseWriter, r *http.Request) {
+	var req model.AdminDeleteManyUsersRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu JSON không hợp lệ", err.Error())
+		return
+	}
+
+	if errs := validator.Validate(req); errs != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu đầu vào không hợp lệ", errs)
+		return
+	}
+
+	err := h.UserController.RestoreSoftUsers(req)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Lỗi bỏ chặn danh sách user", err.Error())
+		return
+	}
+
+	utils.WriteJSON(w, http.StatusOK, "Bỏ chặn danh sách user thành công", nil)
+}
+
 // RefreshToken - Làm mới access token
 func (h *userHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 	var req model.RefreshTokenRequest

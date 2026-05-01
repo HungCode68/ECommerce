@@ -16,6 +16,13 @@ func NewProductVariantController(repoVariant productvariant.ProductVariantsRepos
 
 // CreateVariant - Tạo biến thể mới cho sản phẩm
 func (c *productVariantController) CreateVariant(req model.CreateVariantRequest, productID int64) (*model.CreateVariantResponse, error) {
+	existing, err := c.VariantRepo.GetVariantBySKU(req.SKU)
+	if err != nil {
+		return nil, err
+	}
+	if existing != nil {
+		return nil, fmt.Errorf("Mã SKU '%s' đã tồn tại trong hệ thống", req.SKU)
+	}
 	newVariant := &model.ProductsVariants{
 		ProductID:      productID,
 		SKU:            req.SKU,

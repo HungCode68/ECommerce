@@ -7,6 +7,9 @@ type StatsHandler interface {
 	// Lấy số liệu tổng quan cho Dashboard
 	GetDashboardOverview(w http.ResponseWriter, r *http.Request)
 
+	// GetDashboardStats: API gộp Overview + Top Products
+	GetDashboardStats(w http.ResponseWriter, r *http.Request)
+
 	// Lấy danh sách Top sản phẩm bán chạy
 	GetTopSellingProducts(w http.ResponseWriter, r *http.Request)
 

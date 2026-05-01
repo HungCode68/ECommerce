@@ -7,7 +7,9 @@ import (
 	statsController "golang/internal/controller/stats"
 	"golang/internal/cron"
 	statsHandler "golang/internal/handler/stats"
+	orderRepo "golang/internal/repository/order"
 	statsRepo "golang/internal/repository/stats"
+	userRepo "golang/internal/repository/user"
 	"golang/internal/router"
 )
 
@@ -15,9 +17,11 @@ import (
 func InitStatsModule(db *sql.DB, mux *http.ServeMux) *cron.CronManager {
 	// Khởi tạo Repository
 	repo := statsRepo.NewStatsRepository(db)
+	oRepo := orderRepo.NewOrderRepository(db)
+	uRepo := userRepo.NewUserDb(db)
 
 	//  Khởi tạo Controller
-	ctrl := statsController.NewStatsController(repo)
+	ctrl := statsController.NewStatsController(repo, oRepo, uRepo)
 
 	//  Khởi tạo Handler
 	hdl := statsHandler.NewStatsHandler(ctrl)

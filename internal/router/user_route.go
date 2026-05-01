@@ -23,12 +23,13 @@ func NewUserRouter(mux *http.ServeMux, userHandler user.UserHandler) http.Handle
 	// =================================================================
 	adminGroup := newGroup(mux, "/api/admin/users", middleware.AdminOnlyMiddleware)
 
-	adminGroup.HandleFunc("GET", "", userHandler.GetAllUsers)            // Lấy tất cả users
-	adminGroup.HandleFunc("GET", "/search", userHandler.SearchUsers)     // Tìm kiếm users
-	adminGroup.HandleFunc("GET", "/{id}", userHandler.GetUserByID)       // Lấy user by ID
-	adminGroup.HandleFunc("POST", "", userHandler.CreateAdmin)           // Tạo mới admin
-	adminGroup.HandleFunc("DELETE", "", userHandler.DeleteSoftUsers)     // Xóa users
-	adminGroup.HandleFunc("PUT", "/{id}", userHandler.UpdateUser)        // Cập nhật user by ID
+	adminGroup.HandleFunc("GET", "", userHandler.GetAllUsers)               // Lấy tất cả users
+	adminGroup.HandleFunc("GET", "/search", userHandler.SearchUsers)        // Tìm kiếm users
+	adminGroup.HandleFunc("GET", "/{id}", userHandler.GetUserByID)          // Lấy user by ID
+	adminGroup.HandleFunc("POST", "", userHandler.CreateAdmin)              // Tạo mới admin
+	adminGroup.HandleFunc("DELETE", "", userHandler.DeleteSoftUsers)        // Xóa users
+	adminGroup.HandleFunc("POST", "/restore", userHandler.RestoreSoftUsers) // Bỏ chặn users
+	adminGroup.HandleFunc("PUT", "/{id}", userHandler.UpdateUser)           // Cập nhật user by ID
 	// adminGroup.HandleFunc("DELETE", "/{id}", userHandler.DeleteUserById) // Xóa user by ID
 
 	return mux

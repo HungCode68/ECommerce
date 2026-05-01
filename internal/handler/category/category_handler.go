@@ -3,6 +3,7 @@ package category
 import (
 	"encoding/json"
 	"golang/internal/controller/category"
+	"golang/internal/logger"
 	"golang/internal/model"
 	"golang/internal/utils"
 	"golang/internal/validator"
@@ -29,7 +30,7 @@ func (h *categoryHandler) CreateCategory(w http.ResponseWriter, r *http.Request)
 
 	// Decode JSON
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu JSON không hợp lệ", err.Error())
+		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu JSON không hợp lệ", nil)
 		return
 	}
 
@@ -43,10 +44,11 @@ func (h *categoryHandler) CreateCategory(w http.ResponseWriter, r *http.Request)
 	res, err := h.CategoryController.CreateCategory(req)
 	if err != nil {
 		if strings.Contains(err.Error(), "đã tồn tại") {
-			utils.WriteError(w, http.StatusConflict, "Dữ liệu trùng lặp", err.Error())
+			utils.WriteError(w, http.StatusConflict, "Dữ liệu trùng lặp", nil)
 			return
 		}
-		utils.WriteError(w, http.StatusInternalServerError, "Lỗi tạo danh mục", err.Error())
+		logger.ErrorLogger.Printf("CreateCategory error: %v", err)
+		utils.WriteError(w, http.StatusInternalServerError, "Lỗi tạo danh mục", nil)
 		return
 	}
 
@@ -65,7 +67,7 @@ func (h *categoryHandler) UpdateCategory(w http.ResponseWriter, r *http.Request)
 
 	var req model.UpdateCategoryRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu JSON không hợp lệ", err.Error())
+		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu JSON không hợp lệ", nil)
 		return
 	}
 
@@ -78,7 +80,8 @@ func (h *categoryHandler) UpdateCategory(w http.ResponseWriter, r *http.Request)
 	// Call Controller
 	res, err := h.CategoryController.UpdateCategory(id, req)
 	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Lỗi cập nhật danh mục", err.Error())
+		logger.ErrorLogger.Printf("UpdateCategory error (id=%d): %v", id, err)
+		utils.WriteError(w, http.StatusInternalServerError, "Lỗi cập nhật danh mục", nil)
 		return
 	}
 
@@ -108,7 +111,7 @@ func (h *categoryHandler) DeleteSoftCategories(w http.ResponseWriter, r *http.Re
 	var req model.DeleteManyCategoriesRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu JSON không hợp lệ", err.Error())
+		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu JSON không hợp lệ", nil)
 		return
 	}
 
@@ -120,7 +123,8 @@ func (h *categoryHandler) DeleteSoftCategories(w http.ResponseWriter, r *http.Re
 
 	err := h.CategoryController.DeleteSoftCategories(req)
 	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Lỗi xóa danh sách danh mục", err.Error())
+		logger.ErrorLogger.Printf("DeleteSoftCategories error: %v", err)
+		utils.WriteError(w, http.StatusInternalServerError, "Lỗi xóa danh sách danh mục", nil)
 		return
 	}
 
@@ -140,7 +144,8 @@ func (h *categoryHandler) DeleteCategoryHard(w http.ResponseWriter, r *http.Requ
 	// Gọi Controller xử lý
 	err = h.CategoryController.DeleteCategoryHard(id)
 	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Không thể xóa danh mục", err.Error())
+		logger.ErrorLogger.Printf("DeleteCategoryHard error (id=%d): %v", id, err)
+		utils.WriteError(w, http.StatusBadRequest, "Không thể xóa danh mục", nil)
 		return
 	}
 
@@ -157,8 +162,12 @@ func (h *categoryHandler) AdminGetAllCategories(w http.ResponseWriter, r *http.R
 	limit, _ := strconv.Atoi(query.Get("limit"))
 
 	// Gán mặc định nếu không gửi hoặc gửi sai
-	if page <= 0 { page = 1 }
-	if limit <= 0 { limit = 10 }
+	if page <= 0 {
+		page = 1
+	}
+	if limit <= 0 {
+		limit = 10
+	}
 
 	req := model.AdminGetCategoriesRequest{
 		Page:  page,
@@ -173,7 +182,8 @@ func (h *categoryHandler) AdminGetAllCategories(w http.ResponseWriter, r *http.R
 	//  Gọi Controller
 	cats, total, err := h.CategoryController.AdminGetAllCategories(req)
 	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Lỗi lấy danh sách danh mục", err.Error())
+		logger.ErrorLogger.Printf("AdminGetAllCategories error: %v", err)
+		utils.WriteError(w, http.StatusInternalServerError, "Lỗi lấy danh sách danh mục", nil)
 		return
 	}
 
@@ -199,17 +209,18 @@ func (h *categoryHandler) AdminGetCategoryByID(w http.ResponseWriter, r *http.Re
 
 	cat, err := h.CategoryController.AdminGetCategoryByID(id)
 	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Lỗi lấy chi tiết danh mục", err.Error())
+		logger.ErrorLogger.Printf("AdminGetCategoryByID error (id=%d): %v", id, err)
+		utils.WriteError(w, http.StatusInternalServerError, "Lỗi lấy chi tiết danh mục", nil)
 		return
 	}
 
 	utils.WriteJSON(w, http.StatusOK, "Lấy chi tiết thành công", cat)
 }
 
-// AdminSearchCategories: Tìm kiếm danh mục 
+// AdminSearchCategories: Tìm kiếm danh mục
 func (h *categoryHandler) AdminSearchCategories(w http.ResponseWriter, r *http.Request) {
-query := r.URL.Query()
-	
+	query := r.URL.Query()
+
 	// Lấy Keyword
 	rawKeyword := query.Get("q")
 	keyword := strings.TrimSpace(rawKeyword)
@@ -219,7 +230,7 @@ query := r.URL.Query()
 	if val := query.Get("is_active"); val != "" {
 		b, err := strconv.ParseBool(val)
 		if err != nil {
-			utils.WriteError(w, http.StatusBadRequest, "Tham số không hợp lệ ", err.Error())
+			utils.WriteError(w, http.StatusBadRequest, "Tham số không hợp lệ ", nil)
 			return
 		}
 		isActive = &b
@@ -228,7 +239,8 @@ query := r.URL.Query()
 	//  Gọi Controller
 	cats, err := h.CategoryController.AdminSearchCategories(keyword, isActive)
 	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Lỗi tìm kiếm danh mục", err.Error())
+		logger.ErrorLogger.Printf("AdminSearchCategories error: %v", err)
+		utils.WriteError(w, http.StatusInternalServerError, "Lỗi tìm kiếm danh mục", nil)
 		return
 	}
 
@@ -239,7 +251,8 @@ query := r.URL.Query()
 func (h *categoryHandler) UserGetActiveCategories(w http.ResponseWriter, r *http.Request) {
 	cats, err := h.CategoryController.UserGetActiveCategories()
 	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Lỗi lấy danh mục", err.Error())
+		logger.ErrorLogger.Printf("UserGetActiveCategories error: %v", err)
+		utils.WriteError(w, http.StatusInternalServerError, "Lỗi lấy danh mục", nil)
 		return
 	}
 
@@ -258,7 +271,8 @@ func (h *categoryHandler) UserSearchCategories(w http.ResponseWriter, r *http.Re
 
 	cats, err := h.CategoryController.UserSearchCategories(keyword)
 	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Lỗi tìm kiếm", err.Error())
+		logger.ErrorLogger.Printf("UserSearchCategories error: %v", err)
+		utils.WriteError(w, http.StatusInternalServerError, "Lỗi tìm kiếm", nil)
 		return
 	}
 

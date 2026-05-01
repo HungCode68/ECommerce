@@ -8,9 +8,9 @@ import (
 
 // NewProductReviewRouter registers review related routes.
 func NewProductReviewRouter(mux *http.ServeMux, h productreview.ProductReviewHandler) http.Handler {
-	userGroup := newGroup(mux, "/user")
-	authUserGroup := newGroup(mux, "/user", middleware.AuthMiddleware)
-	adminGroup := newGroup(mux, "/admin", middleware.AdminOnlyMiddleware)
+	userGroup := newGroup(mux, "/api")
+	authUserGroup := newGroup(mux, "/api", middleware.AuthMiddleware)
+	adminGroup := newGroup(mux, "/api/admin", middleware.AdminOnlyMiddleware)
 
 	// Public: list reviews of a product
 	userGroup.HandleFunc("GET", "/product/{id}/reviews", h.ListReviewsHandler)

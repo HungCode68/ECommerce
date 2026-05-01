@@ -40,6 +40,9 @@ type UserController interface {
 	// Xoá nhiều người dùng theo danh sách ID
 	DeleteSoftUsers(req model.AdminDeleteManyUsersRequest) error
 
+	// Bỏ chặn nhiều người dùng theo danh sách ID
+	RestoreSoftUsers(req model.AdminDeleteManyUsersRequest) error
+
 	// Làm mới token
 	RefreshToken(req model.RefreshTokenRequest) (model.RefreshTokenResponse, error)
 }

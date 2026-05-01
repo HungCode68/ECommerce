@@ -4,6 +4,7 @@ import (
 	"context"
 	config "golang/internal/configs/database"
 	"golang/internal/logger"
+	"golang/internal/middleware"
 	"golang/internal/module"
 	"golang/internal/server"
 	"log"
@@ -21,7 +22,6 @@ func main() {
 	if db == nil {
 		log.Fatal("Lỗi khi kết nối database: kết quả là nil")
 	}
-	defer db.Connection.Close()
 	log.Println("Kết nối database thành công")
 
 	mux := http.NewServeMux()
@@ -47,7 +47,7 @@ func main() {
 	cronManager.Start()
 
 	// Chạy Server
-	srv := server.NewServer(mux)
+	srv := server.NewServer(middleware.CORS(mux))
 
 	// Goroutine chạy server
 	go func() {

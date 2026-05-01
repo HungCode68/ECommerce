@@ -3,6 +3,7 @@ package address
 import (
 	"encoding/json"
 	"golang/internal/controller/address"
+	"golang/internal/logger"
 	"golang/internal/middleware"
 	"golang/internal/model"
 	"golang/internal/utils"
@@ -34,7 +35,7 @@ func (h *addressHandler) CreateAddress(w http.ResponseWriter, r *http.Request) {
 	// Decode JSON
 	var req model.CreateAddressRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu JSON không hợp lệ", err.Error())
+		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu JSON không hợp lệ", nil)
 		return
 	}
 
@@ -47,7 +48,8 @@ func (h *addressHandler) CreateAddress(w http.ResponseWriter, r *http.Request) {
 	//  Gọi Controller
 	res, err := h.AddressController.CreateAddress(userID, req)
 	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Lỗi tạo địa chỉ", err.Error())
+		logger.ErrorLogger.Printf("CreateAddress error (userID=%d): %v", userID, err)
+		utils.WriteError(w, http.StatusInternalServerError, "Lỗi tạo địa chỉ", nil)
 		return
 	}
 
@@ -64,7 +66,8 @@ func (h *addressHandler) GetMyAddresses(w http.ResponseWriter, r *http.Request) 
 
 	res, err := h.AddressController.GetMyAddresses(userID)
 	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Lỗi lấy danh sách địa chỉ", err.Error())
+		logger.ErrorLogger.Printf("GetMyAddresses error (userID=%d): %v", userID, err)
+		utils.WriteError(w, http.StatusInternalServerError, "Lỗi lấy danh sách địa chỉ", nil)
 		return
 	}
 
@@ -88,7 +91,8 @@ func (h *addressHandler) GetAddressByID(w http.ResponseWriter, r *http.Request) 
 
 	res, err := h.AddressController.GetAddressByID(id, userID)
 	if err != nil {
-		utils.WriteError(w, http.StatusNotFound, "Lỗi lấy chi tiết địa chỉ", err.Error())
+		logger.ErrorLogger.Printf("GetAddressByID error (addressID=%d, userID=%d): %v", id, userID, err)
+		utils.WriteError(w, http.StatusNotFound, "Lỗi lấy chi tiết địa chỉ", nil)
 		return
 	}
 
@@ -112,7 +116,7 @@ func (h *addressHandler) UpdateAddress(w http.ResponseWriter, r *http.Request) {
 
 	var req model.UpdateAddressRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "JSON không hợp lệ", err.Error())
+		utils.WriteError(w, http.StatusBadRequest, "JSON không hợp lệ", nil)
 		return
 	}
 
@@ -123,7 +127,8 @@ func (h *addressHandler) UpdateAddress(w http.ResponseWriter, r *http.Request) {
 
 	res, err := h.AddressController.UpdateAddress(id, userID, req)
 	if err != nil {
-		utils.WriteError(w, http.StatusNotFound, "Lỗi cập nhật địa chỉ", err.Error())
+		logger.ErrorLogger.Printf("UpdateAddress error (addressID=%d, userID=%d): %v", id, userID, err)
+		utils.WriteError(w, http.StatusNotFound, "Lỗi cập nhật địa chỉ", nil)
 		return
 	}
 
@@ -147,7 +152,8 @@ func (h *addressHandler) DeleteAddress(w http.ResponseWriter, r *http.Request) {
 
 	err = h.AddressController.DeleteAddress(id, userID)
 	if err != nil {
-		utils.WriteError(w, http.StatusNotFound, "Lỗi xóa địa chỉ", err.Error())
+		logger.ErrorLogger.Printf("DeleteAddress error (addressID=%d, userID=%d): %v", id, userID, err)
+		utils.WriteError(w, http.StatusNotFound, "Lỗi xóa địa chỉ", nil)
 		return
 	}
 
@@ -171,7 +177,8 @@ func (h *addressHandler) SetDefaultAddress(w http.ResponseWriter, r *http.Reques
 
 	err = h.AddressController.SetDefaultAddress(userID, addressID)
 	if err != nil {
-		utils.WriteError(w, http.StatusNotFound, "Lỗi đặt địa chỉ mặc định", err.Error())
+		logger.ErrorLogger.Printf("SetDefaultAddress error (addressID=%d, userID=%d): %v", addressID, userID, err)
+		utils.WriteError(w, http.StatusNotFound, "Lỗi đặt địa chỉ mặc định", nil)
 		return
 	}
 

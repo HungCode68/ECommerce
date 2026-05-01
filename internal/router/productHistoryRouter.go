@@ -8,7 +8,7 @@ import (
 
 func NewProductHistoryRouter(mux *http.ServeMux, h producthistory.ProductHistoryHandler) http.Handler {
 
-	historyGroup := newGroup(mux, "/admin/product", middleware.AdminOnlyMiddleware)
+	historyGroup := newGroup(mux, "/api/admin/product", middleware.AdminOnlyMiddleware)
 	// Lấy lịch sử thay đổi của một sản phẩm cụ thể
 	historyGroup.HandleFunc("GET", "/history", h.GetProductHistoryByProductIDHandler)
 

@@ -5,16 +5,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"golang/internal/logger"
 	"golang/internal/model"
 	"golang/internal/repository/address"
+	couponrepo "golang/internal/repository/coupons"
 	repository "golang/internal/repository/order"
 	"golang/internal/repository/product"
 	"golang/internal/repository/productvariant"
 	"golang/internal/utils"
-	"golang/internal/controller/coupons"
 )
 
 type orderController struct {
@@ -22,7 +23,7 @@ type orderController struct {
 	ProductRepo        product.ProductRepository
 	ProductVariantRepo productvariant.ProductVariantsRepository
 	AddressRepo        address.AddressRepo
-	CouponsCtrl        coupons.CouponsController
+	CouponRepo         couponrepo.CouponsRepository
 }
 
 func NewOrderController(
@@ -30,14 +31,14 @@ func NewOrderController(
 	productRepo product.ProductRepository,
 	variantRepo productvariant.ProductVariantsRepository,
 	addrRepo address.AddressRepo,
-	couponsCtrl coupons.CouponsController,
+	couponRepo couponrepo.CouponsRepository,
 ) OrderController {
 	return &orderController{
 		OrderRepo:          orderRepo,
 		ProductRepo:        productRepo,
 		ProductVariantRepo: variantRepo,
 		AddressRepo:        addrRepo,
-		CouponsCtrl:        couponsCtrl,
+		CouponRepo:         couponRepo,
 	}
 }
 
@@ -141,28 +142,54 @@ func (c *orderController) CreateOrder(ctx context.Context, userID int64, req mod
 		orderItems = append(orderItems, item)
 	}
 
-	var couponID *int64
-	var discountAmount float64 = 0
+	orderCouponCode := derefTrim(req.OrderCouponCode)
+	if orderCouponCode == "" {
+		orderCouponCode = derefTrim(req.CouponCode)
+	}
+	shippingCouponCode := derefTrim(req.ShippingCouponCode)
 
-	// Xác thực mã giảm giá nếu có
-	if req.CouponCode != nil && *req.CouponCode != "" {
-		valReq := model.ValidateCouponRequest{
-			Code:        *req.CouponCode,
-			UserID:      userID,
-			OrderAmount: totalAmount,
-		}
-		couponResp, err := c.CouponsCtrl.ValidateCoupon(ctx, valReq)
+	orderDiscount := 0.0
+	shippingFee := calculateOrderShippingFee(totalAmount)
+	shippingDiscount := 0.0
+	var couponIDs []int64
+
+	if orderCouponCode != "" {
+		orderCouponID, discount, err := c.validateCouponForOrder(ctx, userID, orderCouponCode, totalAmount, totalAmount, model.CouponDiscountTypePercentage, model.CouponDiscountTypeFixedAmount)
 		if err != nil {
-			return nil, fmt.Errorf("lỗi kiểm tra mã giảm giá: %v", err)
+			return nil, err
 		}
-		if !couponResp.IsValid {
-			return nil, fmt.Errorf("mã giảm giá không hợp lệ: %s", couponResp.Message)
+		orderDiscount = discount
+		couponIDs = append(couponIDs, orderCouponID)
+	} else {
+		bestOrderCouponID, discount, err := c.findBestCouponForOrderTypes(ctx, userID, totalAmount, totalAmount, model.CouponDiscountTypePercentage, model.CouponDiscountTypeFixedAmount)
+		if err != nil {
+			return nil, err
 		}
-		discountAmount = couponResp.DiscountAmount
-		couponID = &couponResp.CouponID
+		if bestOrderCouponID != 0 {
+			orderDiscount = discount
+			couponIDs = append(couponIDs, bestOrderCouponID)
+		}
 	}
 
-	finalTotalAmount := totalAmount - discountAmount
+	if shippingCouponCode != "" {
+		shippingCouponID, discount, err := c.validateCouponForOrder(ctx, userID, shippingCouponCode, totalAmount, shippingFee, model.CouponDiscountTypeShippingPercentage, model.CouponDiscountTypeShippingFixed)
+		if err != nil {
+			return nil, err
+		}
+		shippingDiscount = discount
+		couponIDs = append(couponIDs, shippingCouponID)
+	} else if shippingFee > 0 {
+		bestShippingCouponID, discount, err := c.findBestCouponForOrderTypes(ctx, userID, totalAmount, shippingFee, model.CouponDiscountTypeShippingPercentage, model.CouponDiscountTypeShippingFixed)
+		if err != nil {
+			return nil, err
+		}
+		if bestShippingCouponID != 0 {
+			shippingDiscount = discount
+			couponIDs = append(couponIDs, bestShippingCouponID)
+		}
+	}
+
+	finalTotalAmount := totalAmount - orderDiscount + shippingFee - shippingDiscount
 	if finalTotalAmount < 0 {
 		finalTotalAmount = 0
 	}
@@ -186,7 +213,7 @@ func (c *orderController) CreateOrder(ctx context.Context, userID int64, req mod
 		Status: model.PaymentTransStatusPending,
 	}
 
-	err = c.OrderRepo.CreateOrder(ctx, newOrder, orderItems, addressSnapshot, initialPayment, couponID)
+	err = c.OrderRepo.CreateOrder(ctx, newOrder, orderItems, addressSnapshot, initialPayment, couponIDs)
 	if err != nil {
 		logger.ErrorLogger.Printf("CreateOrder failed for user %d: %v", userID, err)
 		return nil, err
@@ -210,6 +237,158 @@ func (c *orderController) CreateOrder(ctx context.Context, userID int64, req mod
 		},
 		PlacedAt: newOrder.PlacedAt,
 	}, nil
+}
+
+func calculateOrderShippingFee(subTotal float64) float64 {
+	const freeShippingThreshold = 500000.0
+	const defaultShippingFee = 30000.0
+	if subTotal >= freeShippingThreshold {
+		return 0
+	}
+	return defaultShippingFee
+}
+
+func derefTrim(v *string) string {
+	if v == nil {
+		return ""
+	}
+	return strings.TrimSpace(*v)
+}
+
+func (c *orderController) validateCouponForOrder(ctx context.Context, userID int64, couponCode string, orderAmount float64, discountBaseAmount float64, allowedTypes ...string) (int64, float64, error) {
+	if c.CouponRepo == nil {
+		return 0, 0, errors.New("hệ thống chưa hỗ trợ mã giảm giá")
+	}
+
+	coupon, err := c.CouponRepo.GetCouponByCode(ctx, couponCode)
+	if err != nil {
+		return 0, 0, fmt.Errorf("mã giảm giá không tồn tại")
+	}
+	if !coupon.IsActive {
+		return 0, 0, fmt.Errorf("mã giảm giá đã bị vô hiệu hóa")
+	}
+	if coupon.DiscountType == nil || coupon.DiscountValue == nil {
+		return 0, 0, fmt.Errorf("mã giảm giá chưa được cấu hình đúng")
+	}
+
+	nowStr := time.Now().Format(time.RFC3339)
+	if coupon.StartDate != nil && *coupon.StartDate > nowStr {
+		return 0, 0, fmt.Errorf("mã giảm giá chưa đến thời gian sử dụng")
+	}
+	if coupon.EndDate != nil && *coupon.EndDate < nowStr {
+		return 0, 0, fmt.Errorf("mã giảm giá đã hết hạn")
+	}
+	if coupon.UsageLimit != nil && coupon.UsageCount != nil && *coupon.UsageCount >= *coupon.UsageLimit {
+		return 0, 0, fmt.Errorf("mã giảm giá đã hết lượt sử dụng")
+	}
+
+	allowed := make(map[string]bool, len(allowedTypes))
+	for _, t := range allowedTypes {
+		allowed[t] = true
+	}
+	if !allowed[*coupon.DiscountType] {
+		return 0, 0, fmt.Errorf("mã giảm giá không phù hợp với loại ưu đãi")
+	}
+
+	if coupon.MinOrderValue != nil && orderAmount < *coupon.MinOrderValue {
+		return 0, 0, fmt.Errorf("đơn hàng chưa đạt giá trị tối thiểu để áp mã")
+	}
+
+	if coupon.UserUsageLimit != nil && *coupon.UserUsageLimit > 0 {
+		count, err := c.CouponRepo.CountUserUsage(ctx, coupon.ID, userID)
+		if err != nil {
+			return 0, 0, fmt.Errorf("không thể kiểm tra lượt sử dụng mã giảm giá")
+		}
+		if int64(count) >= *coupon.UserUsageLimit {
+			return 0, 0, fmt.Errorf("bạn đã hết lượt sử dụng mã giảm giá này")
+		}
+	}
+
+	discountAmount := 0.0
+	switch *coupon.DiscountType {
+	case model.CouponDiscountTypePercentage, model.CouponDiscountTypeShippingPercentage:
+		discountAmount = discountBaseAmount * (*coupon.DiscountValue) / 100
+		if coupon.MaxDiscountAmount != nil && discountAmount > *coupon.MaxDiscountAmount {
+			discountAmount = *coupon.MaxDiscountAmount
+		}
+	case model.CouponDiscountTypeFixedAmount, model.CouponDiscountTypeShippingFixed:
+		discountAmount = *coupon.DiscountValue
+	}
+	if discountAmount > discountBaseAmount {
+		discountAmount = discountBaseAmount
+	}
+
+	return coupon.ID, discountAmount, nil
+}
+
+func (c *orderController) findBestCouponForOrderTypes(ctx context.Context, userID int64, orderAmount float64, discountBaseAmount float64, allowedTypes ...string) (int64, float64, error) {
+	if c.CouponRepo == nil || discountBaseAmount <= 0 {
+		return 0, 0, nil
+	}
+
+	coupons, err := c.CouponRepo.GetAvailableCoupons(ctx, model.GetAvailableCouponsRequest{
+		UserID:      userID,
+		OrderAmount: orderAmount,
+	})
+	if err != nil {
+		return 0, 0, fmt.Errorf("không thể tải danh sách mã giảm giá")
+	}
+
+	allowed := make(map[string]bool, len(allowedTypes))
+	for _, t := range allowedTypes {
+		allowed[t] = true
+	}
+
+	var bestCouponID int64
+	bestDiscount := 0.0
+	for i := range coupons {
+		coupon := coupons[i]
+		if coupon.DiscountType == nil || coupon.DiscountValue == nil || !allowed[*coupon.DiscountType] {
+			continue
+		}
+
+		if coupon.UserUsageLimit != nil && *coupon.UserUsageLimit > 0 {
+			count, err := c.CouponRepo.CountUserUsage(ctx, coupon.ID, userID)
+			if err != nil {
+				continue
+			}
+			if int64(count) >= *coupon.UserUsageLimit {
+				continue
+			}
+		}
+
+		discount := calculateOrderCouponDiscountAmount(coupon, discountBaseAmount)
+		if discount > bestDiscount {
+			bestDiscount = discount
+			bestCouponID = coupon.ID
+		}
+	}
+
+	return bestCouponID, bestDiscount, nil
+}
+
+func calculateOrderCouponDiscountAmount(coupon model.Coupons, discountBaseAmount float64) float64 {
+	if coupon.DiscountType == nil || coupon.DiscountValue == nil || discountBaseAmount <= 0 {
+		return 0
+	}
+
+	discountAmount := 0.0
+	switch *coupon.DiscountType {
+	case model.CouponDiscountTypePercentage, model.CouponDiscountTypeShippingPercentage:
+		discountAmount = discountBaseAmount * (*coupon.DiscountValue) / 100
+		if coupon.MaxDiscountAmount != nil && discountAmount > *coupon.MaxDiscountAmount {
+			discountAmount = *coupon.MaxDiscountAmount
+		}
+	case model.CouponDiscountTypeFixedAmount, model.CouponDiscountTypeShippingFixed:
+		discountAmount = *coupon.DiscountValue
+	}
+	if discountAmount > discountBaseAmount {
+		discountAmount = discountBaseAmount
+	}
+	if discountAmount < 0 {
+		return 0
+	}
+	return discountAmount
 }
 
 // Xem chi tiết đơn hàng của tôi
@@ -252,6 +431,10 @@ func (c *orderController) GetMyOrder(ctx context.Context, userID int64, orderID 
 	return &model.OrderResponse{
 		ID:              order.ID,
 		OrderNumber:     order.OrderNumber,
+		UserID:          order.UserID,
+		CustomerName:    order.CustomerName,
+		FirstItemTitle:  order.FirstItemTitle,
+		ItemCount:       order.ItemCount,
 		Status:          order.Status,
 		TotalAmount:     utils.FormatVND(order.TotalAmount),
 		PaymentStatus:   order.PaymentStatus,
@@ -288,17 +471,21 @@ func (c *orderController) GetMyListOrders(ctx context.Context, userID int64, fil
 		}
 
 		response = append(response, model.OrderResponse{
-			ID:            o.ID,
-			OrderNumber:   o.OrderNumber,
-			Status:        o.Status,
-			TotalAmount:   utils.FormatVND(o.TotalAmount),
-			PaymentStatus: o.PaymentStatus,
-			Note:          noteStr,
-			PlacedAt:      o.PlacedAt,
-			UpdatedAt:     o.UpdatedAt,
-			PaidAt:        o.PaidAt,
-			CompletedAt:   o.CompletedAt,
-			CancelledAt:   o.CancelledAt,
+			ID:             o.ID,
+			OrderNumber:    o.OrderNumber,
+			UserID:         o.UserID,
+			CustomerName:   o.CustomerName,
+			FirstItemTitle: o.FirstItemTitle,
+			ItemCount:      o.ItemCount,
+			Status:         o.Status,
+			TotalAmount:    utils.FormatVND(o.TotalAmount),
+			PaymentStatus:  o.PaymentStatus,
+			Note:           noteStr,
+			PlacedAt:       o.PlacedAt,
+			UpdatedAt:      o.UpdatedAt,
+			PaidAt:         o.PaidAt,
+			CompletedAt:    o.CompletedAt,
+			CancelledAt:    o.CancelledAt,
 		})
 	}
 	logger.InfoLogger.Printf("GetMyOrders success. UserID: %d. Found: %d", userID, total)
@@ -381,7 +568,8 @@ func (c *orderController) GetAdminOrderDetail(ctx context.Context, orderID int64
 	logger.InfoLogger.Printf("GetAdminOrderDetail success. OrderID: %d", orderID)
 	//  Admin Response
 	baseResponse := model.OrderResponse{
-		ID: order.ID, OrderNumber: order.OrderNumber, Status: order.Status,
+		ID: order.ID, OrderNumber: order.OrderNumber, UserID: order.UserID, CustomerName: order.CustomerName,
+		FirstItemTitle: order.FirstItemTitle, ItemCount: len(itemRes), Status: order.Status,
 		TotalAmount: utils.FormatVND(order.TotalAmount), PaymentStatus: order.PaymentStatus, Note: noteStr,
 		ShippingAddress: address, Items: itemRes, Payments: payRes,
 		PlacedAt: order.PlacedAt, UpdatedAt: order.UpdatedAt,
@@ -413,12 +601,21 @@ func (c *orderController) SearchOrders(ctx context.Context, filter model.OrderFi
 			noteStr = *o.Note
 		}
 		response = append(response, model.OrderResponse{
-			ID: o.ID, OrderNumber: o.OrderNumber, Status: o.Status,
-			TotalAmount: utils.FormatVND(o.TotalAmount), PaymentStatus: o.PaymentStatus, Note: noteStr,
-			PlacedAt: o.PlacedAt, UpdatedAt: o.UpdatedAt,
-			PaidAt:      o.PaidAt,
-			CompletedAt: o.CompletedAt,
-			CancelledAt: o.CancelledAt,
+			ID:             o.ID,
+			OrderNumber:    o.OrderNumber,
+			UserID:         o.UserID,
+			CustomerName:   o.CustomerName,
+			FirstItemTitle: o.FirstItemTitle,
+			ItemCount:      o.ItemCount,
+			Status:         o.Status,
+			TotalAmount:    utils.FormatVND(o.TotalAmount),
+			PaymentStatus:  o.PaymentStatus,
+			Note:           noteStr,
+			PlacedAt:       o.PlacedAt,
+			UpdatedAt:      o.UpdatedAt,
+			PaidAt:         o.PaidAt,
+			CompletedAt:    o.CompletedAt,
+			CancelledAt:    o.CancelledAt,
 		})
 	}
 	logger.InfoLogger.Printf("SearchOrders success. Found: %d", total)

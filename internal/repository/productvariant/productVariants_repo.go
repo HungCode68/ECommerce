@@ -114,3 +114,24 @@ func (provariant *VariantRepo) DeleteProductVariant(variantID int64) error {
 
 	return nil
 }
+
+func (provariant *VariantRepo) GetVariantBySKU(sku string) (*model.ProductsVariants, error) {
+	var v model.ProductsVariants
+	err := provariant.DB.QueryRow(`
+		SELECT id, product_id, sku, title, option_values, price_override, cost_price,
+		       stock_quantity, allow_backorder, is_active, created_at, updated_at
+		FROM product_variants
+		WHERE sku = ?`, sku).Scan(
+		&v.ID, &v.ProductID, &v.SKU, &v.Title, &v.OptionValues,
+		&v.PriceOverride, &v.CostPrice, &v.StockQuantity,
+		&v.AllowBackorder, &v.IsActive, &v.CreatedAt, &v.UpdatedAt)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil // Trả về nil nếu không tìm thấy (SKU hợp lệ để tạo mới)
+		}
+		return nil, fmt.Errorf("Cannot get variant: %w", err)
+	}
+
+	return &v, nil
+}

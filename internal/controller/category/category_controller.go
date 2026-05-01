@@ -20,7 +20,6 @@ func NewCategoryController(catRepo category.CategoryRepo) CategoryController {
 	}
 }
 
-
 // CreateCategory - Tạo danh mục mới
 func (c *categoryController) CreateCategory(req model.CreateCategoryRequest) (model.AdminCategoryResponse, error) {
 	logger.InfoLogger.Printf("Admin yêu cầu tạo danh mục mới: %s", req.Name)
@@ -51,7 +50,7 @@ func (c *categoryController) CreateCategory(req model.CreateCategoryRequest) (mo
 	newCat := model.Category{
 		Name:        req.Name,
 		Slug:        finalSlug,
-		Description: &req.Description, 
+		Description: &req.Description,
 		IsActive:    isActive,
 	}
 	if req.Description == "" {
@@ -89,7 +88,7 @@ func (c *categoryController) UpdateCategory(id int64, req model.UpdateCategoryRe
 	//  Kiểm tra Slug nếu có thay đổi
 	if req.Slug != nil && *req.Slug != "" {
 		newSlug := slug.Make(*req.Slug)
-		
+
 		// Lấy danh mục cũ để so sánh xem slug có thực sự đổi không
 		oldCat, err := c.CategoryRepo.GetCategoryByID(id)
 		if err != nil {
@@ -154,13 +153,13 @@ func (c *categoryController) DeleteSoftCategories(req model.DeleteManyCategories
 // DeleteCategoryHard - Xóa cứng 1 danh mục
 func (c *categoryController) DeleteCategoryHard(id int64) error {
 	logger.WarnLogger.Printf("Admin yêu cầu xóa cứng danh mục ID: %d", id)
-    // Gọi Repo Xóa cứng
-    err := c.CategoryRepo.DeleteCategoryHard(id)
-    if err != nil {
-        logger.ErrorLogger.Printf("Lỗi xóa cứng danh mục: %v", err)
-        return err 
-    }
-    return nil
+	// Gọi Repo Xóa cứng
+	err := c.CategoryRepo.DeleteCategoryHard(id)
+	if err != nil {
+		logger.ErrorLogger.Printf("Lỗi xóa cứng danh mục: %v", err)
+		return err
+	}
+	return nil
 }
 
 // AdminGetAllCategories - Lấy tất cả (Active + Inactive)
@@ -224,7 +223,7 @@ func (c *categoryController) AdminSearchCategories(keyword string, isActive *boo
 			Name:        cat.Name,
 			Slug:        cat.Slug,
 			Description: cat.Description,
-			IsActive:    cat.IsActive, 
+			IsActive:    cat.IsActive,
 			CreatedAt:   cat.CreatedAt,
 			UpdatedAt:   cat.UpdatedAt,
 		})
@@ -238,7 +237,6 @@ func (c *categoryController) AdminSearchCategories(keyword string, isActive *boo
 	return response, nil
 }
 
-
 // UserGetActiveCategories - Lấy danh sách danh mục để hiển thị Menu
 func (c *categoryController) UserGetActiveCategories() ([]model.UserCategoryResponse, error) {
 	// Gọi Repo lấy danh sách ACTIVE
@@ -251,11 +249,12 @@ func (c *categoryController) UserGetActiveCategories() ([]model.UserCategoryResp
 	var response []model.UserCategoryResponse
 	for _, cat := range cats {
 		response = append(response, model.UserCategoryResponse{
+			ID:   cat.ID,
 			Name: cat.Name,
 			Slug: cat.Slug,
 		})
 	}
-	
+
 	if response == nil {
 		response = []model.UserCategoryResponse{}
 	}
@@ -275,6 +274,7 @@ func (c *categoryController) UserSearchCategories(keyword string) ([]model.UserC
 	var response []model.UserCategoryResponse
 	for _, cat := range cats {
 		response = append(response, model.UserCategoryResponse{
+			ID:   cat.ID,
 			Name: cat.Name,
 			Slug: cat.Slug,
 		})
@@ -286,5 +286,3 @@ func (c *categoryController) UserSearchCategories(keyword string) ([]model.UserC
 
 	return response, nil
 }
-
-

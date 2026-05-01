@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"golang/internal/controller/productreviews"
+	"golang/internal/logger"
 	"golang/internal/middleware"
 	"golang/internal/model"
 	"golang/internal/validator"
@@ -56,11 +57,10 @@ func (h *productReviewHandler) CreateReviewHandler(w http.ResponseWriter, r *htt
 		return
 	}
 
-
-
 	resp, err := h.controller.CreateReview(r.Context(), req, productID, userID)
 	if err != nil {
-		h.errJson(w, http.StatusInternalServerError, err.Error())
+		logger.ErrorLogger.Printf("CreateReviewHandler error (productID=%d, userID=%d): %v", productID, userID, err)
+		h.errJson(w, http.StatusInternalServerError, "Cannot create review")
 		return
 	}
 
@@ -78,7 +78,8 @@ func (h *productReviewHandler) ListReviewsHandler(w http.ResponseWriter, r *http
 
 	resp, err := h.controller.ListReviews(productID)
 	if err != nil {
-		h.errJson(w, http.StatusInternalServerError, err.Error())
+		logger.ErrorLogger.Printf("ListReviewsHandler error (productID=%d): %v", productID, err)
+		h.errJson(w, http.StatusInternalServerError, "Cannot load reviews")
 		return
 	}
 
@@ -96,7 +97,8 @@ func (h *productReviewHandler) DeleteReviewHandler(w http.ResponseWriter, r *htt
 
 	resp, err := h.controller.DeleteReview(reviewID)
 	if err != nil {
-		h.errJson(w, http.StatusInternalServerError, err.Error())
+		logger.ErrorLogger.Printf("DeleteReviewHandler error (reviewID=%d): %v", reviewID, err)
+		h.errJson(w, http.StatusInternalServerError, "Cannot delete review")
 		return
 	}
 

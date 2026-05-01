@@ -1,0 +1,1 @@
+import{z as a,j as r,O as x,e as i}from"./index-BLaO86Wn.js";function m({status:e,className:t}){const{bg:n,text:s}=a[e];return r.jsx("span",{className:i("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",n,s,t),children:x[e]})}export{m as S};

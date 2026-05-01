@@ -1,5 +1,12 @@
 package model
 
+const (
+	CouponDiscountTypePercentage         = "percentage"
+	CouponDiscountTypeFixedAmount        = "fixed_amount"
+	CouponDiscountTypeShippingPercentage = "shipping_percentage"
+	CouponDiscountTypeShippingFixed      = "shipping_fixed"
+)
+
 type Coupons struct {
 	ID                int64    `db:"id"`
 	Code              string   `db:"code"`
@@ -24,7 +31,7 @@ type Coupons struct {
 type CreateCouponRequest struct {
 	Code              string   `json:"code" validate:"required,min=3,max=50"`
 	Description       *string  `json:"description" validate:"required,max=255"`
-	DiscountType      *string  `json:"discount_type" validate:"required,oneof=percentage fixed_amount"`
+	DiscountType      *string  `json:"discount_type" validate:"required,oneof=percentage fixed_amount shipping_percentage shipping_fixed"`
 	DiscountValue     *float64 `json:"discount_value" validate:"required,gt=0"`
 	MinOrderValue     *float64 `json:"min_order_value" validate:"omitempty,gt=0"`
 	MaxDiscountAmount *float64 `json:"max_discount_amount" validate:"omitempty,gt=0"`
@@ -39,7 +46,7 @@ type CreateCouponRequest struct {
 type UpdateCouponRequest struct {
 	Code         string  `json:"code" validate:"required,min=3,max=50"`
 	Description  *string `json:"description" validate:"required,max=255"`
-	DiscountType *string `json:"discount_type" validate:"required,oneof=percentage fixed_amount"`
+	DiscountType *string `json:"discount_type" validate:"required,oneof=percentage fixed_amount shipping_percentage shipping_fixed"`
 
 	MinOrderValue     *float64 `json:"min_order_value" validate:"omitempty,gt=0"`
 	MaxDiscountAmount *float64 `json:"max_discount_amount" validate:"omitempty,gt=0"`
@@ -71,10 +78,10 @@ type AvailableCouponResponse struct {
 }
 
 type CouponResponse struct {
-	ID           int64   `json:"id"`
-	Code         string  `json:"code"`
-	Description  *string `json:"description"`
-	DiscountType *string `json:"discount_type"`
+	ID            int64    `json:"id"`
+	Code          string   `json:"code"`
+	Description   *string  `json:"description"`
+	DiscountType  *string  `json:"discount_type"`
 	DiscountValue *float64 `json:"discount_value"`
 
 	MinOrderValue     *float64 `json:"min_order_value"`

@@ -3,6 +3,7 @@ package coupons
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"golang/internal/logger"
@@ -45,6 +46,17 @@ func mapCouponToResponse(c *model.Coupons) model.CouponResponse {
 func (c *couponsController) CreateCoupon(ctx context.Context, req model.CreateCouponRequest) (model.CouponResponse, error) {
 	logger.InfoLogger.Printf("Admin tạo mã giảm giá mới: %s", req.Code)
 
+	startDate, err := normalizeCouponDateTime(req.StartDate)
+	if err != nil {
+		return model.CouponResponse{}, fmt.Errorf("start_date không đúng định dạng")
+	}
+	endDate, err := normalizeCouponDateTime(req.EndDate)
+	if err != nil {
+		return model.CouponResponse{}, fmt.Errorf("end_date không đúng định dạng")
+	}
+	req.StartDate = startDate
+	req.EndDate = endDate
+
 	// Kiểm tra xem Code đã tồn tại chưa
 	existing, _ := c.CouponsRepo.GetCouponByCode(ctx, req.Code)
 	if existing != nil && existing.ID > 0 {
@@ -63,6 +75,17 @@ func (c *couponsController) CreateCoupon(ctx context.Context, req model.CreateCo
 func (c *couponsController) UpdateCoupon(ctx context.Context, id int64, req model.UpdateCouponRequest) (model.CouponResponse, error) {
 	logger.InfoLogger.Printf("Admin cập nhật mã giảm giá ID: %d", id)
 
+	startDate, err := normalizeCouponDateTime(req.StartDate)
+	if err != nil {
+		return model.CouponResponse{}, fmt.Errorf("start_date không đúng định dạng")
+	}
+	endDate, err := normalizeCouponDateTime(req.EndDate)
+	if err != nil {
+		return model.CouponResponse{}, fmt.Errorf("end_date không đúng định dạng")
+	}
+	req.StartDate = startDate
+	req.EndDate = endDate
+
 	// Kiểm tra nếu Code mới bị trùng với 1 coupon khác
 	existing, _ := c.CouponsRepo.GetCouponByCode(ctx, req.Code)
 	if existing != nil && existing.ID != id {
@@ -76,6 +99,32 @@ func (c *couponsController) UpdateCoupon(ctx context.Context, id int64, req mode
 	}
 
 	return mapCouponToResponse(updated), nil
+}
+
+func normalizeCouponDateTime(value *string) (*string, error) {
+	if value == nil {
+		return nil, nil
+	}
+
+	raw := strings.TrimSpace(*value)
+	if raw == "" {
+		return nil, nil
+	}
+
+	layouts := []string{
+		"2006-01-02 15:04:05",
+		time.RFC3339,
+		"2006-01-02",
+	}
+	for _, layout := range layouts {
+		parsed, err := time.Parse(layout, raw)
+		if err == nil {
+			formatted := parsed.Format("2006-01-02 15:04:05")
+			return &formatted, nil
+		}
+	}
+
+	return nil, fmt.Errorf("invalid datetime")
 }
 
 func (c *couponsController) DeleteCoupon(ctx context.Context, id int64) error {

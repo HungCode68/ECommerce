@@ -140,10 +140,10 @@ Luu y: project hiện có 2 style prefix route (`/api/...` và `/admin|/user/...
 
 ### Product / Variant / Review / History
 
-- Product admin và user đang dùng prefix `/admin/...` và `/user/...`.
-- Variant admin: `/admin/product/{id}/variant...`
-- Review: `/user/product/{id}/reviews` và admin delete tại `/admin/product/reviews/{reviewId}`.
-- History admin: `/admin/product/history` và `/admin/product/history/all`.
+- Product admin dùng prefix `/api/admin/...`, public/auth user dùng `/api/...`.
+- Variant admin: `/api/admin/product/{id}/variant...`
+- Review: `GET /api/product/{id}/reviews`, `POST /api/product/{id}/reviews` (auth), admin delete tại `/api/admin/product/reviews/{reviewId}`.
+- History admin: `/api/admin/product/history` và `/api/admin/product/history/all`.
 
 ### Stats (Admin)
 
@@ -165,12 +165,13 @@ Các file yaml đang nằm trong thư mục `docs/`:
 - `productVariants_api_doc.yaml`
 - `stats_api_doc.yaml`
 - `user_api_doc.yaml`
+- `cart_api_doc.yaml`
 
 ## 10. Ghi chú vận hành
 
 - `JWT_SECRET` bat buoc phai co va nen >= 32 ky tu.
 - Project da co graceful shutdown trong `main`.
-- Nen chuan hoa route prefix trong giai doan tiep theo de de maintain frontend.
+- Route cua module Product/Variant/Review/History da duoc chuan hoa sang `/api/...`.
 
 ## 11. Ton dong ky thuat can sua dan
 
@@ -208,8 +209,9 @@ Danh sach duoi day duoc sap xep theo muc do uu tien de sua theo tung dot.
 ### Dot 3 (Kha nang maintain va mo rong)
 
 - [ ] Chuan hoa route prefix toan he thong
-	- Hien tai dang tron `/api/...` va `/admin|/user/...`.
-	- Muc tieu: thong nhat convention de frontend mapping de dang hon.
+- Da chuan hoa cho cum Product/Variant/Review/History.
+- Cac module khac dang su dung `/api/...`.
+	- Muc tieu: thong nhat convention de client/API mapping de dang hon.
 
 - [ ] Bo sung test tu dong cho luong quan trong
 	- Trang thai hien tai: chua co file test (`*_test.go`).

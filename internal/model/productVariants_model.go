@@ -7,20 +7,20 @@ type ProductsVariants struct {
 	ProductID      int64     `db:"product_id"`
 	SKU            string    `db:"sku"`
 	Title          *string   `db:"title"`
-	OptionValues   *string   `db:"option_value"`
+	OptionValues   *string   `db:"option_values"`
 	PriceOverride  *float64  `db:"price_override"`
 	CostPrice      *float64  `db:"cost_price"`
 	StockQuantity  int       `db:"stock_quantity"`
 	AllowBackorder bool      `db:"allow_backorder"`
 	IsActive       bool      `db:"is_active"`
 	CreatedAt      time.Time `db:"created_at"`
-	UpdatedAt      time.Time `db:"update_at"`
+	UpdatedAt      time.Time `db:"updated_at"`
 }
 
 type CreateVariantRequest struct {
 	SKU            string  `json:"sku" validate:"required"`
 	Title          string  `json:"title" validate:"omitempty,min=3"`
-	OptionValues   string  `json:"option_value" validate:"required"`
+	OptionValues   string  `json:"option_values" validate:"required"`
 	PriceOverride  float64 `json:"price_override" validate:"gte=0"`
 	CostPrice      float64 `json:"cost_price" validate:"gte=0"`
 	StockQuantity  int     `json:"stock_quantity" validate:"gte=0"`
@@ -31,7 +31,7 @@ type CreateVariantRequest struct {
 type UpdateVariantRequest struct {
 	SKU            string  `json:"sku" validate:"required"`
 	Title          string  `json:"title" validate:"omitempty,min=3"`
-	OptionValues   string  `json:"option_value" validate:"required"`
+	OptionValues   string  `json:"option_values" validate:"required"`
 	PriceOverride  float64 `json:"price_override" validate:"gte=0"`
 	CostPrice      float64 `json:"cost_price" validate:"gte=0"`
 	StockQuantity  int     `json:"stock_quantity" validate:"gte=0"`

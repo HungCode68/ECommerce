@@ -207,7 +207,7 @@ components:
           type: string
         discount_type:
           type: string
-          enum: [percentage, fixed_amount]
+          enum: [percentage, fixed_amount, shipping_percentage, shipping_fixed]
         discount_value:
           type: number
         min_order_value:

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"golang/internal/controller/product"
+	"golang/internal/logger"
 	"golang/internal/model"
 	"golang/internal/validator"
 	"net/http"
@@ -61,17 +62,18 @@ func (h *productHandler) CreateProductHandler(w http.ResponseWriter, r *http.Req
 	}
 
 	if err := validator.Validate(req); err != nil {
-		h.errJson(w, http.StatusBadRequest, fmt.Sprintf("Validation failed: %v", err))
+		h.errJson(w, http.StatusBadRequest, fmt.Sprintf("%v", err))
 		return
 	}
 
 	productResponse, err := h.PrtController.CreateProductController(req)
 	if err != nil {
 		if err.Error() == "Product name already exists" || err.Error() == "Product slug already exists" {
-			h.errJson(w, http.StatusConflict, err.Error())
+			h.errJson(w, http.StatusConflict, "Product already exists")
 			return
 		}
-		h.errJson(w, http.StatusInternalServerError, err.Error())
+		logger.ErrorLogger.Printf("CreateProductHandler error: %v", err)
+		h.errJson(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 
@@ -109,7 +111,7 @@ func (h *productHandler) AdminImportProductsCSVHandler(w http.ResponseWriter, r 
 		if i == 0 {
 			continue // Skip dòng tiêu đề
 		}
-		
+
 		// Dự kiến 9 cột: Name, Slug, MinPrice, DiscountPercent, ShortDescription, Description, Brand, Status, CategoryIDs
 		if len(row) < 9 {
 			h.errJson(w, http.StatusBadRequest, fmt.Sprintf("Row %d: Missing columns (expected at least 9)", i+1))
@@ -119,7 +121,7 @@ func (h *productHandler) AdminImportProductsCSVHandler(w http.ResponseWriter, r 
 		minPrice, _ := strconv.ParseFloat(strings.TrimSpace(row[2]), 64)
 		discountPercent, _ := strconv.ParseFloat(strings.TrimSpace(row[3]), 64)
 		isPublished := true // Mặc định true
-		
+
 		var categoryIDs []int64
 		catStr := strings.TrimSpace(row[8])
 		if catStr != "" {
@@ -149,16 +151,25 @@ func (h *productHandler) AdminImportProductsCSVHandler(w http.ResponseWriter, r 
 
 	response, err := h.PrtController.AdminImportProductsController(reqs)
 	if err != nil {
-		h.errJson(w, http.StatusInternalServerError, err.Error())
+		logger.ErrorLogger.Printf("AdminImportProductsCSVHandler error: %v", err)
+		h.errJson(w, http.StatusInternalServerError, "Failed to import products")
 		return
 	}
 
 	if len(response.Errors) > 0 {
-		h.writeJson(w, http.StatusBadRequest, response) // Trả JSON errors về cho Client hiển thị
+		h.writeJson(w, http.StatusBadRequest, map[string]any{
+			"code":    http.StatusBadRequest,
+			"message": response.Message,
+			"data":    response,
+		})
 		return
 	}
 
-	h.writeJson(w, http.StatusCreated, response)
+	h.writeJson(w, http.StatusCreated, map[string]any{
+		"code":    http.StatusCreated,
+		"message": response.Message,
+		"data":    response,
+	})
 }
 
 // UpdateProductHandler - Cập nhật sản phẩm
@@ -183,10 +194,11 @@ func (h *productHandler) UpdateProductHandler(w http.ResponseWriter, r *http.Req
 	adminReponse, err := h.PrtController.UpdateProductController(r.Context(), req, id)
 	if err != nil {
 		if err.Error() == "Product not found" {
-			h.errJson(w, http.StatusNotFound, err.Error())
+			h.errJson(w, http.StatusNotFound, "Product not found")
 			return
 		}
-		h.errJson(w, http.StatusInternalServerError, err.Error())
+		logger.ErrorLogger.Printf("UpdateProductHandler error (id=%d): %v", id, err)
+		h.errJson(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 	h.writeJson(w, http.StatusOK, adminReponse)
@@ -270,13 +282,15 @@ func (h *productHandler) UserGetProductHandlerDetail(w http.ResponseWriter, r *h
 		}
 		productsResponse, err := h.PrtController.UserSearchProductByNameController(searchReq)
 		if err != nil {
-			h.errJson(w, http.StatusInternalServerError, err.Error())
+			logger.ErrorLogger.Printf("UserGetProductHandlerDetail search error (name=%q, brand=%q): %v", nameStr, brandStr, err)
+			h.errJson(w, http.StatusInternalServerError, "Internal server error")
 			return
 		}
-		if len(productsResponse.Products) == 0 {
+		if len(productsResponse.Data) == 0 {
 			h.errJson(w, http.StatusNotFound, "No products found")
 			return
 		}
+		productsResponse.Code = http.StatusOK
 		h.writeJson(w, http.StatusOK, productsResponse)
 		return
 	}
@@ -359,11 +373,11 @@ func (h *productHandler) UserSearchProductHandler(w http.ResponseWriter, r *http
 		return
 	}
 
-	// [VALIDATION]: Ít nhất phải có 1 tham số tìm kiếm
-	if searchParam == "" && brandParam == "" && categoryID == 0 && minPrice == nil && maxPrice == nil {
-		h.errJson(w, http.StatusBadRequest, "At least one search parameter (name, brand, category_id, min_price, or max_price) is required")
-		return
-	}
+	// [VALIDATION]: Đã bỏ yêu cầu phải có ít nhất 1 tham số. Nếu không có gì, trả về tất cả.
+	// if searchParam == "" && brandParam == "" && categoryID == 0 && minPrice == nil && maxPrice == nil {
+	// 	h.errJson(w, http.StatusBadRequest, "At least one search parameter (name, brand, category_id, min_price, or max_price) is required")
+	// 	return
+	// }
 
 	page, limit, sortBy, sortOrder := parsePaginationParams(r)
 
@@ -387,10 +401,12 @@ func (h *productHandler) UserSearchProductHandler(w http.ResponseWriter, r *http
 
 	productsResponse, err := h.PrtController.UserSearchProductByNameController(req)
 	if err != nil {
-		h.errJson(w, http.StatusInternalServerError, err.Error())
+		logger.ErrorLogger.Printf("UserSearchProductHandler error: %v", err)
+		h.errJson(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 
+	productsResponse.Code = http.StatusOK
 	h.writeJson(w, http.StatusOK, productsResponse)
 }
 
@@ -398,6 +414,9 @@ func (h *productHandler) UserSearchProductHandler(w http.ResponseWriter, r *http
 func (h *productHandler) AdminSearchProductsHandler(w http.ResponseWriter, r *http.Request) {
 
 	searchParam := r.URL.Query().Get("name")
+	if searchParam == "" {
+		searchParam = r.URL.Query().Get("q")
+	}
 	brandParam := r.URL.Query().Get("brand")
 	categoryIDStr := r.URL.Query().Get("category_id")
 	minPriceStr := r.URL.Query().Get("min_price")
@@ -461,10 +480,12 @@ func (h *productHandler) AdminSearchProductsHandler(w http.ResponseWriter, r *ht
 
 	productsResponse, err := h.PrtController.AdminSearchProductsController(req)
 	if err != nil {
-		h.errJson(w, http.StatusInternalServerError, err.Error())
+		logger.ErrorLogger.Printf("AdminSearchProductsHandler error: %v", err)
+		h.errJson(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 
+	productsResponse.Code = http.StatusOK
 	h.writeJson(w, http.StatusOK, productsResponse)
 }
 
@@ -481,10 +502,16 @@ func (h *productHandler) AdminGetManyProductHandler(w http.ResponseWriter, r *ht
 	}
 	productsResponse, err := h.PrtController.AdminGetManyProductByIDController(req.IDs)
 	if err != nil {
-		h.errJson(w, http.StatusInternalServerError, err.Error())
+		logger.ErrorLogger.Printf("AdminGetManyProductHandler error: %v", err)
+		h.errJson(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
-	h.writeJson(w, http.StatusOK, productsResponse)
+
+	h.writeJson(w, http.StatusOK, model.GetManyProductsResponse{
+		Code:    http.StatusOK,
+		Message: "Products retrieved successfully",
+		Data:    productsResponse,
+	})
 }
 
 // AdminGetAllProductHandler - Lấy tất cả (trừ xóa mềm)
@@ -498,9 +525,11 @@ func (h *productHandler) AdminGetAllProductHandler(w http.ResponseWriter, r *htt
 	}
 	productsResponse, err := h.PrtController.AdminGetAllProductsController(req)
 	if err != nil {
-		h.errJson(w, http.StatusInternalServerError, err.Error())
+		logger.ErrorLogger.Printf("AdminGetAllProductHandler error: %v", err)
+		h.errJson(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
+	productsResponse.Code = http.StatusOK
 	h.writeJson(w, http.StatusOK, productsResponse)
 }
 
@@ -514,16 +543,27 @@ func (h *productHandler) AdminDeleteSoftProductHandler(w http.ResponseWriter, r 
 	}
 	err = h.PrtController.AdminDeleteSoftProductController(id)
 	if err != nil {
-		h.errJson(w, http.StatusInternalServerError, err.Error())
+		logger.ErrorLogger.Printf("AdminDeleteSoftProductHandler error (id=%d): %v", id, err)
+		h.errJson(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 	h.writeJson(w, http.StatusOK, map[string]string{"message": "Product deleted softly successfully"})
 }
 
-// AdminBulkDeleteSoftProductsHandler - Xóa mềm nhiều SP (Cập nhật logic)
+// AdminBulkDeleteSoftProductsHandler - Xóa mềm nhiều SP (Cập nhật logic theo IDs)
 func (h *productHandler) AdminBulkDeleteSoftProductsHandler(w http.ResponseWriter, r *http.Request) {
+	var req model.BulkDeleteProductRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.errJson(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
 
-	err := h.PrtController.AdminDeleteAllSoftDeletedProductsController()
+	if err := validator.Validate(req); err != nil {
+		h.errJson(w, http.StatusBadRequest, fmt.Sprintf("Validation failed: %v", err))
+		return
+	}
+
+	err := h.PrtController.AdminBulkDeleteSoftProductsController(req.IDs)
 	if err != nil {
 		h.errJson(w, http.StatusInternalServerError, "Cannot delete products")
 		return
@@ -535,9 +575,11 @@ func (h *productHandler) AdminBulkDeleteSoftProductsHandler(w http.ResponseWrite
 func (h *productHandler) AdminGetAllSoftDeletedProductsHandler(w http.ResponseWriter, r *http.Request) {
 	productsResponse, err := h.PrtController.AdminGetAllSoftDeletedProductsController()
 	if err != nil {
-		h.errJson(w, http.StatusInternalServerError, err.Error())
+		logger.ErrorLogger.Printf("AdminGetAllSoftDeletedProductsHandler error: %v", err)
+		h.errJson(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
+	productsResponse.Code = http.StatusOK
 	h.writeJson(w, http.StatusOK, productsResponse)
 }
 

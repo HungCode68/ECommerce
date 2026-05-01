@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"golang/internal/controller/order"
+	"golang/internal/logger"
 	"golang/internal/middleware"
 	"golang/internal/model"
 	"golang/internal/utils"
@@ -52,7 +53,8 @@ func (h *orderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	// Gọi Controller
 	resp, err := h.OrderController.CreateOrder(r.Context(), userID, req)
 	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, err.Error(), nil)
+		logger.ErrorLogger.Printf("CreateOrder error (user=%d): %v", userID, err)
+		utils.WriteError(w, http.StatusBadRequest, "Không thể tạo đơn hàng", nil)
 		return
 	}
 
@@ -163,7 +165,8 @@ func (h *orderHandler) CancelOrder(w http.ResponseWriter, r *http.Request) {
 
 	err = h.OrderController.CancelOrder(r.Context(), userID, orderID, req.Reason)
 	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, err.Error(), nil)
+		logger.ErrorLogger.Printf("CancelOrder error (user=%d, order=%d): %v", userID, orderID, err)
+		utils.WriteError(w, http.StatusBadRequest, "Không thể huỷ đơn hàng", nil)
 		return
 	}
 
@@ -203,7 +206,8 @@ func (h *orderHandler) SearchOrders(w http.ResponseWriter, r *http.Request) {
 
 	orders, total, err := h.OrderController.SearchOrders(r.Context(), filter)
 	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Lỗi tìm kiếm đơn hàng", err.Error())
+		logger.ErrorLogger.Printf("SearchOrders error: %v", err)
+		utils.WriteError(w, http.StatusInternalServerError, "Lỗi tìm kiếm đơn hàng", nil)
 		return
 	}
 
@@ -224,7 +228,8 @@ func (h *orderHandler) GetAdminOrderDetail(w http.ResponseWriter, r *http.Reques
 
 	orderDetail, err := h.OrderController.GetAdminOrderDetail(r.Context(), orderID)
 	if err != nil {
-		utils.WriteError(w, http.StatusNotFound, "Không tìm thấy đơn hàng", err.Error())
+		logger.ErrorLogger.Printf("GetAdminOrderDetail error (order=%d): %v", orderID, err)
+		utils.WriteError(w, http.StatusNotFound, "Không tìm thấy đơn hàng", nil)
 		return
 	}
 
@@ -298,7 +303,8 @@ func (h *orderHandler) ConfirmPayment(w http.ResponseWriter, r *http.Request) {
 
 	err = h.OrderController.ConfirmPayment(r.Context(), orderID, req.Status, userID)
 	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, err.Error(), nil)
+		logger.ErrorLogger.Printf("ConfirmPayment error (order=%d, user=%d): %v", orderID, userID, err)
+		utils.WriteError(w, http.StatusBadRequest, "Không thể xác nhận thanh toán", nil)
 		return
 	}
 

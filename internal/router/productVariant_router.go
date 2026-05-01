@@ -9,7 +9,7 @@ import (
 // NewProductVariantRouter định nghĩa các route cho biến thể sản phẩm (Variant)
 func NewProductVariantRouter(mux *http.ServeMux, h productvariant.ProductVariantHandler) http.Handler {
 
-	variantGroup := newGroup(mux, "/admin/product", middleware.AdminOnlyMiddleware)
+	variantGroup := newGroup(mux, "/api/admin/product", middleware.AdminOnlyMiddleware)
 
 	// Tạo biến thể mới cho sản phẩm
 	variantGroup.HandleFunc("POST", "/{id}/variant", h.CreateVariantHandler)

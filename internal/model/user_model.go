@@ -13,6 +13,7 @@ type User struct {
 	IsActive           bool       `db:"is_active"`
 	RefreshToken       *string    `db:"refresh_token"`
 	RefreshTokenExpiry *time.Time `db:"refresh_token_expiry"`
+	LastActiveAt       *time.Time `db:"last_active_at"`
 	CreatedAt          time.Time  `db:"created_at"`
 	UpdatedAt          time.Time  `db:"updated_at"`
 	DeletedAt          *time.Time `db:"deleted_at"`
@@ -33,12 +34,12 @@ type LoginRequest struct {
 
 // Lọc dữ liệu tài khoản
 type UserFilter struct {
-	Keyword   string 	`validate:"omitempty,max=100"`
-	Role      string 	`validate:"omitempty,oneof=admin user"`
-	IsActive  *bool  
-	IsDeleted *bool 
-	Page      int		`validate:"min=1"`
-	Limit     int		`validate:"min=1,max=100"`
+	Keyword   string `validate:"omitempty,max=100"`
+	Role      string `validate:"omitempty,oneof=admin user"`
+	IsActive  *bool
+	IsDeleted *bool
+	Page      int `validate:"min=1"`
+	Limit     int `validate:"min=1,max=100"`
 }
 
 // UserUpdateProfileRequest: Dùng khi user tự cập nhật thông tin cá nhân
@@ -57,7 +58,7 @@ type AdminUpdateUserRequest struct {
 
 // AdminDeleteManyUsersRequest: Dùng để xóa nhiều user cùng lúc
 type AdminDeleteManyUsersRequest struct {
-    IDs []int64 `json:"ids" validate:"required,min=1"`
+	IDs []int64 `json:"ids" validate:"required,min=1"`
 }
 
 // RefreshTokenRequest: Gửi lên Refresh Token cũ để xin cấp mới
@@ -73,25 +74,27 @@ type UserPublicResponse struct {
 
 // UserProfileResponse: Dùng cho User xem và chỉnh sửa profile cá nhân
 type UserProfileResponse struct {
-	ID        int64     `json:"id"`
-	Username  string    `json:"username"`
-	Email     string    `json:"email"`
-	Role      string    `json:"role"`
-	IsActive  bool      `json:"is_active"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID           int64      `json:"id"`
+	Username     string     `json:"username"`
+	Email        string     `json:"email"`
+	Role         string     `json:"role"`
+	IsActive     bool       `json:"is_active"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
+	LastActiveAt *time.Time `json:"last_active_at,omitempty"`
 }
 
 // AdminUserResponse: Dùng cho Admin quản lý
 type AdminUserResponse struct {
-	ID        int64      `json:"id"`
-	Username  string     `json:"username"`
-	Email     string     `json:"email"`
-	Role      string     `json:"role"`
-	IsActive  bool       `json:"is_active"`
-	CreatedAt time.Time  `json:"created_at"`
-	UpdatedAt time.Time  `json:"updated_at"`
-	DeletedAt *time.Time `json:"deleted_at"`
+	ID           int64      `json:"id"`
+	Username     string     `json:"username"`
+	Email        string     `json:"email"`
+	Role         string     `json:"role"`
+	IsActive     bool       `json:"is_active"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
+	LastActiveAt *time.Time `json:"last_active_at,omitempty"`
+	DeletedAt    *time.Time `json:"deleted_at"`
 }
 
 // LoginResponse: Trả về UserProfileResponse
@@ -114,5 +117,3 @@ type APIResponse struct {
 	Data    interface{} `json:"data,omitempty"`   // Dữ liệu linh hoạt (User, List, v.v.)
 	Errors  interface{} `json:"errors,omitempty"` // Chi tiết lỗi validate (nếu có)
 }
-
-

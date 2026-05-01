@@ -1,0 +1,119 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 25 95% 53%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 25 95% 53%;
+    --radius: 0.5rem;
+
+    /* Base theme standard colors exposed as RGB for tailwind alpha */
+    --color-primary: 249 115 22; /* #F97316 */
+    --color-background: 248 250 252; /* #F8FAFC */
+    --color-surface: 255 255 255; /* #FFFFFF */
+    --color-error: 239 68 68; /* #EF4444 */
+  }
+
+  .auth-theme {
+    --color-primary: 76 215 246; /* #4CD7F6 */
+    --color-background: 12 19 36; /* #0C1324 */
+    --color-surface: 12 19 36; /* #0C1324 */
+    --color-error: 255 180 171; /* #FFB4AB */
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading;
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .skeleton-shimmer {
+    background: linear-gradient(
+      90deg,
+      #f0f0f0 25%,
+      #e0e0e0 50%,
+      #f0f0f0 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    display: inline-block;
+    vertical-align: middle;
+  }
+  .tech-grid {
+    background-image: 
+        linear-gradient(to right, rgba(76, 215, 246, 0.05) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(76, 215, 246, 0.05) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+  .glow-hover:hover {
+    box-shadow: 0 0 20px rgba(76, 215, 246, 0.4);
+  }
+  .input-focus-glow:focus-within {
+    box-shadow: inset 0 0 8px rgba(76, 215, 246, 0.15);
+  }
+
+  /* KINETIC_TECH Auth Styles */
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+  }
+  .kinetic-gradient {
+    background: linear-gradient(135deg, #00687a 0%, #06b6d4 100%);
+  }
+  .input-focus-effect:focus-within .focus-line {
+    width: 100%;
+  }
+  .circuit-line {
+    background: linear-gradient(90deg, transparent, rgba(6, 182, 212, 0.4), transparent);
+  }
+  .kinetic-glass {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(24px);
+  }
+  .kinetic-gradient-glow {
+    background: radial-gradient(circle at center, rgba(6, 182, 212, 0.15) 0%, transparent 70%);
+  }
+}
+

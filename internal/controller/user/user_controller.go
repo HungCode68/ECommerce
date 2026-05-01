@@ -23,6 +23,33 @@ func NewUserController(userRepo user.UserRepo) UserController {
 	}
 }
 
+func toUserProfileResponse(user model.User) model.UserProfileResponse {
+	return model.UserProfileResponse{
+		ID:           user.ID,
+		Username:     user.Username,
+		Email:        user.Email,
+		Role:         user.Role,
+		IsActive:     user.IsActive,
+		CreatedAt:    user.CreatedAt,
+		UpdatedAt:    user.UpdatedAt,
+		LastActiveAt: user.LastActiveAt,
+	}
+}
+
+func toAdminUserResponse(user model.User) model.AdminUserResponse {
+	return model.AdminUserResponse{
+		ID:           user.ID,
+		Username:     user.Username,
+		Email:        user.Email,
+		Role:         user.Role,
+		IsActive:     user.IsActive,
+		CreatedAt:    user.CreatedAt,
+		UpdatedAt:    user.UpdatedAt,
+		LastActiveAt: user.LastActiveAt,
+		DeletedAt:    user.DeletedAt,
+	}
+}
+
 // Hàm Register để đăng ký user mới
 func (c *userController) Register(req model.RegisterRequest) (model.UserProfileResponse, error) {
 	logger.InfoLogger.Printf("Bắt đầu đăng ký user mới: %s", req.Username)
@@ -61,18 +88,8 @@ func (c *userController) Register(req model.RegisterRequest) (model.UserProfileR
 	}
 
 	// Chuyển đổi sang Response
-	res := model.UserProfileResponse{
-		ID:        createdUser.ID,
-		Username:  createdUser.Username,
-		Email:     createdUser.Email,
-		Role:      createdUser.Role,
-		IsActive:  createdUser.IsActive,
-		CreatedAt: createdUser.CreatedAt,
-		UpdatedAt: createdUser.UpdatedAt,
-	}
-
 	logger.InfoLogger.Printf("Đăng ký thành công user ID: %d", createdUser.ID)
-	return res, nil
+	return toUserProfileResponse(createdUser), nil
 }
 
 // Hàm Login để xác thực user
@@ -112,7 +129,8 @@ func (c *userController) Login(req model.LoginRequest) (model.LoginResponse, err
 	}
 
 	//  Lưu Refresh Token
-	refreshTokenExpiry := time.Now().Add(7 * 24 * time.Hour)
+	activityAt := time.Now()
+	refreshTokenExpiry := activityAt.Add(7 * 24 * time.Hour)
 	err = c.UserRepo.UpdateRefreshToken(user.ID, refreshToken, refreshTokenExpiry)
 	if err != nil {
 		logger.ErrorLogger.Printf("Lỗi lưu refresh token: %v", err)
@@ -120,18 +138,12 @@ func (c *userController) Login(req model.LoginRequest) (model.LoginResponse, err
 	}
 
 	//  Trả kết quả
+	user.LastActiveAt = &activityAt
+
 	response := model.LoginResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
-		User: model.UserProfileResponse{
-			ID:        user.ID,
-			Username:  user.Username,
-			Email:     user.Email,
-			Role:      user.Role,
-			IsActive:  user.IsActive,
-			CreatedAt: user.CreatedAt,
-			UpdatedAt: user.UpdatedAt,
-		},
+		User:         toUserProfileResponse(user),
 	}
 
 	logger.InfoLogger.Printf("Login thành công: %s", user.Username)
@@ -188,11 +200,7 @@ func (c *userController) CreateAdmin(req model.RegisterRequest) (model.AdminUser
 	}
 
 	// Map sang Response
-	return model.AdminUserResponse{
-		ID: created.ID, Username: created.Username, Email: created.Email,
-		Role: created.Role, IsActive: created.IsActive, CreatedAt: created.CreatedAt,
-		UpdatedAt: created.UpdatedAt, DeletedAt: created.DeletedAt,
-	}, nil
+	return toAdminUserResponse(created), nil
 }
 
 // Hàm lấy tất cả Users
@@ -205,10 +213,7 @@ func (c *userController) GetAllUsers() ([]model.AdminUserResponse, error) {
 	}
 	var response []model.AdminUserResponse
 	for _, u := range users {
-		response = append(response, model.AdminUserResponse{
-			ID: u.ID, Username: u.Username, Email: u.Email, Role: u.Role,
-			IsActive: u.IsActive, CreatedAt: u.CreatedAt, UpdatedAt: u.UpdatedAt, DeletedAt: u.DeletedAt,
-		})
+		response = append(response, toAdminUserResponse(u))
 	}
 	return response, nil
 }
@@ -224,10 +229,7 @@ func (c *userController) GetUserByID(id int64) (model.AdminUserResponse, error) 
 		return model.AdminUserResponse{}, err
 	}
 
-	return model.AdminUserResponse{
-		ID: user.ID, Username: user.Username, Email: user.Email, Role: user.Role,
-		IsActive: user.IsActive, CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt, DeletedAt: user.DeletedAt,
-	}, nil
+	return toAdminUserResponse(user), nil
 }
 
 // Hàm tìm kiếm user theo từ khóa
@@ -243,16 +245,7 @@ func (c *userController) SearchUsers(filter model.UserFilter) ([]model.AdminUser
 	// Map sang Response (AdminUserResponse)
 	var response []model.AdminUserResponse
 	for _, u := range users {
-		response = append(response, model.AdminUserResponse{
-			ID:        u.ID,
-			Username:  u.Username,
-			Email:     u.Email,
-			Role:      u.Role,
-			IsActive:  u.IsActive,
-			CreatedAt: u.CreatedAt,
-			UpdatedAt: u.UpdatedAt,
-			DeletedAt: u.DeletedAt,
-		})
+		response = append(response, toAdminUserResponse(u))
 	}
 	logger.InfoLogger.Printf("Controller: SearchUsers success. Returning %d users (Total found in DB: %d)", len(response), total)
 	return response, total, nil
@@ -268,10 +261,7 @@ func (c *userController) UpdateUser(id int64, req model.AdminUpdateUserRequest) 
 		return model.AdminUserResponse{}, err
 	}
 
-	return model.AdminUserResponse{
-		ID: updatedUser.ID, Username: updatedUser.Username, Email: updatedUser.Email, Role: updatedUser.Role,
-		IsActive: updatedUser.IsActive, CreatedAt: updatedUser.CreatedAt, UpdatedAt: updatedUser.UpdatedAt, DeletedAt: updatedUser.DeletedAt,
-	}, nil
+	return toAdminUserResponse(updatedUser), nil
 }
 
 // Hàm User tự cập nhật thông tin cá nhân
@@ -311,10 +301,7 @@ func (c *userController) UpdateUserProfile(id int64, req model.UserUpdateProfile
 	}
 
 	// Trả về kết quả
-	return model.UserProfileResponse{
-		ID: updatedUser.ID, Username: updatedUser.Username, Email: updatedUser.Email, Role: updatedUser.Role,
-		IsActive: updatedUser.IsActive, CreatedAt: updatedUser.CreatedAt, UpdatedAt: updatedUser.UpdatedAt,
-	}, nil
+	return toUserProfileResponse(updatedUser), nil
 }
 
 // Hàm User tự xóa tài khoản (Xóa mềm chính mình)
@@ -347,6 +334,12 @@ func (c *userController) DeleteSoftUsers(req model.AdminDeleteManyUsersRequest) 
 	// Gọi Repo
 	logger.WarnLogger.Printf("Admin yêu cầu xóa %d users", len(req.IDs))
 	return c.UserRepo.DeleteSoftUsers(req.IDs)
+}
+
+// Hàm bỏ chặn nhiều user cùng lúc
+func (c *userController) RestoreSoftUsers(req model.AdminDeleteManyUsersRequest) error {
+	logger.WarnLogger.Printf("Admin yêu cầu bỏ chặn %d users", len(req.IDs))
+	return c.UserRepo.RestoreSoftUsers(req.IDs)
 }
 
 // Hàm tạo Access Token và Refresh Token
@@ -385,7 +378,20 @@ func generateTokens(userID int64, role string) (string, string, error) {
 func (c *userController) RefreshToken(req model.RefreshTokenRequest) (model.RefreshTokenResponse, error) {
 	logger.InfoLogger.Println("Yêu cầu làm mới Token")
 
-	// Tìm User đang giữ token này
+	// Verify chữ ký JWT trước khi tin token
+	jwtSecret := []byte(os.Getenv("JWT_SECRET"))
+	parsed, err := jwt.ParseWithClaims(req.RefreshToken, &jwt.RegisteredClaims{}, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, errors.New("thuật toán ký không hợp lệ")
+		}
+		return jwtSecret, nil
+	})
+	if err != nil || !parsed.Valid {
+		logger.WarnLogger.Printf("Refresh token không hợp lệ: %v", err)
+		return model.RefreshTokenResponse{}, errors.New("refresh token không hợp lệ hoặc đã hết hạn")
+	}
+
+	// Tìm User đang giữ token này (đảm bảo token chưa bị revoke)
 	user, err := c.UserRepo.GetUserByRefreshToken(req.RefreshToken)
 	if err != nil {
 		return model.RefreshTokenResponse{}, errors.New("refresh token không hợp lệ hoặc đã hết hạn")

@@ -12,7 +12,10 @@ type StatsController interface {
 	// Lấy danh sách Top sản phẩm bán chạy (có lọc theo ngày)
 	GetTopSellingProducts(ctx context.Context, filter model.StatsFilter) ([]model.ProductSalesStatsResponse, error)
 
-	//  Lấy số liệu thống kê của 1 sản phẩm 
+	// GetDashboardStats: API gộp trả về cả Overview và TopProducts
+	GetDashboardStats(ctx context.Context, filter model.StatsFilter) (*model.GetDashboardStatsResponse, error)
+
+	//  Lấy số liệu thống kê của 1 sản phẩm
 	GetProductStats(ctx context.Context, productID int64, filter model.StatsFilter) ([]model.ProductDailyStatsResponse, error)
 
 	// Refresh thống kê hàng ngày

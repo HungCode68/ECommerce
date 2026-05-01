@@ -9,7 +9,7 @@ import (
 // NewProductRouter định nghĩa các route cho sản phẩm
 func NewProductRouter(mux *http.ServeMux, h product.ProductHandler) http.Handler {
 
-	adminGroup := newGroup(mux, "/admin", middleware.AdminOnlyMiddleware)
+	adminGroup := newGroup(mux, "/api/admin", middleware.AdminOnlyMiddleware)
 
 	// Nhóm quản lý đơn lẻ
 	adminGroup.HandleFunc("POST", "/product", h.CreateProductHandler)                          // Tạo mới
@@ -26,17 +26,18 @@ func NewProductRouter(mux *http.ServeMux, h product.ProductHandler) http.Handler
 	adminGroup.HandleFunc("POST", "/products/delesoft", h.AdminBulkDeleteSoftProductsHandler) 		// Xóa mềm 
 	adminGroup.HandleFunc("DELETE", "/products/deleall", h.AdminDeleteAllProductsHandler)           // Dọn sạch thùng rác (Hard delete)
 
+
 	// adminGroup.HandleFunc("GET", "/product/", h.AdminGetProductHandler)
 	// adminGroup.HandleFunc("DELETE", "/product/delesoft/{id}", h.AdminDeleteSoftProductHandler)
 
 	// =================================================================
-	userGroup := newGroup(mux, "/user")
+	userGroup := newGroup(mux, "/api")
 
 	// Nhóm xem chi tiết
 	userGroup.HandleFunc("GET", "/products/detail/search", h.UserGetProductHandlerDetail)        // Tìm kiếm lấy thông tin chi tiết
 
 	// Nhóm danh sách
-	userGroup.HandleFunc("GET", "/products/search", h.UserGetProductHandler) 		// Tìm kiếm 
+	userGroup.HandleFunc("GET", "/products/search", h.UserSearchProductHandler) 		// Tìm kiếm 
 	userGroup.HandleFunc("GET", "/product/search", h.UserSearchProductHandler)    	// Tìm kiếm
 
 	return mux

@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"golang/internal/controller/cart"
+	"golang/internal/logger"
 	"golang/internal/middleware"
 	"golang/internal/model"
 	"golang/internal/utils"
@@ -69,7 +70,8 @@ func (h *cartHandler) AddToCart(w http.ResponseWriter, r *http.Request) {
 
 	// Gọi Controller
 	if err := h.CartController.AddToCart(r.Context(), userID, req); err != nil {
-		utils.WriteError(w, http.StatusBadRequest, err.Error(), nil)
+		logger.ErrorLogger.Printf("AddToCart error (user=%d): %v", userID, err)
+		utils.WriteError(w, http.StatusBadRequest, "Không thể thêm vào giỏ hàng", nil)
 		return
 	}
 
@@ -107,7 +109,8 @@ func (h *cartHandler) UpdateCartItem(w http.ResponseWriter, r *http.Request) {
 
 	// Gọi Controller
 	if err := h.CartController.UpdateCartItem(r.Context(), userID, variantID, req); err != nil {
-		utils.WriteError(w, http.StatusBadRequest, err.Error(), nil)
+		logger.ErrorLogger.Printf("UpdateCartItem error (user=%d, variant=%d): %v", userID, variantID, err)
+		utils.WriteError(w, http.StatusBadRequest, "Không thể cập nhật giỏ hàng", nil)
 		return
 	}
 
@@ -166,7 +169,8 @@ func (h *cartHandler) CalculateCheckoutPreview(w http.ResponseWriter, r *http.Re
 
 	resp, err := h.CartController.CalculateCheckoutPreview(r.Context(), userID, req)
 	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, err.Error(), nil)
+		logger.ErrorLogger.Printf("CalculateCheckoutPreview error (user=%d): %v", userID, err)
+		utils.WriteError(w, http.StatusBadRequest, "Không thể tính toán thanh toán", nil)
 		return
 	}
 

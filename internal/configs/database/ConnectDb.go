@@ -1,4 +1,4 @@
-package config
+package database
 
 import (
 	"database/sql"
@@ -68,18 +68,6 @@ func NewDatabaseConnection() *DBConfig {
 	// Ping để kiểm tra kết nối thực tế
 	if err := db.Ping(); err != nil {
 		log.Fatalf("Lỗi khi ping database (MySQL): %v", err)
-	}
-
-	log.Printf("Kết nối MySQL database thành công! Pool: MaxOpen=%d, MaxIdle=%d", maxOpenConns, maxIdleConns)
-
-	rows, err := db.Query("SHOW TABLES")
-	if err == nil {
-		log.Println("Các bảng hiện có trong DB:")
-		for rows.Next() {
-			var tableName string
-			rows.Scan(&tableName)
-			log.Printf("- %s", tableName)
-		}
 	}
 	return &DBConfig{
 		Connection: db,

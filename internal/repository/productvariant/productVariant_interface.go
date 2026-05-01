@@ -11,4 +11,5 @@ type ProductVariantsRepository interface {
 	GetVariantByID(variantID int64) (*model.ProductsVariants, error)
 	UpdateProductVariant(variant *model.ProductsVariants) error
 	DeleteProductVariant(variantID int64) error
+	GetVariantBySKU(sku string) (*model.ProductsVariants, error)
 }

@@ -3,9 +3,10 @@ package cron
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/robfig/cron/v3"
-	
+
 	statsController "golang/internal/controller/stats"
 	"golang/internal/logger"
 )
@@ -28,7 +29,8 @@ func (m *CronManager) Start() {
 	_, err := m.cron.AddFunc("30 0 * * *", func() {
 		logger.InfoLogger.Println("[CRON] Bắt đầu chạy Job Update Daily Stats...")
 		
-		ctx := context.Background()
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+		defer cancel()
 		if err := m.StatsController.SyncDailyStats(ctx); err != nil {
 			logger.ErrorLogger.Printf("[CRON] Lỗi cập nhật thống kê: %v", err)
 		} else {

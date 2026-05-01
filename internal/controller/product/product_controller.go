@@ -11,6 +11,7 @@ import (
 	producthistory "golang/internal/repository/producthistory"
 	productreview "golang/internal/repository/productreview"
 	productVariant "golang/internal/repository/productvariant"
+	"net/http"
 	"time"
 
 	"github.com/gosimple/slug"
@@ -64,6 +65,63 @@ func buildPaginationMeta(req *model.SearchProductsRequest, total int) *model.Pag
 		Total:      total,
 		TotalPages: totalPages,
 	}
+}
+
+func sumVariantStock(variants []model.ProductsVariants, activeOnly bool) int {
+	total := 0
+	for _, variant := range variants {
+		if activeOnly && !variant.IsActive {
+			continue
+		}
+		total += variant.StockQuantity
+	}
+	return total
+}
+
+func lowestVariantPrice(variants []model.ProductsVariants, activeOnly bool) (float64, bool) {
+	var (
+		minPrice float64
+		found    bool
+	)
+
+	for _, variant := range variants {
+		if activeOnly && !variant.IsActive {
+			continue
+		}
+
+		if variant.PriceOverride == nil {
+			continue
+		}
+
+		if !found || *variant.PriceOverride < minPrice {
+			minPrice = *variant.PriceOverride
+			found = true
+		}
+	}
+
+	return minPrice, found
+}
+
+func (prt *productController) getProductVariantStock(productID int64, activeOnly bool) int {
+	variants, err := prt.RepoVariants.GetProductVariantByID(productID)
+	if err != nil {
+		return 0
+	}
+	return sumVariantStock(variants, activeOnly)
+}
+
+func (prt *productController) getProductVariantStats(productID int64, activeOnly bool, fallbackPrice float64) (float64, int) {
+	variants, err := prt.RepoVariants.GetProductVariantByID(productID)
+	if err != nil {
+		return fallbackPrice, 0
+	}
+
+	minPrice := fallbackPrice
+	if variantMinPrice, ok := lowestVariantPrice(variants, activeOnly); ok {
+		minPrice = variantMinPrice
+	}
+
+	return minPrice, sumVariantStock(variants, activeOnly)
 }
 
 // CreateProductController - Tạo sản phẩm mới kèm danh mục
@@ -134,25 +192,49 @@ func (prt *productController) CreateProductController(product model.CreateProduc
 		createdProduct.Categories = cats
 	}
 
+	adminRes := &model.AdminProductResponse{
+		ID:               createdProduct.ID,
+		Name:             createdProduct.Name,
+		Slug:             createdProduct.Slug,
+		ShortDescription: createdProduct.ShortDescription,
+		Description:      createdProduct.Description,
+		Brand:            createdProduct.Brand,
+		Status:           createdProduct.Status,
+		IsPublished:      createdProduct.IsPublished,
+		PublishedAt:      createdProduct.PublishedAt,
+		MinPrice:         createdProduct.MinPrice,
+		DiscountPercent:  createdProduct.DiscountPercent,
+		FinalPrice:       calcFinalPrice(createdProduct.MinPrice, createdProduct.DiscountPercent),
+		CreatedAt:        createdProduct.CreatedAt,
+		UpdatedAt:        createdProduct.UpdatedAt,
+		Stock:            0,
+		Categories:       createdProduct.Categories,
+		Variants: func() []model.AdminVariantResponse {
+			var variants []model.AdminVariantResponse
+			for _, v := range createdProduct.Variants {
+				variants = append(variants, model.AdminVariantResponse{
+					ID:             v.ID,
+					ProductID:      v.ProductID,
+					SKU:            v.SKU,
+					Title:          v.Title,
+					OptionValues:   v.OptionValues,
+					PriceOverride:  v.PriceOverride,
+					CostPrice:      v.CostPrice,
+					StockQuantity:  v.StockQuantity,
+					IsActive:       v.IsActive,
+					AllowBackorder: v.AllowBackorder,
+					CreatedAt:      v.CreatedAt.Format(time.RFC3339),
+					UpdatedAt:      v.UpdatedAt.Format(time.RFC3339),
+				})
+			}
+			return variants
+		}(),
+	}
+
 	return &model.AdminCreateProductResponse{
-		Message: "Product created successfully",
-		Product: model.AdminProductResponse{
-			ID:               createdProduct.ID,
-			Name:             createdProduct.Name,
-			Slug:             createdProduct.Slug,
-			ShortDescription: createdProduct.ShortDescription,
-			Description:      createdProduct.Description,
-			Brand:            createdProduct.Brand,
-			Status:           createdProduct.Status,
-			IsPublished:      createdProduct.IsPublished,
-			PublishedAt:      createdProduct.PublishedAt,
-			MinPrice:         createdProduct.MinPrice,
-			DiscountPercent:  createdProduct.DiscountPercent,
-			FinalPrice:       calcFinalPrice(createdProduct.MinPrice, createdProduct.DiscountPercent),
-			CreatedAt:        createdProduct.CreatedAt,
-			UpdatedAt:        createdProduct.UpdatedAt,
-			Categories:       createdProduct.Categories,
-		},
+		Code:    http.StatusCreated,
+		Message: "Sản phẩm đã được tạo",
+		Data:    *adminRes,
 	}, nil
 }
 
@@ -291,12 +373,14 @@ func (prt *productController) AdminGetProductController(reqProduct *model.GetPro
 		variantsModel = []model.ProductsVariants{}
 	}
 
-	variantResponses := make([]model.AdminVariantResponse, 0, len(variantsModel))
+	adminVariants := make([]model.AdminVariantResponse, 0, len(variantsModel))
 	minPrice := pro.MinPrice
-	hasActiveVariants := false
+	if variantMinPrice, ok := lowestVariantPrice(variantsModel, false); ok {
+		minPrice = variantMinPrice
+	}
 
 	for _, v := range variantsModel {
-		variantResponses = append(variantResponses, model.AdminVariantResponse{
+		adminVariants = append(adminVariants, model.AdminVariantResponse{
 			ID:             v.ID,
 			ProductID:      v.ProductID,
 			SKU:            v.SKU,
@@ -310,45 +394,42 @@ func (prt *productController) AdminGetProductController(reqProduct *model.GetPro
 			CreatedAt:      v.CreatedAt.String(),
 			UpdatedAt:      v.UpdatedAt.String(),
 		})
-
-		if v.IsActive && v.PriceOverride != nil {
-			if !hasActiveVariants || *v.PriceOverride < minPrice {
-				minPrice = *v.PriceOverride
-				hasActiveVariants = true
-			}
-		}
 	}
 	reviewsResponses, err := prt.ReviewRepo.GetProductReviewsByProductID(pro.ID)
 	if err != nil {
 		reviewsResponses = []model.ProductReview{}
 	}
 
+	adminProduct := &model.AdminProductResponse{
+		ID:               pro.ID,
+		Name:             pro.Name,
+		Slug:             pro.Slug,
+		ShortDescription: pro.ShortDescription,
+		Description:      pro.Description,
+		Brand:            pro.Brand,
+		Status:           pro.Status,
+		IsPublished:      pro.IsPublished,
+		PublishedAt:      pro.PublishedAt,
+		MinPrice:         minPrice,
+		DiscountPercent:  pro.DiscountPercent,
+		FinalPrice:       calcFinalPrice(minPrice, pro.DiscountPercent),
+		AvgRating:        pro.AvgRating,
+		RatingCount:      pro.RatingCount,
+		CreatedBy:        pro.CreatedBy,
+		UpdatedBy:        pro.UpdatedBy,
+		CreatedAt:        pro.CreatedAt,
+		UpdatedAt:        pro.UpdatedAt,
+		DeletedAt:        pro.DeletedAt,
+		Stock:            sumVariantStock(variantsModel, false),
+		Categories:       pro.Categories,
+		Reviews:          reviewsResponses,
+		Variants:         adminVariants,
+	}
+
 	return &model.AdminProductDetailResponse{
-		Message: "Product retrieved successfully",
-		Product: model.AdminProductResponse{
-			ID:               pro.ID,
-			Name:             pro.Name,
-			Slug:             pro.Slug,
-			ShortDescription: pro.ShortDescription,
-			Description:      pro.Description,
-			Brand:            pro.Brand,
-			Status:           pro.Status,
-			IsPublished:      pro.IsPublished,
-			PublishedAt:      pro.PublishedAt,
-			MinPrice:         minPrice,
-			DiscountPercent:  pro.DiscountPercent,
-			FinalPrice:       calcFinalPrice(minPrice, pro.DiscountPercent),
-			AvgRating:        pro.AvgRating,
-			RatingCount:      pro.RatingCount,
-			CreatedBy:        pro.CreatedBy,
-			UpdatedBy:        pro.UpdatedBy,
-			CreatedAt:        pro.CreatedAt,
-			UpdatedAt:        pro.UpdatedAt,
-			DeletedAt:        pro.DeletedAt,
-			Categories:       pro.Categories,
-			Reviews:          reviewsResponses,
-		},
-		Variants: variantResponses,
+		Code:    http.StatusOK,
+		Message: "Chi tiết sản phẩm",
+		Data:    *adminProduct,
 	}, nil
 }
 
@@ -381,7 +462,9 @@ func (prt *productController) UserGetProductDetailController(reqProduct *model.G
 
 	variantResponses := make([]model.UserVariantResponse, 0)
 	minPrice := pro.MinPrice
-	hasActiveVariants := false
+	if variantMinPrice, ok := lowestVariantPrice(variantsModel, true); ok {
+		minPrice = variantMinPrice
+	}
 
 	reviewReponse, err := prt.ReviewRepo.GetProductReviewsByProductID(pro.ID)
 	for _, v := range variantsModel {
@@ -398,12 +481,8 @@ func (prt *productController) UserGetProductDetailController(reqProduct *model.G
 
 			if v.PriceOverride != nil {
 				resp.Price = *v.PriceOverride
-				if !hasActiveVariants || *v.PriceOverride < minPrice {
-					minPrice = *v.PriceOverride
-					hasActiveVariants = true
-				}
 			} else {
-				resp.Price = pro.MinPrice
+				resp.Price = minPrice
 			}
 			variantResponses = append(variantResponses, resp)
 		}
@@ -422,6 +501,7 @@ func (prt *productController) UserGetProductDetailController(reqProduct *model.G
 		AvgRating:        pro.AvgRating,
 		RatingCount:      pro.RatingCount,
 		PublishedAt:      pro.PublishedAt,
+		Stock:            sumVariantStock(variantsModel, true),
 		Categories:       pro.Categories,
 		Variants:         variantResponses,
 		Reviews:          reviewReponse,
@@ -664,12 +744,34 @@ func (prt *productController) UpdateProductController(ctx context.Context, req m
 		CreatedAt:        existingProduct.CreatedAt,
 		UpdatedAt:        updatedProduct.UpdatedAt,
 		DeletedAt:        updatedProduct.DeletedAt,
+		Stock:            prt.getProductVariantStock(updatedProduct.ID, false),
 		Categories:       updatedProduct.Categories,
+		Variants: func() []model.AdminVariantResponse {
+			var variants []model.AdminVariantResponse
+			for _, v := range updatedProduct.Variants {
+				variants = append(variants, model.AdminVariantResponse{
+					ID:             v.ID,
+					ProductID:      v.ProductID,
+					SKU:            v.SKU,
+					Title:          v.Title,
+					OptionValues:   v.OptionValues,
+					PriceOverride:  v.PriceOverride,
+					CostPrice:      v.CostPrice,
+					StockQuantity:  v.StockQuantity,
+					IsActive:       v.IsActive,
+					AllowBackorder: v.AllowBackorder,
+					CreatedAt:      v.CreatedAt.Format(time.RFC3339),
+					UpdatedAt:      v.UpdatedAt.Format(time.RFC3339),
+				})
+			}
+			return variants
+		}(),
 	}
 
 	return &model.AdminUpdateProductResponse{
-		Message: "Product updated successfully",
-		Product: *reponse,
+		Code:    http.StatusOK,
+		Message: "Sản phẩm đã được cập nhật",
+		Data:    *reponse,
 	}, nil
 }
 
@@ -681,6 +783,7 @@ func (prt *productController) AdminGetAllProductsController(req *model.SearchPro
 	}
 	var responses []model.AdminProductResponse
 	for _, pro := range products {
+		minPrice, stock := prt.getProductVariantStats(pro.ID, false, pro.MinPrice)
 		responses = append(responses, model.AdminProductResponse{
 			ID:               pro.ID,
 			Name:             pro.Name,
@@ -691,9 +794,9 @@ func (prt *productController) AdminGetAllProductsController(req *model.SearchPro
 			Status:           pro.Status,
 			IsPublished:      pro.IsPublished,
 			PublishedAt:      pro.PublishedAt,
-			MinPrice:         pro.MinPrice,
+			MinPrice:         minPrice,
 			DiscountPercent:  pro.DiscountPercent,
-			FinalPrice:       calcFinalPrice(pro.MinPrice, pro.DiscountPercent),
+			FinalPrice:       calcFinalPrice(minPrice, pro.DiscountPercent),
 			AvgRating:        pro.AvgRating,
 			RatingCount:      pro.RatingCount,
 			CreatedBy:        pro.CreatedBy,
@@ -701,12 +804,34 @@ func (prt *productController) AdminGetAllProductsController(req *model.SearchPro
 			CreatedAt:        pro.CreatedAt,
 			UpdatedAt:        pro.UpdatedAt,
 			DeletedAt:        pro.DeletedAt,
+			Stock:            stock,
 			Categories:       pro.Categories,
+			Variants: func() []model.AdminVariantResponse {
+				var variants []model.AdminVariantResponse
+				for _, v := range pro.Variants {
+					variants = append(variants, model.AdminVariantResponse{
+						ID:             v.ID,
+						ProductID:      v.ProductID,
+						SKU:            v.SKU,
+						Title:          v.Title,
+						OptionValues:   v.OptionValues,
+						PriceOverride:  v.PriceOverride,
+						CostPrice:      v.CostPrice,
+						StockQuantity:  v.StockQuantity,
+						IsActive:       v.IsActive,
+						AllowBackorder: v.AllowBackorder,
+						CreatedAt:      v.CreatedAt.Format(time.RFC3339),
+						UpdatedAt:      v.UpdatedAt.Format(time.RFC3339),
+					})
+				}
+				return variants
+			}(),
 		})
 	}
 	return &model.AdminProductListResponse{
+		Code:       http.StatusOK,
 		Message:    "Products retrieved successfully",
-		Products:   responses,
+		Data:       responses,
 		Pagination: buildPaginationMeta(req, total),
 	}, nil
 }
@@ -722,18 +847,20 @@ func (prt *productController) UserGetAllProductsController(req *model.SearchProd
 		if !pro.IsPublished {
 			continue
 		}
+		minPrice, stock := prt.getProductVariantStats(pro.ID, true, pro.MinPrice)
 		responses = append(responses, model.UserProductResponse{
 			ID:              pro.ID,
 			Name:            pro.Name,
 			Brand:           pro.Brand,
-			MinPrice:        pro.MinPrice,
+			MinPrice:        minPrice,
 			DiscountPercent: pro.DiscountPercent,
-			FinalPrice:      calcFinalPrice(pro.MinPrice, pro.DiscountPercent),
+			FinalPrice:      calcFinalPrice(minPrice, pro.DiscountPercent),
+			Stock:           stock,
 		})
 	}
 	return &model.UserProductListResponse{
 		Message:    "Products retrieved successfully",
-		Products:   responses,
+		Data:       responses,
 		Pagination: buildPaginationMeta(req, total),
 	}, nil
 }
@@ -749,18 +876,20 @@ func (prt *productController) UserSearchProductByNameController(req *model.Searc
 		if !pro.IsPublished {
 			continue
 		}
+		minPrice, stock := prt.getProductVariantStats(pro.ID, true, pro.MinPrice)
 		res = append(res, model.UserProductResponse{
 			ID:              pro.ID,
 			Name:            pro.Name,
 			Brand:           pro.Brand,
-			MinPrice:        pro.MinPrice,
+			MinPrice:        minPrice,
 			DiscountPercent: pro.DiscountPercent,
-			FinalPrice:      calcFinalPrice(pro.MinPrice, pro.DiscountPercent),
+			FinalPrice:      calcFinalPrice(minPrice, pro.DiscountPercent),
+			Stock:           stock,
 		})
 	}
 	return &model.UserProductListResponse{
 		Message:    "Products retrieved successfully",
-		Products:   res,
+		Data:       res,
 		Pagination: buildPaginationMeta(req, total),
 	}, nil
 }
@@ -773,6 +902,7 @@ func (prt *productController) AdminSearchProductsController(req *model.SearchPro
 	}
 	var adminProducts []model.AdminProductResponse
 	for _, pro := range products {
+		minPrice, stock := prt.getProductVariantStats(pro.ID, false, pro.MinPrice)
 		adminProducts = append(adminProducts, model.AdminProductResponse{
 			ID:               pro.ID,
 			Name:             pro.Name,
@@ -783,9 +913,9 @@ func (prt *productController) AdminSearchProductsController(req *model.SearchPro
 			Status:           pro.Status,
 			IsPublished:      pro.IsPublished,
 			PublishedAt:      pro.PublishedAt,
-			MinPrice:         pro.MinPrice,
+			MinPrice:         minPrice,
 			DiscountPercent:  pro.DiscountPercent,
-			FinalPrice:       calcFinalPrice(pro.MinPrice, pro.DiscountPercent),
+			FinalPrice:       calcFinalPrice(minPrice, pro.DiscountPercent),
 			AvgRating:        pro.AvgRating,
 			RatingCount:      pro.RatingCount,
 			CreatedBy:        pro.CreatedBy,
@@ -793,12 +923,34 @@ func (prt *productController) AdminSearchProductsController(req *model.SearchPro
 			CreatedAt:        pro.CreatedAt,
 			UpdatedAt:        pro.UpdatedAt,
 			DeletedAt:        pro.DeletedAt,
+			Stock:            stock,
 			Categories:       pro.Categories,
+			Variants: func() []model.AdminVariantResponse {
+				var variants []model.AdminVariantResponse
+				for _, v := range pro.Variants {
+					variants = append(variants, model.AdminVariantResponse{
+						ID:             v.ID,
+						ProductID:      v.ProductID,
+						SKU:            v.SKU,
+						Title:          v.Title,
+						OptionValues:   v.OptionValues,
+						PriceOverride:  v.PriceOverride,
+						CostPrice:      v.CostPrice,
+						StockQuantity:  v.StockQuantity,
+						IsActive:       v.IsActive,
+						AllowBackorder: v.AllowBackorder,
+						CreatedAt:      v.CreatedAt.Format(time.RFC3339),
+						UpdatedAt:      v.UpdatedAt.Format(time.RFC3339),
+					})
+				}
+				return variants
+			}(),
 		})
 	}
 	return &model.AdminProductListResponse{
+		Code:       http.StatusOK,
 		Message:    "Products retrieved successfully",
-		Products:   adminProducts,
+		Data:       adminProducts,
 		Pagination: buildPaginationMeta(req, total),
 	}, nil
 }
@@ -811,6 +963,7 @@ func (prt *productController) AdminGetManyProductByIDController(ids []int64) ([]
 	}
 	var responses []model.AdminProductResponse
 	for _, pro := range products {
+		minPrice, stock := prt.getProductVariantStats(pro.ID, false, pro.MinPrice)
 		responses = append(responses, model.AdminProductResponse{
 			ID:               pro.ID,
 			Name:             pro.Name,
@@ -821,9 +974,9 @@ func (prt *productController) AdminGetManyProductByIDController(ids []int64) ([]
 			Status:           pro.Status,
 			IsPublished:      pro.IsPublished,
 			PublishedAt:      pro.PublishedAt,
-			MinPrice:         pro.MinPrice,
+			MinPrice:         minPrice,
 			DiscountPercent:  pro.DiscountPercent,
-			FinalPrice:       calcFinalPrice(pro.MinPrice, pro.DiscountPercent),
+			FinalPrice:       calcFinalPrice(minPrice, pro.DiscountPercent),
 			AvgRating:        pro.AvgRating,
 			RatingCount:      pro.RatingCount,
 			CreatedBy:        pro.CreatedBy,
@@ -831,8 +984,28 @@ func (prt *productController) AdminGetManyProductByIDController(ids []int64) ([]
 			CreatedAt:        pro.CreatedAt,
 			UpdatedAt:        pro.UpdatedAt,
 			DeletedAt:        pro.DeletedAt,
+			Stock:            stock,
 			Categories:       pro.Categories,
-			Variants:         pro.Variants,
+			Variants: func() []model.AdminVariantResponse {
+				var variants []model.AdminVariantResponse
+				for _, v := range pro.Variants {
+					variants = append(variants, model.AdminVariantResponse{
+						ID:             v.ID,
+						ProductID:      v.ProductID,
+						SKU:            v.SKU,
+						Title:          v.Title,
+						OptionValues:   v.OptionValues,
+						PriceOverride:  v.PriceOverride,
+						CostPrice:      v.CostPrice,
+						StockQuantity:  v.StockQuantity,
+						IsActive:       v.IsActive,
+						AllowBackorder: v.AllowBackorder,
+						CreatedAt:      v.CreatedAt.Format(time.RFC3339),
+						UpdatedAt:      v.UpdatedAt.Format(time.RFC3339),
+					})
+				}
+				return variants
+			}(),
 		})
 	}
 	return responses, nil
@@ -847,13 +1020,15 @@ func (prt *productController) UserGetProductController(reqProduct *model.GetProd
 	if !pro.IsPublished {
 		return nil, fmt.Errorf("product not available")
 	}
+	minPrice, stock := prt.getProductVariantStats(pro.ID, true, pro.MinPrice)
 	return &model.UserProductResponse{
 		ID:              pro.ID,
 		Name:            pro.Name,
 		Brand:           pro.Brand,
-		MinPrice:        pro.MinPrice,
+		MinPrice:        minPrice,
 		DiscountPercent: pro.DiscountPercent,
-		FinalPrice:      calcFinalPrice(pro.MinPrice, pro.DiscountPercent),
+		FinalPrice:      calcFinalPrice(minPrice, pro.DiscountPercent),
+		Stock:           stock,
 	}, nil
 }
 
@@ -870,6 +1045,7 @@ func (prt *productController) AdminGetAllSoftDeletedProductsController() (*model
 	}
 	var responses []model.AdminProductResponse
 	for _, pro := range products {
+		minPrice, stock := prt.getProductVariantStats(pro.ID, false, pro.MinPrice)
 		responses = append(responses, model.AdminProductResponse{
 			ID:               pro.ID,
 			Name:             pro.Name,
@@ -880,9 +1056,9 @@ func (prt *productController) AdminGetAllSoftDeletedProductsController() (*model
 			Status:           pro.Status,
 			IsPublished:      pro.IsPublished,
 			PublishedAt:      pro.PublishedAt,
-			MinPrice:         pro.MinPrice,
+			MinPrice:         minPrice,
 			DiscountPercent:  pro.DiscountPercent,
-			FinalPrice:       calcFinalPrice(pro.MinPrice, pro.DiscountPercent),
+			FinalPrice:       calcFinalPrice(minPrice, pro.DiscountPercent),
 			AvgRating:        pro.AvgRating,
 			RatingCount:      pro.RatingCount,
 			CreatedBy:        pro.CreatedBy,
@@ -890,16 +1066,44 @@ func (prt *productController) AdminGetAllSoftDeletedProductsController() (*model
 			CreatedAt:        pro.CreatedAt,
 			UpdatedAt:        pro.UpdatedAt,
 			DeletedAt:        pro.DeletedAt,
+			Stock:            stock,
+			Categories:       pro.Categories,
+			Variants: func() []model.AdminVariantResponse {
+				var variants []model.AdminVariantResponse
+				for _, v := range pro.Variants {
+					variants = append(variants, model.AdminVariantResponse{
+						ID:             v.ID,
+						ProductID:      v.ProductID,
+						SKU:            v.SKU,
+						Title:          v.Title,
+						OptionValues:   v.OptionValues,
+						PriceOverride:  v.PriceOverride,
+						CostPrice:      v.CostPrice,
+						StockQuantity:  v.StockQuantity,
+						IsActive:       v.IsActive,
+						AllowBackorder: v.AllowBackorder,
+						CreatedAt:      v.CreatedAt.Format(time.RFC3339),
+						UpdatedAt:      v.UpdatedAt.Format(time.RFC3339),
+					})
+				}
+				return variants
+			}(),
 		})
 	}
 	return &model.AdminProductListResponse{
-		Message:  "Soft deleted products retrieved successfully",
-		Products: responses,
+		Code:    http.StatusOK,
+		Message: "Soft deleted products retrieved successfully",
+		Data:    responses,
 	}, nil
 }
 
-// AdminDeleteAllSoftDeletedProductsController -
-func (prt *productController) AdminDeleteAllSoftDeletedProductsController() error {
+// AdminBulkDeleteSoftProductsController - Xóa mềm nhiều SP theo danh sách ID
+func (prt *productController) AdminBulkDeleteSoftProductsController(ids []int64) error {
+	return prt.Repo.BulkDeleteSoftProducts(ids)
+}
+
+// AdminDeleteAllActiveProductsController - Xóa mềm TẤT CẢ sản phẩm (Dùng cẩn thận!)
+func (prt *productController) AdminDeleteAllActiveProductsController() error {
 	return prt.Repo.DeleteAllProductsSoftDeleted()
 }
 

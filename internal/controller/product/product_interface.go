@@ -50,8 +50,11 @@ type ProductController interface {
 	// lây tất cả sản phẩm đã xóa mềm
 	AdminGetAllSoftDeletedProductsController() (*model.AdminProductListResponse, error)
 
-	// Xóa mềm nhiều sản phẩm
-	AdminDeleteAllSoftDeletedProductsController() error
+	// Xóa mềm nhiều sản phẩm theo danh sách ID
+	AdminBulkDeleteSoftProductsController(ids []int64) error
+
+	// Xóa mềm TẤT CẢ sản phẩm đang hoạt động (Dùng cẩn thận!)
+	AdminDeleteAllActiveProductsController() error
 	
 	// Xóa cứng tất cả sản phẩm
 	AdminDeleteAllProductsController() error

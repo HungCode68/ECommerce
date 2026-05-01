@@ -35,22 +35,25 @@ func (h *VariantHandler) CreateVariantHandler(w http.ResponseWriter, r *http.Req
 	productID, err := strconv.ParseInt(productIdStr, 10, 64)
 
 	if err != nil {
-		h.errJson(w, http.StatusBadRequest, "ID invalid")
+		h.errJson(w, http.StatusBadRequest, "ID không hợp lệ")
 		return
 	}
 	var req model.CreateVariantRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.errJson(w, http.StatusBadRequest, "Invalid request ")
+		fmt.Printf("Lỗi Decode JSON Variant: %v\n", err)
+		h.errJson(w, http.StatusBadRequest, "Dữ liệu gửi lên không đúng định dạng JSON")
 		return
 	}
 	if err := validator.Validate(req); err != nil {
-		h.errJson(w, http.StatusBadRequest, fmt.Sprintf("Validation failed: %v", err))
+		fmt.Printf("Lỗi Validate Variant: %v\n", err)
+		h.errJson(w, http.StatusBadRequest, fmt.Sprintf("Dữ liệu không hợp lệ: %v", err))
 		return
 	}
 	variantReponse, err := h.VariantController.CreateVariant(req, productID)
 	if err != nil {
-		fmt.Printf("Lỗi DB %v \n", err)
-		h.errJson(w, http.StatusInternalServerError, "Cannot create variant")
+		fmt.Printf("Lỗi Controller/DB: %v \n", err)
+		// Trả về chính xác thông báo lỗi cho Frontend kèm theo status 400
+		h.errJson(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	h.writeJson(w, http.StatusCreated, variantReponse)

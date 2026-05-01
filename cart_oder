@@ -1,0 +1,144 @@
+# CART + ORDER TEST QUICK FILE
+# Base URL: http://localhost:8081
+# Auth: Bearer {{token}} (user) | Bearer {{admin_token}} (admin)
+
+==================================================
+1) CREATE COUPON (ADMIN) - ORDER DISCOUNT
+==================================================
+POST /api/admin/coupons
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "code": "SALE10",
+  "description": "Giam 10% tien hang",
+  "discount_type": "percentage",
+  "discount_value": 10,
+  "min_order_value": 100000,
+  "max_discount_amount": 50000,
+  "usage_limit": 1000,
+  "user_usage_limit": 1,
+  "use_usage_limit": true,
+  "is_active": true,
+  "start_date": "2026-01-01 00:00:00",
+  "end_date": "2027-01-01 00:00:00"
+}
+
+==================================================
+2) CREATE COUPON (ADMIN) - SHIPPING DISCOUNT
+==================================================
+POST /api/admin/coupons
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "code": "FREESHIP30",
+  "description": "Giam phi ship toi da 30k",
+  "discount_type": "shipping_fixed",
+  "discount_value": 30000,
+  "min_order_value": 1,
+  "max_discount_amount": 30000,
+  "usage_limit": 1000,
+  "user_usage_limit": 1,
+  "use_usage_limit": true,
+  "is_active": true,
+  "start_date": "2026-01-01 00:00:00",
+  "end_date": "2027-01-01 00:00:00"
+}
+
+==================================================
+3) ADD ITEM TO CART (USER)
+==================================================
+POST /api/cart
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "product_id": 1,
+  "variant_id": 1,
+  "quantity": 2
+}
+
+==================================================
+4) CHECK CART (USER)
+==================================================
+GET /api/cart
+Authorization: Bearer {{token}}
+
+# Lấy variant_id từ items để đưa vào selected_variant_ids.
+
+==================================================
+5) CHECKOUT PREVIEW (USER)
+# Rule: 1 order_coupon_code + 1 shipping_coupon_code hợp lệ
+# Nếu không truyền 2 field này, hệ thống sẽ tự áp mã tốt nhất khả dụng.
+==================================================
+POST /api/cart/checkout-preview
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "selected_variant_ids": [1],
+  "order_coupon_code": "SALE10",
+  "shipping_coupon_code": "FREESHIP30"
+}
+
+# Backward compatibility (cũ):
+# "coupon_code" vẫn dùng được như alias của "order_coupon_code"
+
+# Fields cần check trong response.data:
+# - sub_total
+# - order_discount
+# - shipping_fee
+# - shipping_discount
+# - discount_amount
+# - total_payable
+# - order_coupon
+# - shipping_coupon
+
+==================================================
+6) CREATE ORDER (USER)
+# Dùng cùng 2 mã như preview
+==================================================
+POST /api/orders
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "address_id": 1,
+  "payment_method": "cod",
+  "note": "Giao gio hanh chinh",
+  "items": [
+    {
+      "product_id": 1,
+      "variant_id": 1,
+      "quantity": 2
+    }
+  ],
+  "order_coupon_code": "SALE10",
+  "shipping_coupon_code": "FREESHIP30"
+}
+
+==================================================
+7) OPTIONAL - VALIDATE SINGLE COUPON
+==================================================
+POST /api/coupons/validate
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "code": "SALE10",
+  "user_id": 123,
+  "order_amount": 300000
+}
+
+==================================================
+NOTES
+==================================================
+- discount_type hỗ trợ:
+  - percentage, fixed_amount (tiền hàng)
+  - shipping_percentage, shipping_fixed (phí ship)
+- Công thức tổng tiền hiện tại:
+  total_payable = sub_total - order_discount + shipping_fee - shipping_discount
+- Rule phí ship:
+  - sub_total >= 500000 => shipping_fee = 0
+  - sub_total < 500000 => shipping_fee = 30000

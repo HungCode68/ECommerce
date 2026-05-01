@@ -22,5 +22,6 @@ type UserRepo interface {
 	
 	// Delete Methods
 	DeleteSoftUsers(ids []int64) error
+	RestoreSoftUsers(ids []int64) error
 	RevokeRefreshToken(userID int64) error
 }
