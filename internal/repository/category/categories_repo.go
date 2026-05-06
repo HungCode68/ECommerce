@@ -87,9 +87,10 @@ func (r *CategoryDb) GetCategoryByID(id int64) (*model.Category, error) {
 // AdminSearchCategories: Tìm kiếm danh mục theo tên (Lấy cả Active và Inactive)
 func (r *CategoryDb) SearchAllCategories(keyword string, isActive *bool) ([]model.Category, error) {
 	// Tìm theo Name hoặc Slug
-	query := `SELECT id, name, slug, description, is_active, created_at, updated_at 
-			  FROM categories 
-			  WHERE (name LIKE ? OR slug LIKE ?)`
+	query := `SELECT c.id, c.name, c.slug, c.description, c.is_active, c.created_at, c.updated_at, COUNT(pc.product_id) as product_count
+			  FROM categories c
+			  LEFT JOIN product_categories pc ON c.id = pc.category_id
+			  WHERE (c.name LIKE ? OR c.slug LIKE ?)`
 	
 	// Chuẩn bị tham số
 	kw := "%" + keyword + "%"
@@ -97,12 +98,11 @@ func (r *CategoryDb) SearchAllCategories(keyword string, isActive *bool) ([]mode
 
 	
 	if isActive != nil {
-		query += " AND is_active = ?"
+		query += " AND c.is_active = ?"
 		args = append(args, *isActive)
 	}
 
-	// Sắp xếp giảm dần theo ngày tạo
-	query += " ORDER BY created_at DESC"
+	query += " GROUP BY c.id ORDER BY c.created_at DESC"
 
 	logger.DebugLogger.Printf("Repo: Searching categories. Query: %s | Args: %v", query, args)
 
@@ -116,7 +116,7 @@ func (r *CategoryDb) SearchAllCategories(keyword string, isActive *bool) ([]mode
 	var categories []model.Category
 	for rows.Next() {
 		var cat model.Category
-		if err := rows.Scan(&cat.ID, &cat.Name, &cat.Slug, &cat.Description, &cat.IsActive, &cat.CreatedAt, &cat.UpdatedAt); err != nil {
+		if err := rows.Scan(&cat.ID, &cat.Name, &cat.Slug, &cat.Description, &cat.IsActive, &cat.CreatedAt, &cat.UpdatedAt, &cat.ProductCount); err != nil {
 			return nil, err
 		}
 		categories = append(categories, cat)
@@ -170,9 +170,11 @@ func (r *CategoryDb) GetAllCategories(req model.AdminGetCategoriesRequest) ([]mo
 	}
 
 	// 3. Query Lấy dữ liệu
-	query := `SELECT id, name, slug, description, is_active, created_at, updated_at 
-			  FROM categories 
-			  ORDER BY created_at DESC 
+	query := `SELECT c.id, c.name, c.slug, c.description, c.is_active, c.created_at, c.updated_at, COUNT(pc.product_id) as product_count
+			  FROM categories c
+			  LEFT JOIN product_categories pc ON c.id = pc.category_id
+			  GROUP BY c.id
+			  ORDER BY c.created_at DESC 
 			  LIMIT ? OFFSET ?`
 
 	rows, err := r.db.Query(query, req.Limit, offset)
@@ -184,7 +186,7 @@ func (r *CategoryDb) GetAllCategories(req model.AdminGetCategoriesRequest) ([]mo
 	var categories []model.Category
 	for rows.Next() {
 		var cat model.Category
-		if err := rows.Scan(&cat.ID, &cat.Name, &cat.Slug, &cat.Description, &cat.IsActive, &cat.CreatedAt, &cat.UpdatedAt); err != nil {
+		if err := rows.Scan(&cat.ID, &cat.Name, &cat.Slug, &cat.Description, &cat.IsActive, &cat.CreatedAt, &cat.UpdatedAt, &cat.ProductCount); err != nil {
 			return nil, 0, err
 		}
 		categories = append(categories, cat)

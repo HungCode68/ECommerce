@@ -8,9 +8,11 @@ export type Category = {
   description?: string
   image?: string
   parent_id?: number | null
+  is_active: boolean
   status?: 'active' | 'inactive'
   product_count?: number
   created_at?: string
+  updated_at?: string
 }
 
 export const categoryApi = {

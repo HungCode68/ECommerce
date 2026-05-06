@@ -10,6 +10,7 @@ type Category struct {
 	Slug        string    `db:"slug"`
 	Description *string   `db:"description"` 
 	IsActive    bool      `db:"is_active"`
+	ProductCount *int     `db:"product_count"`
 	CreatedAt   time.Time `db:"created_at"`
 	UpdatedAt   time.Time `db:"updated_at"`
 }
@@ -58,6 +59,7 @@ type AdminCategoryResponse struct {
 	Slug        string    `json:"slug"`
 	Description *string   `json:"description,omitempty"` 
 	IsActive    bool      `json:"is_active"`
+	ProductCount *int     `json:"product_count,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }

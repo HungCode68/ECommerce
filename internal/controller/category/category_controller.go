@@ -178,6 +178,7 @@ func (c *categoryController) AdminGetAllCategories(req model.AdminGetCategoriesR
 			Slug:        cat.Slug,
 			Description: cat.Description,
 			IsActive:    cat.IsActive,
+			ProductCount: cat.ProductCount,
 			CreatedAt:   cat.CreatedAt,
 			UpdatedAt:   cat.UpdatedAt,
 		})
@@ -224,6 +225,7 @@ func (c *categoryController) AdminSearchCategories(keyword string, isActive *boo
 			Slug:        cat.Slug,
 			Description: cat.Description,
 			IsActive:    cat.IsActive,
+			ProductCount: cat.ProductCount,
 			CreatedAt:   cat.CreatedAt,
 			UpdatedAt:   cat.UpdatedAt,
 		})

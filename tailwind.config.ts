@@ -30,6 +30,7 @@ const config: Config = {
         'surface-container-high': '#e6e8ea',
         'surface-container-highest': '#e0e3e5',
         'primary-container': '#06b6d4',
+        'on-primary-container': '#ffffff',
         'on-primary': '#ffffff',
         'on-surface': '#191c1e',
         'on-surface-variant': '#3d494c',

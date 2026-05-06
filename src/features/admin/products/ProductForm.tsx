@@ -156,8 +156,7 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
               className={inputClass(!!errors.category_id)}
             >
               <option value="">-- Chọn danh mục --</option>
-              {/* @ts-ignore - Handle nested structure from APIResponse */}
-              {(categories?.data as any)?.categories?.map((cat: any) => (
+              {categories?.categories?.map((cat: any) => (
                 <option key={cat.id} value={cat.id}>
                   {cat.name}
                 </option>

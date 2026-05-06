@@ -38,7 +38,7 @@ export function CategoryModal({ open, mode, category, onClose }: CategoryModalPr
     enabled: open,
   })
 
-  const categories = categoriesResponse?.data || []
+  const categories = categoriesResponse?.categories || []
 
   const {
     register,
@@ -55,7 +55,7 @@ export function CategoryModal({ open, mode, category, onClose }: CategoryModalPr
             slug: category.slug,
             description: category.description || '',
             parent_id: category.parent_id,
-            status: category.status || 'active',
+            status: category.is_active ? 'active' : 'inactive',
           }
         : {
             name: '',
@@ -67,10 +67,16 @@ export function CategoryModal({ open, mode, category, onClose }: CategoryModalPr
   })
 
   const { mutate, isPending } = useMutation({
-    mutationFn: (data: CategoryFormData) =>
-      mode === 'edit' && category
-        ? adminCategoryApi.update(category.id, data)
-        : adminCategoryApi.create({ ...data, description: data.description || '' }),
+    mutationFn: (data: CategoryFormData) => {
+      const payload = {
+        ...data,
+        description: data.description || '',
+        is_active: data.status === 'active'
+      }
+      return mode === 'edit' && category
+        ? adminCategoryApi.update(category.id, payload)
+        : adminCategoryApi.create(payload)
+    },
     onSuccess: () => {
       toast.success(mode === 'edit' ? 'Cập nhật danh mục thành công!' : 'Tạo danh mục thành công!')
       qc.invalidateQueries({ queryKey: queryKeys.admin.categories.all })

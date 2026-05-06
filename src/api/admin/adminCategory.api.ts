@@ -7,16 +7,28 @@ type CreateCategoryRequest = {
   slug: string
   description: string
   parent_id?: number | null
-  status?: string
+  is_active?: boolean
 }
 
 type UpdateCategoryRequest = Partial<CreateCategoryRequest>
 
 export const adminCategoryApi = {
   getList: async (params: { q?: string; status?: string; page?: number; limit?: number }) => {
+    if (params.q || params.status) {
+      const res = await axiosClient.get<ApiResponse<Category[]>>(
+        '/api/admin/categories/search',
+        { params: { q: params.q, is_active: params.status === 'active' ? true : params.status === 'inactive' ? false : undefined } }
+      )
+      const data = res.data.data || []
+      return {
+        categories: data,
+        meta: { total: data.length, page: 1, limit: data.length }
+      }
+    }
+
     const res = await axiosClient.get<ApiResponse<{ categories: Category[], meta: { total: number, page: number, limit: number } }>>(
       '/api/admin/categories',
-      { params },
+      { params: { page: params.page, limit: params.limit } },
     )
     return res.data.data
   },

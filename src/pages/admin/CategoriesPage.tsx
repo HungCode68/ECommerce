@@ -25,7 +25,7 @@ export function CategoriesPage() {
   const LIMIT = 10
 
   const [selectedIds, setSelectedIds] = useState<number[]>([])
-  
+
   const [modal, setModal] = useState<{
     open: boolean
     mode: 'add' | 'edit'
@@ -48,11 +48,11 @@ export function CategoriesPage() {
   const { data: stats } = useQuery({
     queryKey: ['admin', 'categories', 'stats'],
     queryFn: async () => {
-      const res = await adminCategoryApi.getList({ page: 1, limit: 1000 })
+      const res = await adminCategoryApi.getList({ page: 1, limit: 100 })
       const categories = res.categories || []
       return {
         total: res.meta?.total || categories.length,
-        active: categories.filter((c: Category) => c.status === 'active').length,
+        active: categories.filter((c: Category) => c.is_active).length,
       }
     }
   })
@@ -90,7 +90,7 @@ export function CategoriesPage() {
 
   const { mutate: updateStatus } = useMutation({
     mutationFn: ({ id, newStatus }: { id: number, newStatus: 'active' | 'inactive' }) =>
-      adminCategoryApi.update(id, { status: newStatus }),
+      adminCategoryApi.update(id, { is_active: newStatus === 'active' }),
     onSuccess: () => {
       toast.success('Đã cập nhật trạng thái')
       qc.invalidateQueries({ queryKey: ['admin', 'categories'] })
@@ -107,7 +107,7 @@ export function CategoriesPage() {
   }
 
   const toggleSelect = (id: number) => {
-    setSelectedIds(prev => 
+    setSelectedIds(prev =>
       prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
     )
   }
@@ -209,7 +209,7 @@ export function CategoriesPage() {
                 <span className="material-symbols-outlined text-lg">tune</span>
                 Sắp xếp
               </button>
-              <button 
+              <button
                 onClick={() => toast.info('Tính năng đang phát triển')}
                 className="p-2.5 text-slate-400 hover:text-cyan-500 transition-all"
               >
@@ -323,13 +323,13 @@ export function CategoriesPage() {
                         {cat.description || '—'}
                       </td>
                       <td className="p-5">
-                        <span className="px-3 py-1 bg-surface-container rounded-full text-xs font-bold text-slate-600">
+                        <span className="px-3 py-1 bg-surface-container rounded-full text-xs font-bold text-slate-600 whitespace-nowrap">
                           {cat.product_count != null ? `${cat.product_count} sản phẩm` : '—'}
                         </span>
                       </td>
                       <td className="p-5">
                         <div className="flex items-center gap-2">
-                          {cat.status === 'active' ? (
+                          {cat.is_active ? (
                             <>
                               <div
                                 onClick={() => updateStatus({ id: cat.id, newStatus: 'inactive' })}
@@ -377,62 +377,87 @@ export function CategoriesPage() {
 
           {/* Pagination */}
           {!isLoading && categories.length > 0 && (
-            <div className="flex items-center justify-between p-6 bg-surface-container-low/30 border-t border-surface-container">
-              <p className="text-xs font-bold text-slate-500 font-body">
-                Hiển thị {from} - {to} / {totalItems} danh mục
-              </p>
-              <div className="flex items-center gap-1 font-body">
-                <button
-                  onClick={() => setPage(1)}
-                  disabled={page === 1}
-                  className="p-2 text-slate-400 hover:text-cyan-500 disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
-                >
-                  <span className="material-symbols-outlined">keyboard_double_arrow_left</span>
-                </button>
-                <button
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="p-2 text-slate-400 hover:text-cyan-500 disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
-                >
-                  <span className="material-symbols-outlined">chevron_left</span>
-                </button>
-                
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  let p = page - 2 + i
-                  if (page <= 3) p = i + 1
-                  if (page >= totalPages - 2) p = totalPages - 4 + i
-                  if (p > 0 && p <= totalPages) {
-                    return (
-                      <button
-                        key={p}
-                        onClick={() => setPage(p)}
-                        className={`w-8 h-8 flex items-center justify-center rounded-lg font-bold text-xs transition-all ${
-                          page === p
-                            ? 'bg-primary-container text-on-primary-container'
-                            : 'hover:bg-cyan-50 text-slate-500'
-                        }`}
-                      >
-                        {p}
-                      </button>
-                    )
-                  }
-                  return null
-                })}
+            <div className="flex flex-col sm:flex-row items-center justify-between p-6 bg-surface-container-low/30 border-t border-surface-container gap-6">
+              <div className="flex flex-col items-center sm:items-start gap-1">
+                <p className="text-[11px] font-black text-slate-400 font-headline uppercase tracking-widest">
+                  Đang hiển thị {from} - {to} / {totalItems}
+                </p>
+                <p className="text-[10px] text-cyan-600 font-bold">
+                  Trang {page} trên tổng {totalPages}
+                </p>
+              </div>
 
-                <button
-                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                  className="p-2 text-slate-500 hover:text-cyan-500 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                >
-                  <span className="material-symbols-outlined">chevron_right</span>
-                </button>
-                <button
-                  onClick={() => setPage(totalPages)}
-                  disabled={page === totalPages}
-                  className="p-2 text-slate-500 hover:text-cyan-500 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                >
-                  <span className="material-symbols-outlined">keyboard_double_arrow_right</span>
-                </button>
+              <div className="flex items-center gap-3 font-body">
+                {/* Navigation Group */}
+                <div className="flex items-center bg-surface-container-low rounded-2xl p-1 gap-1 shadow-sm border border-outline-variant/10">
+                  <button
+                    onClick={() => setPage(1)}
+                    disabled={page === 1}
+                    className="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-cyan-600 hover:bg-white rounded-xl disabled:opacity-10 transition-all cursor-pointer"
+                    title="Trang đầu"
+                  >
+                    <span className="material-symbols-outlined text-xl">first_page</span>
+                  </button>
+                  <button
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                    className="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-cyan-600 hover:bg-white rounded-xl disabled:opacity-10 transition-all cursor-pointer"
+                    title="Trang trước"
+                  >
+                    <span className="material-symbols-outlined text-xl">chevron_left</span>
+                  </button>
+                </div>
+
+                {/* Numbers Group */}
+                <div className="flex items-center gap-1 bg-surface-container-low rounded-2xl p-1 shadow-sm border border-outline-variant/10">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter(p => {
+                      if (totalPages <= 5) return true
+                      if (p === 1 || p === totalPages) return true
+                      if (p >= page - 1 && p <= page + 1) return true
+                      return false
+                    })
+                    .map((p, i, arr) => {
+                      const showEllipsis = i > 0 && arr[i - 1] !== p - 1
+                      return (
+                        <div key={p} className="flex items-center gap-1">
+                          {showEllipsis && (
+                            <span className="w-6 text-center text-slate-300 text-xs font-black select-none">...</span>
+                          )}
+                          <button
+                            onClick={() => setPage(p)}
+                            className={`w-9 h-9 flex items-center justify-center rounded-xl font-black text-xs transition-all ${page === p
+                              ? 'bg-primary-container text-on-primary-container shadow-[0_4px_12px_rgba(6,182,212,0.4)] scale-110 z-10'
+                              : 'hover:bg-white text-slate-500 hover:text-cyan-600'
+                              }`}
+                          >
+                            {p}
+                          </button>
+                        </div>
+                      )
+                    })
+                  }
+                </div>
+
+                {/* Navigation Group Right */}
+                <div className="flex items-center bg-surface-container-low rounded-2xl p-1 gap-1 shadow-sm border border-outline-variant/10">
+                  <button
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                    className="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-cyan-600 hover:bg-white rounded-xl disabled:opacity-10 transition-all cursor-pointer"
+                    title="Trang sau"
+                  >
+                    <span className="material-symbols-outlined text-xl">chevron_right</span>
+                  </button>
+                  <button
+                    onClick={() => setPage(totalPages)}
+                    disabled={page === totalPages}
+                    className="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-cyan-600 hover:bg-white rounded-xl disabled:opacity-10 transition-all cursor-pointer"
+                    title="Trang cuối"
+                  >
+                    <span className="material-symbols-outlined text-xl">last_page</span>
+                  </button>
+                </div>
               </div>
             </div>
           )}

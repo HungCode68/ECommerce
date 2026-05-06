@@ -85,7 +85,7 @@ axiosClient.interceptors.response.use(
     }
 
     try {
-      const { data } = await axios.post(`${API_BASE_URL === '/' ? '' : API_BASE_URL}/api/auth/refresh`, {
+      const { data } = await axios.post(`${(API_BASE_URL as string) === '/' ? '' : API_BASE_URL}/api/auth/refresh`, {
         refresh_token: refreshToken,
       })
       const newAccessToken: string = data.data.access_token

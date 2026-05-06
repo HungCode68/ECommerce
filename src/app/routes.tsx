@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes, useParams } from 'react-router-dom'
 import { AuthInitializer } from '@/components/shared/AuthInitializer'
 import { ProtectedRoute } from '@/components/shared/ProtectedRoute'
+import { ErrorBoundary } from '@/components/shared/ErrorBoundary'
 import { TableSkeleton } from '@/components/shared/LoadingSkeleton'
 import { ShopLayout } from '@/components/layout/ShopLayout'
 import { AdminLayout } from '@/components/layout/AdminLayout'
@@ -110,8 +111,9 @@ function LegacyRedirect({ to }: { to: string }) {
 
 export function AppRoutes() {
   return (
-    <AuthInitializer>
-      <Routes>
+    <ErrorBoundary>
+      <AuthInitializer>
+        <Routes>
         <Route
           path={ROUTES.LOGIN}
           element={
@@ -317,7 +319,8 @@ export function AppRoutes() {
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </AuthInitializer>
+        </Routes>
+      </AuthInitializer>
+    </ErrorBoundary>
   )
 }
