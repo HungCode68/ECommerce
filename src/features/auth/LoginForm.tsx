@@ -99,7 +99,7 @@ export function LoginForm() {
             className="w-full bg-surface-container-lowest border border-outline-variant/20 text-on-surface py-4 pl-12 pr-12 text-sm focus:ring-0 focus:border-primary/50 transition-all outline-none rounded-none"
             placeholder="••••••••••••"
           />
-          <div 
+          <div
             className="absolute inset-y-0 right-0 pr-4 flex items-center cursor-pointer group/eye"
             onClick={() => setShowPassword(!showPassword)}
           >

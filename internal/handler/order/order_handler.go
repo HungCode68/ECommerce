@@ -9,6 +9,7 @@ import (
 	"golang/internal/logger"
 	"golang/internal/middleware"
 	"golang/internal/model"
+	userRepo "golang/internal/repository/user"
 	"golang/internal/utils"
 	"golang/internal/validator"
 )
@@ -18,11 +19,13 @@ const maxBodySize = 1 << 20
 
 type orderHandler struct {
 	OrderController order.OrderController
+	UserRepo        userRepo.UserRepo
 }
 
-func NewOrderHandler(controller order.OrderController) OrderHandler {
+func NewOrderHandler(controller order.OrderController, userRepository userRepo.UserRepo) OrderHandler {
 	return &orderHandler{
 		OrderController: controller,
+		UserRepo:        userRepository,
 	}
 }
 
@@ -31,6 +34,16 @@ func (h *orderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	userID, ok := middleware.GetUserIDFromContext(r.Context())
 	if !ok || userID == 0 {
 		utils.WriteError(w, http.StatusUnauthorized, "Unauthorized", nil)
+		return
+	}
+
+	userData, err := h.UserRepo.GetUserByID(userID)
+	if err != nil {
+		utils.WriteError(w, http.StatusUnauthorized, "Không xác định được người dùng", nil)
+		return
+	}
+	if !userData.EmailVerified {
+		utils.WriteError(w, http.StatusForbidden, "Vui lòng xác minh email trước khi đặt hàng", nil)
 		return
 	}
 

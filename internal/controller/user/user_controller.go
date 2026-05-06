@@ -1,12 +1,23 @@
 package user
 
 import (
+	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"database/sql"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"golang/internal/logger"
 	"golang/internal/model"
 	"golang/internal/repository/user"
+	"net"
+	"net/http"
+	"net/smtp"
 	"os"
+	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -17,6 +28,22 @@ type userController struct {
 	UserRepo user.UserRepo
 }
 
+type googleTokenInfoResponse struct {
+	Iss           string `json:"iss"`
+	Aud           string `json:"aud"`
+	Sub           string `json:"sub"`
+	Email         string `json:"email"`
+	EmailVerified string `json:"email_verified"`
+	Name          string `json:"name"`
+	Picture       string `json:"picture"`
+	ExpiresAt     string `json:"exp"`
+}
+
+const (
+	emailVerificationOTPExpiry   = 5 * time.Minute
+	emailVerificationOTPCooldown = 60 * time.Second
+)
+
 func NewUserController(userRepo user.UserRepo) UserController {
 	return &userController{
 		UserRepo: userRepo,
@@ -25,28 +52,30 @@ func NewUserController(userRepo user.UserRepo) UserController {
 
 func toUserProfileResponse(user model.User) model.UserProfileResponse {
 	return model.UserProfileResponse{
-		ID:           user.ID,
-		Username:     user.Username,
-		Email:        user.Email,
-		Role:         user.Role,
-		IsActive:     user.IsActive,
-		CreatedAt:    user.CreatedAt,
-		UpdatedAt:    user.UpdatedAt,
-		LastActiveAt: user.LastActiveAt,
+		ID:            user.ID,
+		Username:      user.Username,
+		Email:         user.Email,
+		EmailVerified: user.EmailVerified,
+		Role:          user.Role,
+		IsActive:      user.IsActive,
+		CreatedAt:     user.CreatedAt,
+		UpdatedAt:     user.UpdatedAt,
+		LastActiveAt:  user.LastActiveAt,
 	}
 }
 
 func toAdminUserResponse(user model.User) model.AdminUserResponse {
 	return model.AdminUserResponse{
-		ID:           user.ID,
-		Username:     user.Username,
-		Email:        user.Email,
-		Role:         user.Role,
-		IsActive:     user.IsActive,
-		CreatedAt:    user.CreatedAt,
-		UpdatedAt:    user.UpdatedAt,
-		LastActiveAt: user.LastActiveAt,
-		DeletedAt:    user.DeletedAt,
+		ID:            user.ID,
+		Username:      user.Username,
+		Email:         user.Email,
+		EmailVerified: user.EmailVerified,
+		Role:          user.Role,
+		IsActive:      user.IsActive,
+		CreatedAt:     user.CreatedAt,
+		UpdatedAt:     user.UpdatedAt,
+		LastActiveAt:  user.LastActiveAt,
+		DeletedAt:     user.DeletedAt,
 	}
 }
 
@@ -75,7 +104,8 @@ func (c *userController) Register(req model.RegisterRequest) (model.UserProfileR
 	newUser := model.User{
 		Username:     req.Username,
 		Email:        req.Email,
-		PasswordHash: string(hashedPassword),
+		PasswordHash: stringPtr(string(hashedPassword)),
+		AuthProvider: "local",
 		Role:         "user",
 		IsActive:     true,
 	}
@@ -114,8 +144,15 @@ func (c *userController) Login(req model.LoginRequest) (model.LoginResponse, err
 		return model.LoginResponse{}, errors.New("tài khoản này đã bị khóa")
 	}
 
+	if user.PasswordHash == nil {
+		if user.AuthProvider == "google" {
+			return model.LoginResponse{}, errors.New("tài khoản này chỉ hỗ trợ đăng nhập bằng Google")
+		}
+		return model.LoginResponse{}, errors.New("tài khoản chưa được cấu hình mật khẩu")
+	}
+
 	//  So sánh mật khẩu
-	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password))
+	err = bcrypt.CompareHashAndPassword([]byte(*user.PasswordHash), []byte(req.Password))
 	if err != nil {
 		logger.WarnLogger.Printf("Login thất bại (Sai pass) cho user: %s", user.Username)
 		return model.LoginResponse{}, errors.New("tài khoản hoặc mật khẩu không đúng")
@@ -148,6 +185,131 @@ func (c *userController) Login(req model.LoginRequest) (model.LoginResponse, err
 
 	logger.InfoLogger.Printf("Login thành công: %s", user.Username)
 	return response, nil
+}
+
+func (c *userController) GoogleLogin(req model.GoogleLoginRequest) (model.LoginResponse, error) {
+	clientID := os.Getenv("GOOGLE_CLIENT_ID")
+	if clientID == "" {
+		return model.LoginResponse{}, errors.New("server chưa cấu hình GOOGLE_CLIENT_ID")
+	}
+
+	tokenInfo, err := verifyGoogleIDToken(context.Background(), req.Credential, clientID)
+	if err != nil {
+		logger.WarnLogger.Printf("Google token verification failed: %v", err)
+		return model.LoginResponse{}, errors.New("google credential không hợp lệ")
+	}
+
+	if !parseGoogleBool(tokenInfo.EmailVerified) {
+		return model.LoginResponse{}, errors.New("email Google chưa được xác minh")
+	}
+
+	userData, err := c.resolveGoogleUser(tokenInfo)
+	if err != nil {
+		return model.LoginResponse{}, err
+	}
+
+	accessToken, refreshToken, err := generateTokens(userData.ID, userData.Role)
+	if err != nil {
+		return model.LoginResponse{}, err
+	}
+
+	activityAt := time.Now()
+	refreshTokenExpiry := activityAt.Add(7 * 24 * time.Hour)
+	if err := c.UserRepo.UpdateRefreshToken(userData.ID, refreshToken, refreshTokenExpiry); err != nil {
+		return model.LoginResponse{}, err
+	}
+
+	userData.LastActiveAt = &activityAt
+	return model.LoginResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		User:         toUserProfileResponse(userData),
+	}, nil
+}
+
+func (c *userController) SendEmailVerificationOTP(req model.SendEmailVerificationOTPRequest) error {
+	userData, err := c.UserRepo.GetUserByIdentifier(req.Email)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return errors.New("email chưa được đăng ký")
+		}
+		return err
+	}
+
+	if userData.DeletedAt != nil {
+		return errors.New("tài khoản này đã bị xóa")
+	}
+	if !userData.IsActive {
+		return errors.New("tài khoản này đã bị khóa")
+	}
+	if userData.EmailVerified {
+		return errors.New("email này đã được xác minh")
+	}
+
+	latestOTP, err := c.UserRepo.GetLatestPendingEmailVerificationOTP(userData.ID, userData.Email)
+	if err == nil && time.Since(latestOTP.CreatedAt) < emailVerificationOTPCooldown {
+		remaining := int((emailVerificationOTPCooldown - time.Since(latestOTP.CreatedAt)).Seconds())
+		if remaining < 1 {
+			remaining = 1
+		}
+		return fmt.Errorf("vui lòng chờ %d giây trước khi gửi lại OTP", remaining)
+	}
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+
+	otpCode, err := generateOTPCode()
+	if err != nil {
+		return err
+	}
+	otpHash := hashOTP(otpCode)
+	expiresAt := time.Now().Add(emailVerificationOTPExpiry)
+
+	if err := c.UserRepo.CreateEmailVerificationOTP(userData.ID, userData.Email, otpHash, expiresAt); err != nil {
+		return err
+	}
+
+	if err := sendVerificationEmail(userData.Email, otpCode); err != nil {
+		logger.ErrorLogger.Printf("Failed to send verification email to %s: %v", userData.Email, err)
+		return errors.New("không thể gửi email OTP, kiểm tra cấu hình SMTP")
+	}
+
+	return nil
+}
+
+func (c *userController) VerifyEmailVerificationOTP(req model.VerifyEmailVerificationOTPRequest) error {
+	userData, err := c.UserRepo.GetUserByIdentifier(req.Email)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return errors.New("email chưa được đăng ký")
+		}
+		return err
+	}
+
+	if userData.EmailVerified {
+		return errors.New("email này đã được xác minh")
+	}
+
+	otpHash := hashOTP(req.OTP)
+	otpRecord, err := c.UserRepo.GetPendingEmailVerificationOTPByHash(userData.ID, userData.Email, otpHash)
+	if err != nil {
+		if latestOTP, latestErr := c.UserRepo.GetLatestPendingEmailVerificationOTP(userData.ID, userData.Email); latestErr == nil {
+			_ = c.UserRepo.IncrementEmailVerificationAttempts(latestOTP.ID)
+		}
+		if errors.Is(err, sql.ErrNoRows) {
+			return errors.New("otp không đúng hoặc đã hết hạn")
+		}
+		return err
+	}
+
+	if err := c.UserRepo.MarkEmailVerified(userData.ID); err != nil {
+		return err
+	}
+	if err := c.UserRepo.ConsumeEmailVerificationOTP(otpRecord.ID); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Hàm Logout: Hủy refresh token của user
@@ -187,7 +349,8 @@ func (c *userController) CreateAdmin(req model.RegisterRequest) (model.AdminUser
 	newAdmin := model.User{
 		Username:     req.Username,
 		Email:        req.Email,
-		PasswordHash: string(hashedPassword),
+		PasswordHash: stringPtr(string(hashedPassword)),
+		AuthProvider: "local",
 		Role:         "admin",
 		IsActive:     true,
 	}
@@ -418,4 +581,192 @@ func (c *userController) RefreshToken(req model.RefreshTokenRequest) (model.Refr
 		AccessToken:  newAccessToken,
 		RefreshToken: newRefreshToken,
 	}, nil
+}
+
+func (c *userController) resolveGoogleUser(tokenInfo googleTokenInfoResponse) (model.User, error) {
+	userData, err := c.UserRepo.GetUserByProviderID("google", tokenInfo.Sub)
+	switch {
+	case err == nil:
+		if userData.DeletedAt != nil {
+			return model.User{}, errors.New("tài khoản này đã bị xóa")
+		}
+		if !userData.IsActive {
+			return model.User{}, errors.New("tài khoản này đã bị khóa")
+		}
+		return userData, nil
+	case !errors.Is(err, sql.ErrNoRows):
+		return model.User{}, err
+	}
+
+	existingUser, err := c.UserRepo.GetUserByIdentifier(tokenInfo.Email)
+	switch {
+	case err == nil:
+		if existingUser.DeletedAt != nil {
+			return model.User{}, errors.New("tài khoản này đã bị xóa")
+		}
+		if !existingUser.IsActive {
+			return model.User{}, errors.New("tài khoản này đã bị khóa")
+		}
+		return c.UserRepo.LinkGoogleAccount(existingUser.ID, tokenInfo.Sub, optionalString(tokenInfo.Picture), true)
+	case !errors.Is(err, sql.ErrNoRows):
+		return model.User{}, err
+	}
+
+	username, err := c.generateUniqueUsername(tokenInfo.Name, tokenInfo.Email)
+	if err != nil {
+		return model.User{}, err
+	}
+
+	newUser := model.User{
+		Username:       username,
+		Email:          tokenInfo.Email,
+		AuthProvider:   "google",
+		ProviderUserID: stringPtr(tokenInfo.Sub),
+		EmailVerified:  true,
+		AvatarURL:      optionalString(tokenInfo.Picture),
+		Role:           "user",
+		IsActive:       true,
+	}
+
+	return c.UserRepo.CreateUser(newUser)
+}
+
+func (c *userController) generateUniqueUsername(name string, email string) (string, error) {
+	base := sanitizeUsername(name)
+	if base == "" {
+		localPart := strings.Split(email, "@")[0]
+		base = sanitizeUsername(localPart)
+	}
+	if len(base) < 3 {
+		base += "shopvn"
+		base = sanitizeUsername(base)
+	}
+	if len(base) > 24 {
+		base = base[:24]
+	}
+
+	candidate := base
+	for attempt := 0; attempt < 1000; attempt++ {
+		existingUser, err := c.UserRepo.GetUserByIdentifier(candidate)
+		if errors.Is(err, sql.ErrNoRows) {
+			return candidate, nil
+		}
+		if err != nil {
+			return "", err
+		}
+		if existingUser.ID == 0 {
+			return candidate, nil
+		}
+		candidate = base + strconv.Itoa(attempt+1)
+		if len(candidate) > 30 {
+			candidate = candidate[:30]
+		}
+	}
+
+	return "", errors.New("không thể tạo username khả dụng từ tài khoản Google")
+}
+
+func sanitizeUsername(value string) string {
+	nonAlphaNum := regexp.MustCompile(`[^a-z0-9]+`)
+	sanitized := strings.ToLower(value)
+	sanitized = nonAlphaNum.ReplaceAllString(sanitized, "")
+	return sanitized
+}
+
+func verifyGoogleIDToken(ctx context.Context, credential string, clientID string) (googleTokenInfoResponse, error) {
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodGet,
+		"https://oauth2.googleapis.com/tokeninfo?id_token="+credential,
+		nil,
+	)
+	if err != nil {
+		return googleTokenInfoResponse{}, err
+	}
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return googleTokenInfoResponse{}, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return googleTokenInfoResponse{}, errors.New("google tokeninfo rejected credential")
+	}
+
+	var payload googleTokenInfoResponse
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		return googleTokenInfoResponse{}, err
+	}
+
+	if payload.Aud != clientID {
+		return googleTokenInfoResponse{}, errors.New("google aud mismatch")
+	}
+	if payload.Iss != "accounts.google.com" && payload.Iss != "https://accounts.google.com" {
+		return googleTokenInfoResponse{}, errors.New("google iss mismatch")
+	}
+	if payload.Sub == "" || payload.Email == "" {
+		return googleTokenInfoResponse{}, errors.New("google token missing required claims")
+	}
+
+	return payload, nil
+}
+
+func parseGoogleBool(value string) bool {
+	return strings.EqualFold(value, "true")
+}
+
+func optionalString(value string) *string {
+	if strings.TrimSpace(value) == "" {
+		return nil
+	}
+	return &value
+}
+
+func stringPtr(value string) *string {
+	return &value
+}
+
+func generateOTPCode() (string, error) {
+	var buf [6]byte
+	for i := range buf {
+		randomByte := []byte{0}
+		if _, err := rand.Read(randomByte); err != nil {
+			return "", err
+		}
+		buf[i] = '0' + (randomByte[0] % 10)
+	}
+	return string(buf[:]), nil
+}
+
+func hashOTP(otp string) string {
+	sum := sha256.Sum256([]byte(otp))
+	return fmt.Sprintf("%x", sum[:])
+}
+
+func sendVerificationEmail(toEmail string, otpCode string) error {
+	smtpHost := os.Getenv("SMTP_HOST")
+	smtpPort := os.Getenv("SMTP_PORT")
+	smtpUsername := os.Getenv("SMTP_USERNAME")
+	smtpPassword := os.Getenv("SMTP_PASSWORD")
+	smtpFrom := os.Getenv("SMTP_FROM")
+
+	if smtpHost == "" || smtpPort == "" || smtpUsername == "" || smtpPassword == "" || smtpFrom == "" {
+		return errors.New("missing SMTP env config")
+	}
+
+	auth := smtp.PlainAuth("", smtpUsername, smtpPassword, smtpHost)
+	subject := "Mã OTP xác minh email"
+	body := fmt.Sprintf(
+		"Xin chao,\r\n\r\nMa OTP xac minh email cua ban la: %s\r\nMa nay co hieu luc trong 5 phut.\r\n\r\nNeu ban khong yeu cau, hay bo qua email nay.\r\n",
+		otpCode,
+	)
+	message := []byte(
+		fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n%s",
+			smtpFrom, toEmail, subject, body),
+	)
+
+	addr := net.JoinHostPort(smtpHost, smtpPort)
+	return smtp.SendMail(addr, auth, smtpFrom, []string{toEmail}, message)
 }

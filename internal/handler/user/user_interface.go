@@ -8,6 +8,12 @@ type UserHandler interface {
 
 	Login(w http.ResponseWriter, r *http.Request) // Đăng nhập tài khoản người dùng
 
+	GoogleLogin(w http.ResponseWriter, r *http.Request) // Đăng nhập bằng Google
+
+	SendEmailVerificationOTP(w http.ResponseWriter, r *http.Request) // Gửi OTP xác minh email
+
+	VerifyEmailVerificationOTP(w http.ResponseWriter, r *http.Request) // Xác minh OTP email
+
 	Logout(w http.ResponseWriter, r *http.Request) // Đăng xuất tài khoản người dùng
 
 	CreateAdmin(w http.ResponseWriter, r *http.Request) // Tạo tài khoản admin mới

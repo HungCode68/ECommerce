@@ -69,6 +69,9 @@ type AdminVariantResponse struct {
 }
 
 type UserVariantResponse struct {
+	ID            int64   `json:"id"`
+	ProductID     int64   `json:"product_id"`
+	SKU           string  `json:"sku"`
 	Title         string  `json:"title"`
 	OptionValues  string  `json:"option_values"`
 	Price         float64 `json:"price"`

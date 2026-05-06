@@ -9,6 +9,7 @@ import (
 	"golang/internal/logger"
 	"golang/internal/middleware"
 	"golang/internal/model"
+	userRepo "golang/internal/repository/user"
 	"golang/internal/utils"
 	"golang/internal/validator"
 )
@@ -18,11 +19,13 @@ const maxBodySize = 1 << 20
 
 type cartHandler struct {
 	CartController cart.CartController
+	UserRepo       userRepo.UserRepo
 }
 
-func NewCartHandler(cController cart.CartController) CartHandler {
+func NewCartHandler(cController cart.CartController, userRepository userRepo.UserRepo) CartHandler {
 	return &cartHandler{
 		CartController: cController,
+		UserRepo:       userRepository,
 	}
 }
 
@@ -151,6 +154,16 @@ func (h *cartHandler) CalculateCheckoutPreview(w http.ResponseWriter, r *http.Re
 	userID, ok := middleware.GetUserIDFromContext(r.Context())
 	if !ok || userID == 0 {
 		utils.WriteError(w, http.StatusUnauthorized, "Unauthorized", nil)
+		return
+	}
+
+	userData, err := h.UserRepo.GetUserByID(userID)
+	if err != nil {
+		utils.WriteError(w, http.StatusUnauthorized, "Không xác định được người dùng", nil)
+		return
+	}
+	if !userData.EmailVerified {
+		utils.WriteError(w, http.StatusForbidden, "Vui lòng xác minh email trước khi thanh toán", nil)
 		return
 	}
 

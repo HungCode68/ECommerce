@@ -8,6 +8,36 @@ import (
 	"time"
 )
 
+type rowScanner interface {
+	Scan(dest ...any) error
+}
+
+func scanFullUser(scanner rowScanner) (model.User, error) {
+	var user model.User
+	err := scanner.Scan(
+		&user.ID,
+		&user.Username,
+		&user.Email,
+		&user.PasswordHash,
+		&user.AuthProvider,
+		&user.ProviderUserID,
+		&user.EmailVerified,
+		&user.AvatarURL,
+		&user.Role,
+		&user.IsActive,
+		&user.RefreshToken,
+		&user.RefreshTokenExpiry,
+		&user.LastActiveAt,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+		&user.DeletedAt,
+	)
+	if err != nil {
+		return model.User{}, err
+	}
+	return user, nil
+}
+
 // UserDb implement UserRepo
 type UserDb struct {
 	db *sql.DB
@@ -22,25 +52,12 @@ func NewUserDb(db *sql.DB) UserRepo {
 func (u *UserDb) GetUserByIdentifier(identifier string) (model.User, error) {
 	logger.DebugLogger.Printf("Starting GetUserByIdentifier for: %s", identifier)
 
-	query := "SELECT id, username, email, password_hash, role, is_active, refresh_token, refresh_token_expiry, last_active_at, created_at, updated_at, deleted_at FROM users WHERE (username = ? OR email = ?) "
+	query := `SELECT id, username, email, password_hash, auth_provider, provider_user_id,
+		email_verified, avatar_url, role, is_active, refresh_token, refresh_token_expiry,
+		last_active_at, created_at, updated_at, deleted_at
+		FROM users WHERE (username = ? OR email = ?)`
 
-	var user model.User
-
-	// Thực hiện truy vấn
-	err := u.db.QueryRow(query, identifier, identifier).Scan(
-		&user.ID,
-		&user.Username,
-		&user.Email,
-		&user.PasswordHash,
-		&user.Role,
-		&user.IsActive,
-		&user.RefreshToken,
-		&user.RefreshTokenExpiry,
-		&user.LastActiveAt,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-		&user.DeletedAt,
-	)
+	user, err := scanFullUser(u.db.QueryRow(query, identifier, identifier))
 
 	// Xử lý lỗi
 	if err != nil {
@@ -56,12 +73,25 @@ func (u *UserDb) GetUserByIdentifier(identifier string) (model.User, error) {
 	return user, nil
 }
 
+func (u *UserDb) GetUserByProviderID(provider string, providerUserID string) (model.User, error) {
+	query := `SELECT id, username, email, password_hash, auth_provider, provider_user_id,
+		email_verified, avatar_url, role, is_active, refresh_token, refresh_token_expiry,
+		last_active_at, created_at, updated_at, deleted_at
+		FROM users WHERE auth_provider = ? AND provider_user_id = ?`
+
+	user, err := scanFullUser(u.db.QueryRow(query, provider, providerUserID))
+	if err != nil {
+		return model.User{}, err
+	}
+	return user, nil
+}
+
 // Hàm lấy tất cả Users
 func (u *UserDb) GetAllUsers() ([]model.User, error) {
 	logger.DebugLogger.Println("Starting GetAllUser")
 
 	// Truy vấn lấy tất cả users
-	rows, err := u.db.Query("SELECT id, username, email, role, is_active, last_active_at, created_at, updated_at, deleted_at FROM users")
+	rows, err := u.db.Query("SELECT id, username, email, email_verified, role, is_active, last_active_at, created_at, updated_at, deleted_at FROM users")
 	if err != nil {
 		logger.ErrorLogger.Printf("Query GetAllUser Failed: %v", err)
 		return nil, err
@@ -71,7 +101,7 @@ func (u *UserDb) GetAllUsers() ([]model.User, error) {
 	var UserSlice []model.User
 	for rows.Next() {
 		var user model.User
-		err := rows.Scan(&user.ID, &user.Username, &user.Email, &user.Role, &user.IsActive, &user.LastActiveAt, &user.CreatedAt, &user.UpdatedAt, &user.DeletedAt)
+		err := rows.Scan(&user.ID, &user.Username, &user.Email, &user.EmailVerified, &user.Role, &user.IsActive, &user.LastActiveAt, &user.CreatedAt, &user.UpdatedAt, &user.DeletedAt)
 		if err != nil {
 			logger.ErrorLogger.Printf("Row Scan Failed: %v", err)
 			return nil, err
@@ -85,10 +115,12 @@ func (u *UserDb) GetAllUsers() ([]model.User, error) {
 // Hàm lấy User theo ID
 func (u *UserDb) GetUserByID(id int64) (model.User, error) {
 	logger.DebugLogger.Printf("Starting GetUserByID for ID: %d\n", id)
-	var user model.User
-	query := "SELECT id, username, email, role, is_active, last_active_at, created_at, updated_at, deleted_at FROM users WHERE id = ?"
+	query := `SELECT id, username, email, password_hash, auth_provider, provider_user_id,
+		email_verified, avatar_url, role, is_active, refresh_token, refresh_token_expiry,
+		last_active_at, created_at, updated_at, deleted_at
+		FROM users WHERE id = ?`
 
-	err := u.db.QueryRow(query, id).Scan(&user.ID, &user.Username, &user.Email, &user.Role, &user.IsActive, &user.LastActiveAt, &user.CreatedAt, &user.UpdatedAt, &user.DeletedAt)
+	user, err := scanFullUser(u.db.QueryRow(query, id))
 	if err != nil {
 		logger.ErrorLogger.Printf("GetUserById failed: %v", err)
 		return model.User{}, err
@@ -100,7 +132,7 @@ func (u *UserDb) GetUserByID(id int64) (model.User, error) {
 // Hàm tìm kiếm Users theo từ khóa (username hoặc email)
 func (u *UserDb) SearchUsers(filter model.UserFilter) ([]model.User, int, error) {
 	logger.DebugLogger.Printf("Repo: Starting SearchUsers with Filter: %+v", filter)
-	query := `SELECT id, username, email, role, is_active, last_active_at, created_at, updated_at, deleted_at 
+	query := `SELECT id, username, email, email_verified, role, is_active, last_active_at, created_at, updated_at, deleted_at 
               FROM users 
               WHERE 1=1`
 
@@ -162,7 +194,7 @@ func (u *UserDb) SearchUsers(filter model.UserFilter) ([]model.User, int, error)
 	for rows.Next() {
 		var user model.User
 		err := rows.Scan(
-			&user.ID, &user.Username, &user.Email, &user.Role,
+			&user.ID, &user.Username, &user.Email, &user.EmailVerified, &user.Role,
 			&user.IsActive, &user.LastActiveAt, &user.CreatedAt, &user.UpdatedAt, &user.DeletedAt,
 		)
 		if err != nil {
@@ -181,9 +213,25 @@ func (u *UserDb) CreateUser(user model.User) (model.User, error) {
 
 	now := time.Now()
 
-	query := "INSERT INTO users (username, email, password_hash, role, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+	query := `INSERT INTO users (
+		username, email, password_hash, auth_provider, provider_user_id,
+		email_verified, avatar_url, role, is_active, created_at, updated_at
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
-	result, err := u.db.Exec(query, user.Username, user.Email, user.PasswordHash, user.Role, true, now, now)
+	result, err := u.db.Exec(
+		query,
+		user.Username,
+		user.Email,
+		user.PasswordHash,
+		user.AuthProvider,
+		user.ProviderUserID,
+		user.EmailVerified,
+		user.AvatarURL,
+		user.Role,
+		true,
+		now,
+		now,
+	)
 	if err != nil {
 		logger.ErrorLogger.Printf("CreateUser Failed: %v", err)
 		return model.User{}, err
@@ -198,13 +246,18 @@ func (u *UserDb) CreateUser(user model.User) (model.User, error) {
 
 	// Trả về User vừa tạo
 	createUser := model.User{
-		ID:        newId,
-		Username:  user.Username,
-		Email:     user.Email,
-		Role:      user.Role,
-		IsActive:  true,
-		CreatedAt: now,
-		UpdatedAt: now,
+		ID:             newId,
+		Username:       user.Username,
+		Email:          user.Email,
+		PasswordHash:   user.PasswordHash,
+		AuthProvider:   user.AuthProvider,
+		ProviderUserID: user.ProviderUserID,
+		EmailVerified:  user.EmailVerified,
+		AvatarURL:      user.AvatarURL,
+		Role:           user.Role,
+		IsActive:       true,
+		CreatedAt:      now,
+		UpdatedAt:      now,
 	}
 	logger.InfoLogger.Printf("CreateUser success with ID: %d", newId)
 	return createUser, nil
@@ -246,12 +299,14 @@ func (u *UserDb) UpdateUserProfile(id int64, req model.UserUpdateProfileRequest)
 	queryUpdate := `UPDATE users 
 					SET username = COALESCE(?, username), 
 						email = COALESCE(?, email), 
+						email_verified = CASE WHEN ? IS NULL THEN email_verified ELSE 0 END,
 						password_hash = COALESCE(?, password_hash),
 						updated_at = ? 
 					WHERE id = ? AND deleted_at IS NULL`
 
 	_, err := u.db.Exec(queryUpdate,
 		req.Username,
+		req.Email,
 		req.Email,
 		req.Password,
 		now,
@@ -273,6 +328,23 @@ func (u *UserDb) UpdateRefreshToken(id int64, token string, expiry time.Time) er
 	query := `UPDATE users SET refresh_token = ?, refresh_token_expiry = ?, last_active_at = NOW(), updated_at = NOW() WHERE id = ?`
 	_, err := u.db.Exec(query, token, expiry, id)
 	return err
+}
+
+func (u *UserDb) LinkGoogleAccount(userID int64, providerUserID string, avatarURL *string, emailVerified bool) (model.User, error) {
+	query := `UPDATE users
+		SET auth_provider = 'google',
+			provider_user_id = ?,
+			email_verified = ?,
+			avatar_url = COALESCE(?, avatar_url),
+			updated_at = NOW()
+		WHERE id = ? AND deleted_at IS NULL`
+
+	_, err := u.db.Exec(query, providerUserID, emailVerified, avatarURL, userID)
+	if err != nil {
+		return model.User{}, err
+	}
+
+	return u.GetUserByID(userID)
 }
 
 // Hàm xóa nhiều User cùng lúc (soft delete)
@@ -390,4 +462,91 @@ func (u *UserDb) GetUserByRefreshToken(refreshToken string) (model.User, error) 
 		return model.User{}, err
 	}
 	return user, nil
+}
+
+func (u *UserDb) GetLatestPendingEmailVerificationOTP(userID int64, email string) (model.EmailVerificationOTP, error) {
+	query := `SELECT id, user_id, email, otp_hash, expires_at, attempts, consumed_at, created_at
+		FROM email_verification_otps
+		WHERE user_id = ? AND email = ? AND consumed_at IS NULL
+		ORDER BY created_at DESC
+		LIMIT 1`
+
+	var otp model.EmailVerificationOTP
+	err := u.db.QueryRow(query, userID, email).Scan(
+		&otp.ID,
+		&otp.UserID,
+		&otp.Email,
+		&otp.OTPHash,
+		&otp.ExpiresAt,
+		&otp.Attempts,
+		&otp.ConsumedAt,
+		&otp.CreatedAt,
+	)
+	if err != nil {
+		return model.EmailVerificationOTP{}, err
+	}
+	return otp, nil
+}
+
+func (u *UserDb) GetPendingEmailVerificationOTPByHash(userID int64, email string, otpHash string) (model.EmailVerificationOTP, error) {
+	query := `SELECT id, user_id, email, otp_hash, expires_at, attempts, consumed_at, created_at
+		FROM email_verification_otps
+		WHERE user_id = ? AND email = ? AND otp_hash = ? AND consumed_at IS NULL AND expires_at > NOW()
+		ORDER BY created_at DESC
+		LIMIT 1`
+
+	var otp model.EmailVerificationOTP
+	err := u.db.QueryRow(query, userID, email, otpHash).Scan(
+		&otp.ID,
+		&otp.UserID,
+		&otp.Email,
+		&otp.OTPHash,
+		&otp.ExpiresAt,
+		&otp.Attempts,
+		&otp.ConsumedAt,
+		&otp.CreatedAt,
+	)
+	if err != nil {
+		return model.EmailVerificationOTP{}, err
+	}
+	return otp, nil
+}
+
+func (u *UserDb) CreateEmailVerificationOTP(userID int64, email string, otpHash string, expiresAt time.Time) error {
+	tx, err := u.db.Begin()
+	if err != nil {
+		return err
+	}
+
+	invalidateQuery := `UPDATE email_verification_otps
+		SET consumed_at = NOW()
+		WHERE user_id = ? AND email = ? AND consumed_at IS NULL`
+	if _, err := tx.Exec(invalidateQuery, userID, email); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	insertQuery := `INSERT INTO email_verification_otps (user_id, email, otp_hash, expires_at, attempts, created_at)
+		VALUES (?, ?, ?, ?, 0, NOW())`
+	if _, err := tx.Exec(insertQuery, userID, email, otpHash, expiresAt); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func (u *UserDb) ConsumeEmailVerificationOTP(id int64) error {
+	_, err := u.db.Exec(`UPDATE email_verification_otps SET consumed_at = NOW() WHERE id = ?`, id)
+	return err
+}
+
+func (u *UserDb) IncrementEmailVerificationAttempts(id int64) error {
+	_, err := u.db.Exec(`UPDATE email_verification_otps SET attempts = attempts + 1 WHERE id = ?`, id)
+	return err
+}
+
+func (u *UserDb) MarkEmailVerified(userID int64) error {
+	_, err := u.db.Exec(`UPDATE users SET email_verified = 1, updated_at = NOW() WHERE id = ?`, userID)
+	return err
 }

@@ -8,7 +8,11 @@ type User struct {
 	ID                 int64      `db:"id"`
 	Username           string     `db:"username"`
 	Email              string     `db:"email"`
-	PasswordHash       string     `db:"password_hash"`
+	PasswordHash       *string    `db:"password_hash"`
+	AuthProvider       string     `db:"auth_provider"`
+	ProviderUserID     *string    `db:"provider_user_id"`
+	EmailVerified      bool       `db:"email_verified"`
+	AvatarURL          *string    `db:"avatar_url"`
 	Role               string     `db:"role"`
 	IsActive           bool       `db:"is_active"`
 	RefreshToken       *string    `db:"refresh_token"`
@@ -32,6 +36,10 @@ type LoginRequest struct {
 	Password   string `json:"password"   validate:"required,min=6,max=30"`
 }
 
+type GoogleLoginRequest struct {
+	Credential string `json:"credential" validate:"required"`
+}
+
 // Lọc dữ liệu tài khoản
 type UserFilter struct {
 	Keyword   string `validate:"omitempty,max=100"`
@@ -47,6 +55,15 @@ type UserUpdateProfileRequest struct {
 	Username *string `json:"username,omitempty" validate:"omitempty,min=3,max=100,alphanum"`
 	Email    *string `json:"email,omitempty"    validate:"omitempty,email"`
 	Password *string `json:"password,omitempty" validate:"omitempty,min=6,max=30"`
+}
+
+type SendEmailVerificationOTPRequest struct {
+	Email string `json:"email" validate:"required,email"`
+}
+
+type VerifyEmailVerificationOTPRequest struct {
+	Email string `json:"email" validate:"required,email"`
+	OTP   string `json:"otp" validate:"required,len=6,numeric"`
 }
 
 // AdminUpdateUserRequest: Dùng khi admin cập nhật thông tin user
@@ -74,27 +91,29 @@ type UserPublicResponse struct {
 
 // UserProfileResponse: Dùng cho User xem và chỉnh sửa profile cá nhân
 type UserProfileResponse struct {
-	ID           int64      `json:"id"`
-	Username     string     `json:"username"`
-	Email        string     `json:"email"`
-	Role         string     `json:"role"`
-	IsActive     bool       `json:"is_active"`
-	CreatedAt    time.Time  `json:"created_at"`
-	UpdatedAt    time.Time  `json:"updated_at"`
-	LastActiveAt *time.Time `json:"last_active_at,omitempty"`
+	ID            int64      `json:"id"`
+	Username      string     `json:"username"`
+	Email         string     `json:"email"`
+	EmailVerified bool       `json:"email_verified"`
+	Role          string     `json:"role"`
+	IsActive      bool       `json:"is_active"`
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
+	LastActiveAt  *time.Time `json:"last_active_at,omitempty"`
 }
 
 // AdminUserResponse: Dùng cho Admin quản lý
 type AdminUserResponse struct {
-	ID           int64      `json:"id"`
-	Username     string     `json:"username"`
-	Email        string     `json:"email"`
-	Role         string     `json:"role"`
-	IsActive     bool       `json:"is_active"`
-	CreatedAt    time.Time  `json:"created_at"`
-	UpdatedAt    time.Time  `json:"updated_at"`
-	LastActiveAt *time.Time `json:"last_active_at,omitempty"`
-	DeletedAt    *time.Time `json:"deleted_at"`
+	ID            int64      `json:"id"`
+	Username      string     `json:"username"`
+	Email         string     `json:"email"`
+	EmailVerified bool       `json:"email_verified"`
+	Role          string     `json:"role"`
+	IsActive      bool       `json:"is_active"`
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
+	LastActiveAt  *time.Time `json:"last_active_at,omitempty"`
+	DeletedAt     *time.Time `json:"deleted_at"`
 }
 
 // LoginResponse: Trả về UserProfileResponse
@@ -108,6 +127,17 @@ type LoginResponse struct {
 type RefreshTokenResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
+}
+
+type EmailVerificationOTP struct {
+	ID         int64      `db:"id"`
+	UserID     int64      `db:"user_id"`
+	Email      string     `db:"email"`
+	OTPHash    string     `db:"otp_hash"`
+	ExpiresAt  time.Time  `db:"expires_at"`
+	Attempts   int        `db:"attempts"`
+	ConsumedAt *time.Time `db:"consumed_at"`
+	CreatedAt  time.Time  `db:"created_at"`
 }
 
 // APIResponse: Cấu trúc JSON trả về chuẩn cho mọi API

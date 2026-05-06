@@ -6,7 +6,9 @@ export const getVariantStock = (variant: ProductVariant | null | undefined): num
 
 export const getVariantPrice = (variant: ProductVariant | null | undefined, basePrice?: number): number => {
   if (!variant) return basePrice ?? 0;
-  return variant.price_override && variant.price_override > 0 ? variant.price_override : (basePrice ?? 0);
+  if (variant.price_override && variant.price_override > 0) return variant.price_override;
+  if (variant.price && variant.price > 0) return variant.price;
+  return basePrice ?? 0;
 };
 
 export const getCheapestVariant = (

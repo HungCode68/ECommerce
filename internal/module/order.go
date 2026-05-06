@@ -11,6 +11,7 @@ import (
 	order "golang/internal/repository/order"
 	"golang/internal/repository/product"
 	"golang/internal/repository/productvariant"
+	userRepository "golang/internal/repository/user"
 
 	couponsRepository "golang/internal/repository/coupons"
 
@@ -24,6 +25,7 @@ func InitOrderModule(db *sql.DB, mux *http.ServeMux) {
 	addressRepo := address.NewAddressDb(db)
 
 	couponRepo := couponsRepository.NewCouponsRepository(db)
+	userRepo := userRepository.NewUserDb(db)
 
 	//  Khởi tạo Controller
 	ctrl := orderController.NewOrderController(
@@ -35,7 +37,7 @@ func InitOrderModule(db *sql.DB, mux *http.ServeMux) {
 	)
 
 	//  Khởi tạo Handler
-	hdl := orderHandler.NewOrderHandler(ctrl)
+	hdl := orderHandler.NewOrderHandler(ctrl, userRepo)
 
 	//  Đăng ký Router
 	router.NewOrderRouter(mux, hdl)

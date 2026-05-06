@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Loader2, Tag } from 'lucide-react'
+import axios from 'axios'
 import { cartApi } from '@/api/cart.api'
 import { orderApi } from '@/api/order.api'
 import { addressApi } from '@/api/address.api'
@@ -66,7 +67,14 @@ export function CheckoutPage() {
       qc.invalidateQueries({ queryKey: queryKeys.cart })
       navigate(ROUTES.ORDER_DETAIL(order.id))
     },
-    onError: () => toast.error('Đặt hàng thất bại, vui lòng thử lại'),
+    onError: (error) => {
+      if (axios.isAxiosError(error) && error.response?.status === 403) {
+        toast.error(error.response?.data?.message || 'Vui lòng xác minh email trước khi đặt hàng')
+        navigate(ROUTES.PROFILE)
+        return
+      }
+      toast.error('Đặt hàng thất bại, vui lòng thử lại')
+    },
   })
 
   const applyCoupon = async () => {

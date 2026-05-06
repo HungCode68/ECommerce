@@ -23,12 +23,7 @@ const SIDEBAR_NAV: NavItem[] = [
   { to: ROUTES.ADMIN_SETTINGS, label: 'Cài đặt', icon: 'settings' },
 ]
 
-const HEADER_NAV = [
-  { label: 'Overview', to: ROUTES.ADMIN_DASHBOARD },
-  { label: 'Operations', to: ROUTES.ADMIN_ORDERS },
-  { label: 'Workflows', to: ROUTES.ADMIN_PRODUCTS },
-  { label: 'Compliance', to: ROUTES.ADMIN_SETTINGS },
-]
+
 
 function iconClass(isActive: boolean) {
   return cn(
@@ -50,10 +45,10 @@ export function AdminLayout() {
         <div className="mb-10 px-8">
           <div className="space-y-1">
             <h1 className="font-headline text-lg font-bold text-slate-900">
-              Kinetic Admin
+              KC29 TECH Admin
             </h1>
             <p className="text-[10px] uppercase tracking-[0.35em] text-slate-500">
-              Management Suite
+              Quản lý hệ thống
             </p>
           </div>
         </div>
@@ -92,41 +87,17 @@ export function AdminLayout() {
           <div className="mx-4 rounded-xl bg-surface-container-low p-4">
             <div className="mb-2 flex items-center gap-2">
               <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-cyan-500" />
-              <p className="text-xs font-bold text-slate-900">System Status: Active</p>
+              <p className="text-xs font-bold text-slate-900">Trạng thái hệ thống: Hoạt động</p>
             </div>
             <p className="text-xs leading-5 text-slate-500">
-              All modules operating at 100% capacity.
+              Hệ thống hoạt động với 100% công suất.
             </p>
           </div>
         </div>
       </aside>
 
       <div className="ml-64 flex min-h-screen flex-col">
-        <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b border-slate-200/60 bg-white/70 px-8 shadow-sm backdrop-blur-[24px]">
-          <div className="flex items-center gap-6">
-            <div className="font-black tracking-[0.35em] text-cyan-500">
-              KINETIC
-            </div>
-
-            <nav className="hidden items-center gap-4 md:flex">
-              {HEADER_NAV.map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  end={item.to === ROUTES.ADMIN_DASHBOARD}
-                  className={({ isActive }) =>
-                    cn(
-                      'text-[10px] font-black uppercase tracking-[0.35em] transition-colors',
-                      isActive ? 'text-cyan-500' : 'text-slate-400 hover:text-slate-700',
-                    )
-                  }
-                >
-                  {item.label}
-                </NavLink>
-              ))}
-            </nav>
-          </div>
-
+        <header className="flex h-16 items-center justify-end px-8">
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -192,7 +163,7 @@ export function AdminLayout() {
           <footer className="grid grid-cols-1 gap-12 bg-slate-100 px-12 py-16 md:grid-cols-4">
             <div className="space-y-3">
               <div className="font-headline text-2xl font-black text-slate-900">
-                KINETIC
+                KC29 TECH
               </div>
               <p className="max-w-xs text-sm leading-6 text-slate-600">
                 Hệ thống quản trị cho vận hành, dữ liệu và thương mại điện tử theo thời gian thực.
@@ -201,31 +172,31 @@ export function AdminLayout() {
 
             <div className="space-y-3">
               <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500">
-                Support
+                Hỗ trợ
               </p>
               <ul className="space-y-2 text-sm text-slate-600">
-                <li>Tech Support</li>
-                <li>Developer API</li>
+                <li>Hỗ trợ kĩ thuật</li>
+                <li>Hỗ trợ khách hàng</li>
               </ul>
             </div>
 
             <div className="space-y-3">
               <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500">
-                Company
+                Giới thiệu
               </p>
               <ul className="space-y-2 text-sm text-slate-600">
-                <li>Sustainability</li>
-                <li>Global Warranty</li>
+                <li>Tính bền vững</li>
+                <li>Bảo hành toàn cầu</li>
               </ul>
             </div>
 
             <div className="space-y-3">
               <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500">
-                Security
+                Chính sách
               </p>
               <ul className="space-y-2 text-sm text-slate-600">
-                <li>Privacy</li>
-                <li>Terms</li>
+                <li>Bảo mật thông tin</li>
+                <li>Điều khoản</li>
               </ul>
             </div>
           </footer>

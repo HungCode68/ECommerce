@@ -13,6 +13,10 @@ const profileSchema = z.object({
   email: z.string().email('Email không hợp lệ'),
 })
 
+const otpSchema = z.object({
+  otp: z.string().length(6, 'OTP phải đủ 6 số').regex(/^\d{6}$/, 'OTP phải là 6 chữ số'),
+})
+
 const passwordSchema = z
   .object({
     old_password: z.string().min(6),
@@ -26,9 +30,10 @@ const passwordSchema = z
 
 type ProfileFormData = z.infer<typeof profileSchema>
 type PasswordFormData = z.infer<typeof passwordSchema>
+type OTPFormData = z.infer<typeof otpSchema>
 
 export function ProfilePage() {
-  const { user } = useAuthStore()
+  const { user, setUser } = useAuthStore()
 
   const {
     register: regProfile,
@@ -46,9 +51,17 @@ export function ProfilePage() {
     formState: { errors: passErrors },
   } = useForm<PasswordFormData>({ resolver: zodResolver(passwordSchema) })
 
+  const {
+    register: regOtp,
+    handleSubmit: submitOtp,
+    reset: resetOtp,
+    formState: { errors: otpErrors },
+  } = useForm<OTPFormData>({ resolver: zodResolver(otpSchema) })
+
   const { mutate: updateProfile, isPending: updatingProfile } = useMutation({
     mutationFn: (data: ProfileFormData) => authApi.updateProfile(data),
-    onSuccess: () => {
+    onSuccess: (updatedUser) => {
+      setUser(updatedUser)
       toast.success('Cập nhật thành công!')
     },
     onError: () => toast.error('Có lỗi xảy ra'),
@@ -62,6 +75,43 @@ export function ProfilePage() {
       resetPass()
     },
     onError: () => toast.error('Mật khẩu cũ không đúng'),
+  })
+
+  const { mutate: sendOtp, isPending: sendingOtp } = useMutation({
+    mutationFn: () => authApi.sendEmailVerificationOtp({ email: user?.email ?? '' }),
+    onSuccess: () => toast.success('Đã gửi OTP về email của bạn'),
+    onError: (error: unknown) => {
+      const message =
+        typeof error === 'object' &&
+        error !== null &&
+        'response' in error &&
+        typeof (error as { response?: { data?: { message?: string } } }).response?.data?.message === 'string'
+          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
+          : 'Không thể gửi OTP'
+      toast.error(message)
+    },
+  })
+
+  const { mutate: verifyOtp, isPending: verifyingOtp } = useMutation({
+    mutationFn: (data: OTPFormData) =>
+      authApi.verifyEmailVerificationOtp({ email: user?.email ?? '', otp: data.otp }),
+    onSuccess: () => {
+      if (user) {
+        setUser({ ...user, email_verified: true })
+      }
+      resetOtp()
+      toast.success('Email đã được xác minh')
+    },
+    onError: (error: unknown) => {
+      const message =
+        typeof error === 'object' &&
+        error !== null &&
+        'response' in error &&
+        typeof (error as { response?: { data?: { message?: string } } }).response?.data?.message === 'string'
+          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
+          : 'OTP không đúng hoặc đã hết hạn'
+      toast.error(message)
+    },
   })
 
   const inputClass = (hasError: boolean) =>
@@ -89,6 +139,16 @@ export function ProfilePage() {
             <label className="mb-1.5 block text-sm font-medium text-slate-700">Email</label>
             <input {...regProfile('email')} type="email" className={inputClass(!!profileErrors.email)} />
             {profileErrors.email && <p className="mt-1 text-xs text-red-500">{profileErrors.email.message}</p>}
+            <div className="mt-2 flex items-center gap-2 text-xs">
+              <span className={cn(
+                'rounded-full px-2.5 py-1 font-semibold',
+                user?.email_verified
+                  ? 'bg-emerald-100 text-emerald-700'
+                  : 'bg-amber-100 text-amber-700',
+              )}>
+                {user?.email_verified ? 'Email đã xác minh' : 'Email chưa xác minh'}
+              </span>
+            </div>
           </div>
           <div className="flex justify-end">
             <button type="submit" disabled={updatingProfile} className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-60">
@@ -98,6 +158,47 @@ export function ProfilePage() {
           </div>
         </form>
       </div>
+
+      {!user?.email_verified && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 shadow-sm">
+          <h2 className="mb-2 font-semibold text-amber-900">Xác minh email</h2>
+          <p className="mb-4 text-sm text-amber-800">
+            Bạn vẫn có thể đăng nhập, nhưng cần xác minh email trước khi thanh toán và đặt hàng.
+          </p>
+          <div className="mb-4 flex justify-start">
+            <button
+              type="button"
+              onClick={() => sendOtp()}
+              disabled={sendingOtp || !user?.email}
+              className="flex items-center gap-2 rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-amber-600 disabled:opacity-60"
+            >
+              {sendingOtp && <Loader2 className="h-4 w-4 animate-spin" />}
+              Gửi OTP tới {user?.email}
+            </button>
+          </div>
+
+          <form onSubmit={submitOtp((d) => verifyOtp(d))} className="flex flex-col gap-3 sm:flex-row">
+            <div className="flex-1">
+              <input
+                {...regOtp('otp')}
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="Nhập mã OTP 6 số"
+                className={inputClass(!!otpErrors.otp)}
+              />
+              {otpErrors.otp && <p className="mt-1 text-xs text-red-500">{otpErrors.otp.message}</p>}
+            </div>
+            <button
+              type="submit"
+              disabled={verifyingOtp}
+              className="flex items-center justify-center gap-2 rounded-xl bg-slate-800 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-700 disabled:opacity-60"
+            >
+              {verifyingOtp && <Loader2 className="h-4 w-4 animate-spin" />}
+              Xác minh OTP
+            </button>
+          </form>
+        </div>
+      )}
 
       {/* Change password */}
       <div className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm">

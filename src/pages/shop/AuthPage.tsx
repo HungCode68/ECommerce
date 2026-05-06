@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import { LoginForm } from '@/features/auth/LoginForm'
+import { GoogleLoginButton } from '@/features/auth/GoogleLoginButton'
 import { RegisterForm } from '@/features/auth/RegisterForm'
 import { ROUTES } from '@/utils/constants'
 import { cn } from '@/lib/utils'
@@ -104,19 +105,9 @@ export default function AuthPage() {
 
               {/* Social Auth */}
               <div className="grid grid-cols-2 gap-4">
-                <button 
-                  onClick={handleSocialClick}
-                  className="flex items-center justify-center gap-3 py-3 px-4 bg-surface-container-high hover:bg-surface-container-highest border border-outline-variant/10 transition-all group"
-                >
-                  <img 
-                    alt="Google Logo" 
-                    className="w-5 h-5 grayscale group-hover:grayscale-0 transition-all" 
-                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuDepHwyMHdyx_HpRK-Olirz5-t-IJYkxxoTKdh-W8srCQZFYY43lqib9rMpJR1BPN4iO7EGssxLw7-8Y_sSKl4nhF-cGs_5hLMeqtqgxzdPIOdR5s5ZiaCayElVd26ALvqZz_WOzAsSdpTB5WQrBXiFbdXP9t__ZV9kjXPfJz6zcV-7HL6c4W5jBm9UjliNRB4e4sNnM_W8_0JPRtR2MVoIVHUW1wrtnRk74wEo7mu0j3RY079csJOMWly6HokzkrHvw3cV900O4RoF" 
-                  />
-                  <span className="text-[10px] font-headline font-bold uppercase tracking-widest text-on-surface-variant group-hover:text-on-surface">
-                    Google
-                  </span>
-                </button>
+                <div className="bg-surface-container-high border border-outline-variant/10 p-2">
+                  <GoogleLoginButton />
+                </div>
                 <button 
                   onClick={handleSocialClick}
                   className="flex items-center justify-center gap-3 py-3 px-4 bg-surface-container-high hover:bg-surface-container-highest border border-outline-variant/10 transition-all group"

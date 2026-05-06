@@ -10,6 +10,15 @@ type UserController interface {
 	// Đăng nhập người dùng
 	Login(req model.LoginRequest) (model.LoginResponse, error)
 
+	// Đăng nhập bằng Google
+	GoogleLogin(req model.GoogleLoginRequest) (model.LoginResponse, error)
+
+	// Gửi OTP xác minh email
+	SendEmailVerificationOTP(req model.SendEmailVerificationOTPRequest) error
+
+	// Xác minh OTP email
+	VerifyEmailVerificationOTP(req model.VerifyEmailVerificationOTPRequest) error
+
 	// Đăng xuất người dùng
 	Logout(userID int64) error
 

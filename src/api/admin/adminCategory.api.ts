@@ -1,5 +1,5 @@
 import axiosClient from '@/lib/axiosClient'
-import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
+import type { ApiResponse } from '@/types/api.types'
 import type { Category } from '@/api/category.api'
 
 type CreateCategoryRequest = {

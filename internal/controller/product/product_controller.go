@@ -470,6 +470,9 @@ func (prt *productController) UserGetProductDetailController(reqProduct *model.G
 	for _, v := range variantsModel {
 		if v.IsActive {
 			resp := model.UserVariantResponse{
+				ID:            v.ID,
+				ProductID:     v.ProductID,
+				SKU:           v.SKU,
 				StockQuantity: v.StockQuantity,
 			}
 			if v.Title != nil {

@@ -9,7 +9,11 @@ import { AdminLayout } from '@/components/layout/AdminLayout'
 import { ROUTES } from '@/utils/constants'
 
 const LoginPage = lazy(() =>
-  import('@/pages/shop/LoginPage').then((module) => ({ default: module.LoginPage })),
+  import('@/pages/Login/LoginPage').then((module) => ({ default: module.LoginPage })),
+)
+
+const RegisterPage = lazy(() =>
+  import('@/pages/Register/RegisterPage').then((module) => ({ default: module.RegisterPage })),
 )
 
 const HomePage = lazy(() =>
@@ -122,7 +126,14 @@ export function AppRoutes() {
             </SuspensePage>
           }
         />
-        <Route path="/dang-ky" element={<Navigate to="/dang-nhap" replace />} />
+        <Route
+          path={ROUTES.REGISTER}
+          element={
+            <SuspensePage>
+              <RegisterPage />
+            </SuspensePage>
+          }
+        />
 
         <Route
           path="/admin"

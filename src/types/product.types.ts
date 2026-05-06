@@ -49,6 +49,9 @@ export type ProductSearchParams = {
   page?: number
   limit?: number
   category_id?: number
+  brand?: string
+  min_price?: number
+  max_price?: number
 }
 
 export type CreateProductRequest = {

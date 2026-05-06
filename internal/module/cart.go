@@ -11,6 +11,7 @@ import (
 	couponRepo "golang/internal/repository/coupons"
 	productRepo "golang/internal/repository/product"
 	variantRepo "golang/internal/repository/productvariant"
+	userRepo "golang/internal/repository/user"
 
 	"golang/internal/router"
 )
@@ -22,10 +23,11 @@ func InitCartModule(db *sql.DB, mux *http.ServeMux) {
 
 	repositoryProduct := productRepo.NewProductRepo(db)
 	repositoryVariant := variantRepo.NewVariantRepo(db)
+	repositoryUser := userRepo.NewUserDb(db)
 
 	controllerCart := cartCtrl.NewCartController(repositoryCart, repositoryCoupon, repositoryProduct, repositoryVariant)
 
-	handlerCart := cartHdl.NewCartHandler(controllerCart)
+	handlerCart := cartHdl.NewCartHandler(controllerCart, repositoryUser)
 
 	//  Đăng ký Router
 	router.NewCartRouter(mux, handlerCart)

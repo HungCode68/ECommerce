@@ -115,5 +115,54 @@
   .kinetic-gradient-glow {
     background: radial-gradient(circle at center, rgba(6, 182, 212, 0.15) 0%, transparent 70%);
   }
+  
+  /* Shop Redesign Styles */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+  }
+  .holographic-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, #bcc9cd 50%, transparent 100%);
+    opacity: 0.4;
+  }
+  .text-gradient {
+    background: linear-gradient(135deg, #00687a 0%, #06b6d4 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .primary-gradient {
+    background: linear-gradient(135deg, #00687a 0%, #06b6d4 100%);
+  }
+  .ghost-border {
+    border: 1px solid rgba(188, 201, 205, 0.2);
+  }
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+  }
+  .glow-effect {
+    box-shadow: 0 0 40px rgba(6, 182, 212, 0.2);
+  }
+  .ambient-shadow {
+    box-shadow: 0 10px 40px -10px rgba(23, 28, 31, 0.06);
+  }
+  .product-card {
+    transition: all 0.3s ease;
+  }
+  .product-card:hover {
+    transform: scale(1.02);
+    border-color: rgba(188, 201, 205, 0.4);
+  }
+  .gradient-text {
+    background: linear-gradient(135deg, #00687a, #06b6d4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .gradient-bg {
+    background: linear-gradient(135deg, #00687a, #06b6d4);
+  }
 }
 

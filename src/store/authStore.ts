@@ -8,6 +8,7 @@ type AuthState = {
   isAuthenticated: boolean
   hasHydrated: boolean
   setAuth: (user: User, accessToken: string, refreshToken: string) => void
+  setUser: (user: User) => void
   setAccessToken: (token: string) => void
   setHasHydrated: (hydrated: boolean) => void
   logout: () => void
@@ -24,6 +25,10 @@ export const useAuthStore = create<AuthState>()(
       setAuth: (user, accessToken, refreshToken) => {
         localStorage.setItem('refresh_token', refreshToken)
         set({ user, accessToken, isAuthenticated: true })
+      },
+
+      setUser: (user) => {
+        set({ user })
       },
 
       setAccessToken: (token) => {

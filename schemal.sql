@@ -12,7 +12,11 @@ CREATE TABLE users (
   id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
   username VARCHAR(100) NOT NULL UNIQUE,
   email VARCHAR(255) NOT NULL UNIQUE,
-  password_hash VARCHAR(255) NOT NULL,
+  password_hash VARCHAR(255) DEFAULT NULL,
+  auth_provider VARCHAR(20) NOT NULL DEFAULT 'local',
+  provider_user_id VARCHAR(255) DEFAULT NULL UNIQUE,
+  email_verified TINYINT(1) NOT NULL DEFAULT 0,
+  avatar_url VARCHAR(512) DEFAULT NULL,
   role VARCHAR(10) NOT NULL DEFAULT 'user',
   is_active TINYINT NOT NULL DEFAULT 1,
   refresh_token LONGTEXT DEFAULT NULL,
@@ -21,8 +25,25 @@ CREATE TABLE users (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   deleted_at DATETIME DEFAULT NULL,
-  CONSTRAINT CHK_UserRole CHECK (role IN ('user','admin'))
+  CONSTRAINT CHK_UserRole CHECK (role IN ('user','admin')),
+  CONSTRAINT chk_users_auth_provider CHECK (auth_provider IN ('local','google'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE INDEX idx_users_auth_provider ON users(auth_provider);
+CREATE INDEX idx_users_email_provider ON users(email, auth_provider);
+
+CREATE TABLE email_verification_otps (
+  id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  otp_hash CHAR(64) NOT NULL,
+  expires_at DATETIME NOT NULL,
+  attempts INT NOT NULL DEFAULT 0,
+  consumed_at DATETIME DEFAULT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE INDEX idx_email_otp_lookup ON email_verification_otps(user_id, email, created_at);
+CREATE INDEX idx_email_otp_active ON email_verification_otps(user_id, email, otp_hash, consumed_at, expires_at);
 
 -- Bảng addresses
 CREATE TABLE addresses (

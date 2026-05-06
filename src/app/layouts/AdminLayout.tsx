@@ -50,10 +50,10 @@ export function AdminLayout() {
         <div className="mb-10 px-8">
           <div className="space-y-1">
             <h1 className="font-headline text-lg font-bold text-slate-900">
-              Kinetic Admin
+              KC29 TECH Admin
             </h1>
             <p className="text-[10px] uppercase tracking-[0.35em] text-slate-500">
-              Management Suite
+              Quản lý hệ thống
             </p>
           </div>
         </div>
@@ -92,10 +92,10 @@ export function AdminLayout() {
           <div className="mx-4 rounded-xl bg-surface-container-low p-4">
             <div className="mb-2 flex items-center gap-2">
               <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-cyan-500" />
-              <p className="text-xs font-bold text-slate-900">System Status: Active</p>
+              <p className="text-xs font-bold text-slate-900">Trạng thái: Đang hoạt động</p>
             </div>
             <p className="text-xs leading-5 text-slate-500">
-              All modules operating at 100% capacity.
+              Tất cả các mô-đun hoạt động ở 100% công suất.
             </p>
           </div>
         </div>

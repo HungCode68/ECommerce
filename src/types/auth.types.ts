@@ -5,6 +5,7 @@ export type User = {
   username: string
   name?: string
   email: string
+  email_verified?: boolean
   phone?: string
   role: UserRole
   status: string
@@ -20,6 +21,19 @@ export type RegisterRequest = {
   username: string
   email: string
   password: string
+}
+
+export type GoogleLoginRequest = {
+  credential: string
+}
+
+export type SendEmailVerificationOtpRequest = {
+  email: string
+}
+
+export type VerifyEmailVerificationOtpRequest = {
+  email: string
+  otp: string
 }
 
 export type AuthTokens = {

@@ -4,7 +4,7 @@ export const ROUTES = {
   HOME: '/',
   LOGIN: '/dang-nhap',
   REGISTER: '/dang-ky',
-  
+
   // Admin Routes
   ADMIN_DASHBOARD: '/admin',
   ADMIN_PRODUCTS: '/admin/products',
@@ -23,6 +23,7 @@ export const ROUTES = {
   PRODUCTS: '/san-pham',
   PRODUCT_DETAIL: (id: string | number) => `/san-pham/${id}`,
   CATEGORY_DETAIL: (id: string | number) => `/danh-muc/${id}`,
+  BRANDS: '/thuong-hieu',
   CART: '/gio-hang',
   CHECKOUT: '/thanh-toan',
   ORDERS: '/don-hang',

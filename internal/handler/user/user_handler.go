@@ -73,6 +73,74 @@ func (h *userHandler) Login(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, http.StatusOK, "Đăng nhập thành công", res)
 }
 
+// GoogleLogin - Đăng nhập bằng Google
+func (h *userHandler) GoogleLogin(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
+
+	var req model.GoogleLoginRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu JSON không hợp lệ", nil)
+		return
+	}
+
+	if errs := validator.Validate(req); errs != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu đầu vào không hợp lệ", errs)
+		return
+	}
+
+	res, err := h.UserController.GoogleLogin(req)
+	if err != nil {
+		utils.WriteError(w, http.StatusUnauthorized, err.Error(), nil)
+		return
+	}
+
+	utils.WriteJSON(w, http.StatusOK, "Đăng nhập Google thành công", res)
+}
+
+func (h *userHandler) SendEmailVerificationOTP(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
+
+	var req model.SendEmailVerificationOTPRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu JSON không hợp lệ", nil)
+		return
+	}
+
+	if errs := validator.Validate(req); errs != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu đầu vào không hợp lệ", errs)
+		return
+	}
+
+	if err := h.UserController.SendEmailVerificationOTP(req); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err.Error(), nil)
+		return
+	}
+
+	utils.WriteJSON(w, http.StatusOK, "Đã gửi OTP xác minh email", nil)
+}
+
+func (h *userHandler) VerifyEmailVerificationOTP(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
+
+	var req model.VerifyEmailVerificationOTPRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu JSON không hợp lệ", nil)
+		return
+	}
+
+	if errs := validator.Validate(req); errs != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu đầu vào không hợp lệ", errs)
+		return
+	}
+
+	if err := h.UserController.VerifyEmailVerificationOTP(req); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err.Error(), nil)
+		return
+	}
+
+	utils.WriteJSON(w, http.StatusOK, "Xác minh email thành công", nil)
+}
+
 // Logout - Đăng xuất tài khoản
 func (h *userHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	userID, ok := middleware.GetUserIDFromContext(r.Context())

@@ -37,6 +37,13 @@ DB_NAME=ecommerce
 DB_PARAMS=parseTime=true&loc=Local
 
 JWT_SECRET=replace_with_a_secret_of_at_least_32_chars
+GOOGLE_CLIENT_ID=your_google_web_client_id
+VITE_GOOGLE_CLIENT_ID=your_google_web_client_id
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=yourmail@gmail.com
+SMTP_PASSWORD=your_gmail_app_password
+SMTP_FROM=yourmail@gmail.com
 
 # Optional tuning
 DB_MAX_OPEN_CONNS=25
@@ -87,6 +94,9 @@ Luu y: project hiện có 2 style prefix route (`/api/...` và `/admin|/user/...
 
 - `POST /api/auth/register`
 - `POST /api/auth/login`
+- `POST /api/auth/google`
+- `POST /api/auth/email-verification/send`
+- `POST /api/auth/email-verification/verify`
 - `POST /api/auth/refresh`
 - `POST /api/auth/logout` (auth)
 - `PUT /api/users/me` (auth)
