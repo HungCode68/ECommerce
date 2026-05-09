@@ -426,6 +426,18 @@ func (r *OrderRepository) GetOrders(ctx context.Context, filter model.OrderFilte
 		args = append(args, kw, kw)
 	}
 
+	// Lọc theo danh mục sản phẩm (JOIN qua order_items -> products)
+	if filter.CategoryID > 0 {
+		categoryCondition := `EXISTS (
+			SELECT 1 FROM order_items oi
+			JOIN products p ON p.id = oi.product_id
+			WHERE oi.order_id = orders.id
+			AND p.category_id = ?
+		)`
+		whereClauses = append(whereClauses, categoryCondition)
+		args = append(args, filter.CategoryID)
+	}
+
 	whereQuery := strings.Join(whereClauses, " AND ")
 
 	//  Đếm tổng số lượng cho phân trang

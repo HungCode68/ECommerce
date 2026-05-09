@@ -852,13 +852,14 @@ func (prt *productController) UserGetAllProductsController(req *model.SearchProd
 		}
 		minPrice, stock := prt.getProductVariantStats(pro.ID, true, pro.MinPrice)
 		responses = append(responses, model.UserProductResponse{
-			ID:              pro.ID,
-			Name:            pro.Name,
-			Brand:           pro.Brand,
-			MinPrice:        minPrice,
-			DiscountPercent: pro.DiscountPercent,
-			FinalPrice:      calcFinalPrice(minPrice, pro.DiscountPercent),
-			Stock:           stock,
+			ID:               pro.ID,
+			Name:             pro.Name,
+			ShortDescription: pro.ShortDescription,
+			Brand:            pro.Brand,
+			MinPrice:         minPrice,
+			DiscountPercent:  pro.DiscountPercent,
+			FinalPrice:       calcFinalPrice(minPrice, pro.DiscountPercent),
+			Stock:            stock,
 		})
 	}
 	return &model.UserProductListResponse{
@@ -881,13 +882,14 @@ func (prt *productController) UserSearchProductByNameController(req *model.Searc
 		}
 		minPrice, stock := prt.getProductVariantStats(pro.ID, true, pro.MinPrice)
 		res = append(res, model.UserProductResponse{
-			ID:              pro.ID,
-			Name:            pro.Name,
-			Brand:           pro.Brand,
-			MinPrice:        minPrice,
-			DiscountPercent: pro.DiscountPercent,
-			FinalPrice:      calcFinalPrice(minPrice, pro.DiscountPercent),
-			Stock:           stock,
+			ID:               pro.ID,
+			Name:             pro.Name,
+			ShortDescription: pro.ShortDescription,
+			Brand:            pro.Brand,
+			MinPrice:         minPrice,
+			DiscountPercent:  pro.DiscountPercent,
+			FinalPrice:       calcFinalPrice(minPrice, pro.DiscountPercent),
+			Stock:            stock,
 		})
 	}
 	return &model.UserProductListResponse{
@@ -1025,13 +1027,14 @@ func (prt *productController) UserGetProductController(reqProduct *model.GetProd
 	}
 	minPrice, stock := prt.getProductVariantStats(pro.ID, true, pro.MinPrice)
 	return &model.UserProductResponse{
-		ID:              pro.ID,
-		Name:            pro.Name,
-		Brand:           pro.Brand,
-		MinPrice:        minPrice,
-		DiscountPercent: pro.DiscountPercent,
-		FinalPrice:      calcFinalPrice(minPrice, pro.DiscountPercent),
-		Stock:           stock,
+		ID:               pro.ID,
+		Name:             pro.Name,
+		ShortDescription: pro.ShortDescription,
+		Brand:            pro.Brand,
+		MinPrice:         minPrice,
+		DiscountPercent:  pro.DiscountPercent,
+		FinalPrice:       calcFinalPrice(minPrice, pro.DiscountPercent),
+		Stock:            stock,
 	}, nil
 }
 

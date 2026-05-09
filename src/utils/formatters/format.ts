@@ -17,8 +17,11 @@ export function formatVND(amount: number): string {
  * Format ngày theo định dạng Việt Nam
  * Ví dụ: "2025-01-15T..." → "15/01/2025"
  */
-export function formatDate(dateString: string): string {
+export function formatDate(dateString: string | undefined): string {
+  if (!dateString) return '--/--/----'
   const date = new Date(dateString)
+  if (isNaN(date.getTime())) return '--/--/----'
+  
   return new Intl.DateTimeFormat('vi-VN', {
     day: '2-digit',
     month: '2-digit',
@@ -30,8 +33,11 @@ export function formatDate(dateString: string): string {
  * Format ngày và giờ
  * Ví dụ: "15/01/2025 14:30"
  */
-export function formatDateTime(dateString: string): string {
+export function formatDateTime(dateString: string | undefined): string {
+  if (!dateString) return '--/--/---- --:--'
   const date = new Date(dateString)
+  if (isNaN(date.getTime())) return '--/--/---- --:--'
+
   return new Intl.DateTimeFormat('vi-VN', {
     day: '2-digit',
     month: '2-digit',

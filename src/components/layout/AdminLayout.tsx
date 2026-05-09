@@ -97,7 +97,7 @@ export function AdminLayout() {
       </aside>
 
       <div className="ml-64 flex min-h-screen flex-col">
-        <header className="flex h-16 items-center justify-end px-8">
+        <header className="relative z-10 flex h-16 items-center justify-end px-8">
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -127,28 +127,30 @@ export function AdminLayout() {
                 </button>
               </DropdownMenu.Trigger>
 
-              <DropdownMenu.Content
-                align="end"
-                sideOffset={12}
-                className="min-w-56 rounded-xl border border-slate-200 bg-white p-2 shadow-xl"
-              >
-                <DropdownMenu.Label className="px-3 py-2 text-sm font-semibold text-slate-900">
-                  Xin chào, {displayName}
-                </DropdownMenu.Label>
-                <DropdownMenu.Separator className="my-1 h-px bg-slate-100" />
-                <DropdownMenu.Item
-                  className="cursor-pointer rounded-lg px-3 py-2 text-sm text-slate-600 outline-none transition-colors hover:bg-slate-50 hover:text-slate-900"
-                  onSelect={() => navigate(ROUTES.ADMIN_SETTINGS)}
+              <DropdownMenu.Portal>
+                <DropdownMenu.Content
+                  align="end"
+                  sideOffset={12}
+                  className="z-[100] min-w-56 rounded-xl border border-slate-200 bg-white p-2 shadow-xl"
                 >
-                  Tài khoản
-                </DropdownMenu.Item>
-                <DropdownMenu.Item
-                  className="cursor-pointer rounded-lg px-3 py-2 text-sm text-red-600 outline-none transition-colors hover:bg-red-50"
-                  onSelect={() => logout()}
-                >
-                  Đăng xuất
-                </DropdownMenu.Item>
-              </DropdownMenu.Content>
+                  <DropdownMenu.Label className="px-3 py-2 text-sm font-semibold text-slate-900">
+                    Xin chào, {displayName}
+                  </DropdownMenu.Label>
+                  <DropdownMenu.Separator className="my-1 h-px bg-slate-100" />
+                  <DropdownMenu.Item
+                    className="cursor-pointer rounded-lg px-3 py-2 text-sm text-slate-600 outline-none transition-colors hover:bg-slate-50 hover:text-slate-900"
+                    onSelect={() => navigate(ROUTES.ADMIN_SETTINGS)}
+                  >
+                    Tài khoản
+                  </DropdownMenu.Item>
+                  <DropdownMenu.Item
+                    className="cursor-pointer rounded-lg px-3 py-2 text-sm text-red-600 outline-none transition-colors hover:bg-red-50"
+                    onSelect={() => logout()}
+                  >
+                    Đăng xuất
+                  </DropdownMenu.Item>
+                </DropdownMenu.Content>
+              </DropdownMenu.Portal>
             </DropdownMenu.Root>
           </div>
         </header>

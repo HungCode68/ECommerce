@@ -121,13 +121,14 @@ type PaginationMeta struct {
 
 // UserProductResponse - Thông tin sản phẩm cho User
 type UserProductResponse struct {
-	ID              int64   `json:"id"`
-	Name            string  `json:"name"`
-	Brand           *string `json:"brand,omitempty"`
-	MinPrice        float64 `json:"min_price"`
-	DiscountPercent float64 `json:"discount_percent"`
-	FinalPrice      float64 `json:"final_price"`
-	Stock           int     `json:"stock"`
+	ID               int64   `json:"id"`
+	Name             string  `json:"name"`
+	ShortDescription *string `json:"short_description,omitempty"`
+	Brand            *string `json:"brand,omitempty"`
+	MinPrice         float64 `json:"min_price"`
+	DiscountPercent  float64 `json:"discount_percent"`
+	FinalPrice       float64 `json:"final_price"`
+	Stock            int     `json:"stock"`
 }
 
 // UserProductListResponse - Danh sách sản phẩm cho User

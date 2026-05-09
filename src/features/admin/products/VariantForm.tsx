@@ -39,19 +39,100 @@ const variantSchema = z.object({
 
 type VariantFormData = z.infer<typeof variantSchema>
 
+const QUICK_OPTIONS = [
+  {
+    label: 'Màu sắc',
+    values: ['Đen', 'Trắng', 'Xanh', 'Đỏ', 'Vàng', 'Xám', 'Bạc', 'Hồng', 'Tím', 'Vàng Đồng'],
+  },
+  {
+    label: 'Dung lượng',
+    values: ['64GB', '128GB', '256GB', '512GB', '1TB', '2TB'],
+  },
+  {
+    label: 'RAM',
+    values: ['4GB', '8GB', '12GB', '16GB', '32GB', '64GB'],
+  },
+  {
+    label: 'Kích thước',
+    values: ['13 inch', '14 inch', '15 inch', '16 inch', 'Màn hình 6.1', 'Màn hình 6.7'],
+  },
+]
+
 type VariantFormProps = {
   productId: number
+  productName: string
   variant?: ProductVariant
   onClose: () => void
 }
 
-export function VariantForm({ productId, variant, onClose }: VariantFormProps) {
+export function VariantForm({ productId, productName, variant, onClose }: VariantFormProps) {
   const qc = useQueryClient()
   const isEdit = !!variant
+
+  const generateAutoSKU = (name: string, options: string) => {
+    // 1. Process Product Name
+    let namePart = name
+      .replace(/iPhone/i, 'IP')
+      .replace(/Samsung Galaxy/i, 'SG')
+      .replace(/Xiaomi/i, 'XM')
+      .replace(/Google Pixel/i, 'GP')
+      .replace(/OPPO/i, 'OP')
+      .split(' ')
+      .map((word, i) => {
+        if (i === 0) return word
+        if (/\d/.test(word)) return word
+        return word.charAt(0).toUpperCase()
+      })
+      .join('')
+      .replace(/[^A-Z0-9]/g, '')
+
+    // 2. Extract values
+    const getVal = (label: string) => {
+      const match = options.match(new RegExp(`${label}:\\s*([^,]+)`, 'i'))
+      return match ? match[1].trim() : ''
+    }
+
+    const capacity = getVal('Dung lượng').replace(/GB|TB/i, '')
+    const colorMap: Record<string, string> = {
+      Đen: 'BLK',
+      Trắng: 'WHT',
+      Xanh: 'BLU',
+      Đỏ: 'RED',
+      Vàng: 'GLD',
+      Xám: 'GRY',
+      Bạc: 'SLV',
+      Hồng: 'PNK',
+      Tím: 'PUR',
+      'Vàng Đồng': 'BRZ',
+    }
+    const colorRaw = getVal('Màu sắc')
+    const color = colorMap[colorRaw] || (colorRaw ? colorRaw.slice(0, 3).toUpperCase() : '')
+
+    const parts = [namePart]
+    if (capacity) parts.push(capacity)
+    if (color) parts.push(color)
+    parts.push('VN')
+
+    return parts.filter(Boolean).join('-')
+  }
+
+  const generateAutoTitle = (name: string, options: string) => {
+    const getVal = (label: string) => {
+      const match = options.match(new RegExp(`${label}:\\s*([^,]+)`, 'i'))
+      return match ? match[1].trim() : ''
+    }
+
+    const color = getVal('Màu sắc')
+    const capacity = getVal('Dung lượng')
+
+    return [name, color, capacity].filter(Boolean).join(' ')
+  }
 
   const {
     register,
     handleSubmit,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<VariantFormData>({
     resolver: zodResolver(variantSchema),
@@ -77,7 +158,49 @@ export function VariantForm({ productId, variant, onClose }: VariantFormProps) {
           allow_backorder: false,
         },
   })
+  const currentOptionValues = watch('option_values')
 
+  const isOptionSelected = (label: string, value: string) => {
+    const pair = `${label}: ${value}`
+    return currentOptionValues?.includes(pair)
+  }
+
+  const appendOption = (label: string, value: string) => {
+    const pair = `${label}: ${value}`
+    let newOptions = ''
+
+    if (!currentOptionValues) {
+      newOptions = pair
+    } else {
+      // Split into parts and replace if label exists
+      const parts = currentOptionValues.split(',').map((p) => p.trim())
+      const labelPrefix = `${label}:`
+      const existingIndex = parts.findIndex((p) => p.startsWith(labelPrefix))
+
+      if (existingIndex > -1) {
+        // If clicking the same value, remove it (toggle)
+        if (parts[existingIndex] === pair) {
+          parts.splice(existingIndex, 1)
+        } else {
+          // Replace with new value
+          parts[existingIndex] = pair
+        }
+      } else {
+        parts.push(pair)
+      }
+      newOptions = parts.filter(Boolean).join(', ')
+    }
+
+    setValue('option_values', newOptions)
+
+    // Auto-generate SKU & Title
+    if (!isEdit) {
+      const autoSKU = generateAutoSKU(productName, newOptions)
+      const autoTitle = generateAutoTitle(productName, newOptions)
+      setValue('sku', autoSKU)
+      setValue('title', autoTitle)
+    }
+  }
   const optionValuesDefaultLabel = variant ? formatVariantLabel(variant) : ''
   const optionValuesDefaultRaw = variant?.option_values?.trim() ?? ''
 
@@ -161,6 +284,33 @@ export function VariantForm({ productId, variant, onClose }: VariantFormProps) {
           </Field>
 
           <Field label="Phân loại *" error={errors.option_values?.message} className="md:col-span-2">
+            <div className="mb-3 flex flex-col gap-3">
+              {QUICK_OPTIONS.map((group) => (
+                <div key={group.label} className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1 w-20">
+                    {group.label}:
+                  </span>
+                  {group.values.map((val) => {
+                    const active = isOptionSelected(group.label, val)
+                    return (
+                      <button
+                        key={val}
+                        type="button"
+                        onClick={() => appendOption(group.label, val)}
+                        className={cn(
+                          'rounded-full border px-2.5 py-1 text-[11px] font-medium transition-all active:scale-95',
+                          active
+                            ? 'border-cyan-500 bg-cyan-500 text-white shadow-sm shadow-cyan-100'
+                            : 'border-slate-200 bg-white text-slate-600 hover:border-cyan-400 hover:text-cyan-600',
+                        )}
+                      >
+                        {val}
+                      </button>
+                    )
+                  })}
+                </div>
+              ))}
+            </div>
             <textarea
               {...register('option_values')}
               rows={2}
@@ -168,7 +318,7 @@ export function VariantForm({ productId, variant, onClose }: VariantFormProps) {
               className={cn(inputClass(!!errors.option_values), 'resize-none')}
             />
             <p className="mt-1.5 text-xs leading-5 text-slate-400">
-              Có thể nhập dạng `Màu: Đen, Dung lượng: 128GB`. Hệ thống sẽ tự lưu thành JSON hợp lệ.
+              Có thể nhập hoặc chọn từ gợi ý bên trên. Hệ thống sẽ tự lưu thành JSON hợp lệ.
             </p>
           </Field>
         </div>

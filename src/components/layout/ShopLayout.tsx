@@ -176,7 +176,7 @@ export function ShopLayout() {
     <div className="min-h-screen bg-background text-on-surface font-body selection:bg-primary-container selection:text-white flex flex-col">
       {/* Promotional Top Banner */}
       <div className="w-full bg-primary py-2 px-8 flex justify-center items-center gap-4 text-white font-label text-xs tracking-widest overflow-hidden relative z-50">
-        <span className="opacity-80">ƯU ĐÃI ĐỘC QUYỀN TRONG THÁNG: GIẢM 20% CHO CÁC DÒNG LAPTOP KINETIC CORE</span>
+        <span className="opacity-80">ƯU ĐÃI ĐỘC QUYỀN TRONG THÁNG: GIẢM 20% CHO CÁC DÒNG LAPTOP KC29 TECH CORE</span>
         <div className="h-1 w-1 bg-white rounded-full"></div>
         <Link to={ROUTES.PRODUCTS} className="font-bold underline decoration-primary-container underline-offset-4 cursor-pointer">MUA NGAY</Link>
       </div>
@@ -184,8 +184,8 @@ export function ShopLayout() {
       {/* Navigation Header */}
       <nav className="absolute top-12 md:top-14 left-1/2 -translate-x-1/2 w-[95%] max-w-screen-2xl z-40 glass-panel shadow-[0_40px_60px_-15px_rgba(0,0,0,0.06)] px-6 lg:px-8 py-3 flex items-center justify-between rounded-2xl border border-white/40">
         <div className="flex items-center gap-8 xl:gap-12">
-          <Link to={ROUTES.HOME} className="font-headline text-2xl font-bold tracking-tighter text-on-surface">KINETIC</Link>
-          
+          <Link to={ROUTES.HOME} className="font-headline text-2xl font-bold tracking-tighter text-on-surface">KC29 TECH</Link>
+
           <div className="hidden lg:flex items-center gap-6">
             {categories.map((cat) => (
               <Link
@@ -203,9 +203,9 @@ export function ShopLayout() {
         <div className="flex items-center gap-4 lg:gap-6">
           <form onSubmit={handleSearch} className="hidden md:flex bg-surface-container-high/50 items-center px-4 py-2 gap-2 rounded-full focus-within:ring-2 focus-within:ring-primary/20 transition-all">
             <span className="material-symbols-outlined text-outline-variant text-xl">search</span>
-            <input 
-              className="bg-transparent border-none focus:ring-0 text-sm w-48 placeholder:text-outline-variant" 
-              placeholder="Tìm kiếm công nghệ..." 
+            <input
+              className="bg-transparent border-none focus:ring-0 text-sm w-48 placeholder:text-outline-variant"
+              placeholder="Tìm kiếm công nghệ..."
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -221,7 +221,7 @@ export function ShopLayout() {
                 </span>
               )}
             </Link>
-            
+
             <UserMenu />
 
             {/* Mobile menu toggle */}
@@ -244,9 +244,9 @@ export function ShopLayout() {
           <div className="absolute top-full left-0 mt-4 w-full bg-surface-container-lowest/95 backdrop-blur-xl rounded-2xl shadow-xl lg:hidden p-4 flex flex-col gap-4 border border-outline-variant/20">
             <form onSubmit={handleSearch} className="flex bg-surface-container-high/50 items-center px-4 py-3 gap-2 rounded-xl">
               <span className="material-symbols-outlined text-outline-variant text-xl">search</span>
-              <input 
-                className="bg-transparent border-none focus:ring-0 text-sm w-full placeholder:text-outline-variant" 
-                placeholder="Tìm kiếm công nghệ..." 
+              <input
+                className="bg-transparent border-none focus:ring-0 text-sm w-full placeholder:text-outline-variant"
+                placeholder="Tìm kiếm công nghệ..."
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -271,7 +271,7 @@ export function ShopLayout() {
       <footer className="w-full py-16 px-8 mt-auto bg-surface-container-low border-t border-outline-variant/10">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 max-w-screen-2xl mx-auto">
           <div className="flex flex-col gap-6">
-            <span className="font-headline text-2xl font-bold text-on-surface tracking-tighter">KINETIC</span>
+            <span className="font-headline text-2xl font-bold text-on-surface tracking-tighter">KC29 TECH</span>
             <p className="font-body text-sm text-on-surface-variant leading-relaxed">
               Được thiết kế để dẫn đầu kỷ nguyên công nghệ số tiếp theo. Chúng tôi mang đến sự chính xác, hiệu năng và thẩm mỹ tương lai trong từng sản phẩm.
             </p>
@@ -285,7 +285,7 @@ export function ShopLayout() {
             <h4 className="font-headline font-bold text-sm uppercase tracking-widest text-on-surface">Khám phá</h4>
             <Link to={ROUTES.PRODUCTS} className="font-body text-sm text-on-surface-variant hover:text-primary transition-all">Sản phẩm mới</Link>
             <Link to="#" className="font-body text-sm text-on-surface-variant hover:text-primary transition-all">Giải pháp doanh nghiệp</Link>
-            <Link to="#" className="font-body text-sm text-on-surface-variant hover:text-primary transition-all">KINETIC Lab</Link>
+            <Link to="#" className="font-body text-sm text-on-surface-variant hover:text-primary transition-all">KC29 TECH Lab</Link>
             <Link to="#" className="font-body text-sm text-on-surface-variant hover:text-primary transition-all">Cộng đồng</Link>
           </div>
           <div className="flex flex-col gap-4">
@@ -299,9 +299,9 @@ export function ShopLayout() {
             <h4 className="font-headline font-bold text-sm uppercase tracking-widest text-on-surface">Bản tin công nghệ</h4>
             <p className="font-body text-sm text-on-surface-variant">Đăng ký để nhận thông tin về các đột phá công nghệ mới nhất.</p>
             <div className="flex border-b border-outline-variant pb-2 focus-within:border-primary transition-colors">
-              <input 
-                className="bg-transparent border-none focus:ring-0 text-sm w-full font-body placeholder:text-outline-variant/50 outline-none" 
-                placeholder="Email của bạn" 
+              <input
+                className="bg-transparent border-none focus:ring-0 text-sm w-full font-body placeholder:text-outline-variant/50 outline-none"
+                placeholder="Email của bạn"
                 type="email"
               />
               <button className="material-symbols-outlined text-primary hover:text-primary-container transition-colors">arrow_forward</button>
@@ -309,7 +309,7 @@ export function ShopLayout() {
           </div>
         </div>
         <div className="max-w-screen-2xl mx-auto mt-16 pt-8 border-t border-outline-variant/10 flex flex-col md:flex-row justify-between items-center gap-6">
-          <p className="font-body text-[10px] text-on-surface-variant tracking-widest uppercase opacity-60">© 2024 KINETIC. ENGINEERED FOR THE NEXT ERA.</p>
+          <p className="font-body text-[10px] text-on-surface-variant tracking-widest uppercase opacity-60">© 2024 KC29 TECH. ENGINEERED FOR THE NEXT ERA.</p>
           <div className="flex gap-8">
             <Link to="#" className="font-body text-[10px] text-on-surface-variant hover:text-primary uppercase tracking-widest transition-colors">Quyền riêng tư</Link>
             <Link to="#" className="font-body text-[10px] text-on-surface-variant hover:text-primary uppercase tracking-widest transition-colors">Điều khoản sử dụng</Link>

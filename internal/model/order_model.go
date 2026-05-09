@@ -78,6 +78,7 @@ type OrderFilter struct {
 	Status        string `validate:"omitempty,oneof=pending processing paid shipped completed cancelled refunded"`
 	PaymentStatus string `validate:"omitempty,oneof=unpaid paid partially_refunded refunded"`
 	UserID        int64  `validate:"omitempty,min=0"`
+	CategoryID    int64  `validate:"omitempty,min=0"`
 	StartDate     string `validate:"omitempty,datetime=2006-01-02"`
 	EndDate       string `validate:"omitempty,datetime=2006-01-02"`
 	Page          int    `validate:"min=1"`

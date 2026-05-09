@@ -22,7 +22,7 @@ import { queryKeys } from '@/lib/queryKeys'
 import { cn } from '@/lib/utils'
 import { ProductForm } from '@/features/admin/products/ProductForm'
 import { VariantForm } from '@/features/admin/products/VariantForm'
-import { ProductHistory } from '@/features/admin/products/ProductHistory'
+
 import { getErrorMessage } from '@/utils/httpError'
 import { ROUTES } from '@/utils/constants'
 import { formatDateTime, formatNumber, formatVND } from '@/utils/formatters/format'
@@ -552,22 +552,7 @@ export function ProductFormPage() {
               </div>
             </section>
 
-            <section className="rounded-3xl border border-outline-variant/10 bg-surface-container-lowest p-6 shadow-sm">
-              <div className="mb-4 flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-600">
-                  <Clock3 className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="font-headline text-lg font-bold text-slate-900">
-                    Lịch sử thay đổi
-                  </h3>
-                  <p className="text-sm text-slate-500">
-                    Log cập nhật theo từng thay đổi metadata hoặc biến thể
-                  </p>
-                </div>
-              </div>
-              <ProductHistory productId={Number(id)} />
-            </section>
+
           </aside>
         </div>
       ) : (
@@ -838,6 +823,7 @@ function VariantModal({
 
             <VariantForm
               productId={product.id}
+              productName={product.name}
               variant={variant ?? undefined}
               onClose={onClose}
             />

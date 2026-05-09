@@ -13,9 +13,10 @@ import type {
   UpdateVariantResponse,
 } from '@/types/product.types'
 
-type AdminProductListRequest = {
+type AdminProductListParams = {
   page: number
   limit: number
+  q?: string
   category_id?: number
 }
 
@@ -35,7 +36,7 @@ export const adminProductApi = {
     return res.data.data
   },
 
-  getAll: async (params: AdminProductListRequest) => {
+  getAll: async (params: AdminProductListParams) => {
     const res = await axiosClient.post<PaginatedResponse<Product>>(
       '/api/admin/products',
       params,
@@ -43,7 +44,7 @@ export const adminProductApi = {
     return res.data
   },
 
-  getAllPaged: async (params: { page: number; limit: number }) => {
+  getAllPaged: async (params: AdminProductListParams) => {
     const res = await axiosClient.get<PaginatedResponse<Product>>(
       '/api/admin/product/all',
       { params },
@@ -59,7 +60,7 @@ export const adminProductApi = {
     return res.data.data
   },
 
-  search: async (params: { q: string; page: number; limit: number }) => {
+  search: async (params: AdminProductListParams) => {
     const res = await axiosClient.get<PaginatedResponse<Product>>(
       '/api/admin/product/search',
       { params },

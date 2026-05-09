@@ -198,8 +198,9 @@ func (h *orderHandler) SearchOrders(w http.ResponseWriter, r *http.Request) {
 		limit = 20
 	}
 
-	// Parse UserID nếu Admin muốn lọc theo user cụ thể
+	// Parse UserID và CategoryID
 	targetUserID, _ := strconv.ParseInt(query.Get("user_id"), 10, 64)
+	categoryID, _ := strconv.ParseInt(query.Get("category_id"), 10, 64)
 
 	filter := model.OrderFilter{
 		Page:          page,
@@ -208,6 +209,7 @@ func (h *orderHandler) SearchOrders(w http.ResponseWriter, r *http.Request) {
 		PaymentStatus: query.Get("payment_status"),
 		OrderID:       query.Get("order_id"),
 		UserID:        targetUserID,
+		CategoryID:    categoryID,
 		StartDate:     query.Get("start_date"),
 		EndDate:       query.Get("end_date"),
 	}

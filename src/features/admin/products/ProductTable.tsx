@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Plus, Trash2, Pencil, RotateCcw, Search, Upload } from 'lucide-react'
 import { adminProductApi } from '@/api/admin/adminProduct.api'
+import { categoryApi } from '@/api/category.api'
 import { queryKeys } from '@/lib/queryKeys'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { SearchInput } from '@/components/shared/SearchInput'
@@ -22,17 +23,21 @@ export function ProductTable() {
   const { page, limit, totalPages, goToPage } = usePagination()
   const [search, setSearch] = useState('')
   const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | undefined>(undefined)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [bulkAddOpen, setBulkAddOpen] = useState(false)
 
+  const { data: categories } = useQuery({
+    queryKey: queryKeys.categories.all,
+    queryFn: categoryApi.getAll,
+  })
+
 
   const { data, isLoading } = useQuery({
-    queryKey: search
-      ? queryKeys.admin.products.list({ q: search, page, limit })
-      : queryKeys.admin.products.list({ page, limit }),
+    queryKey: queryKeys.admin.products.list({ q: search, page, limit, category_id: selectedCategoryId }),
     queryFn: () =>
-      search
-        ? adminProductApi.search({ q: search, page, limit })
+      search || selectedCategoryId
+        ? adminProductApi.search({ q: search, page, limit, category_id: selectedCategoryId })
         : adminProductApi.getAllPaged({ page, limit }),
   })
 
@@ -72,6 +77,22 @@ export function ProductTable() {
           placeholder="Tìm sản phẩm..."
           className="w-64"
         />
+        <select
+          value={selectedCategoryId ?? ''}
+          onChange={(e) => {
+            const val = e.target.value ? Number(e.target.value) : undefined
+            setSelectedCategoryId(val)
+            goToPage(1)
+          }}
+          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 outline-none focus:border-blue-500 transition-colors"
+        >
+          <option value="">Tất cả danh mục</option>
+          {categories?.map((cat) => (
+            <option key={cat.id} value={cat.id}>
+              {cat.name}
+            </option>
+          ))}
+        </select>
         <div className="ml-auto flex gap-2">
           {selectedIds.length > 0 && (
             <button

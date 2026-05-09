@@ -3,9 +3,9 @@ info:
   title: E-Commerce Address API
   description: |-
     Tài liệu API riêng cho module **Quản lý Địa chỉ (Address)**.
-    
+
     Các API này cho phép người dùng thêm, sửa, xóa và quản lý sổ địa chỉ giao hàng của mình.
-    
+
   version: 1.0.0
 tags:
   - name: Address Management
@@ -149,7 +149,7 @@ components:
           example: Thành công
         data:
           type: object
-       
+
     ErrorResponse:
       type: object
       properties:
@@ -175,24 +175,24 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Lấy danh sách thành công
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/SuccessResponse'
+                  - $ref: "#/components/schemas/SuccessResponse"
                   - properties:
                       data:
                         type: array
                         items:
-                          $ref: '#/components/schemas/AddressResponse'
-        '401':
+                          $ref: "#/components/schemas/AddressResponse"
+        "401":
           description: Chưa đăng nhập
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
     post:
       tags:
@@ -205,24 +205,24 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateAddressRequest'
+              $ref: "#/components/schemas/CreateAddressRequest"
       responses:
-        '201':
+        "201":
           description: Tạo thành công
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/SuccessResponse'
+                  - $ref: "#/components/schemas/SuccessResponse"
                   - properties:
                       data:
-                        $ref: '#/components/schemas/AddressResponse'
-        '400':
+                        $ref: "#/components/schemas/AddressResponse"
+        "400":
           description: Lỗi Validate (Thiếu trường bắt buộc)
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/addresses/{id}:
     get:
@@ -239,22 +239,22 @@ paths:
           schema:
             type: integer
       responses:
-        '200':
+        "200":
           description: Lấy chi tiết thành công
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/SuccessResponse'
+                  - $ref: "#/components/schemas/SuccessResponse"
                   - properties:
                       data:
-                        $ref: '#/components/schemas/AddressResponse'
-        '404':
+                        $ref: "#/components/schemas/AddressResponse"
+        "404":
           description: Không tìm thấy địa chỉ (hoặc không thuộc về user này)
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
               example:
                 code: 404
                 message: Không tìm thấy dữ liệu
@@ -276,24 +276,24 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateAddressRequest'
+              $ref: "#/components/schemas/UpdateAddressRequest"
       responses:
-        '200':
+        "200":
           description: Cập nhật thành công
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/SuccessResponse'
+                  - $ref: "#/components/schemas/SuccessResponse"
                   - properties:
                       data:
-                        $ref: '#/components/schemas/AddressResponse'
-        '404':
+                        $ref: "#/components/schemas/AddressResponse"
+        "404":
           description: Không tìm thấy địa chỉ
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
     delete:
       tags:
         - Address Management
@@ -307,18 +307,18 @@ paths:
           schema:
             type: integer
       responses:
-        '200':
+        "200":
           description: Xóa thành công
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessResponse'
-        '404':
+                $ref: "#/components/schemas/SuccessResponse"
+        "404":
           description: Không tìm thấy địa chỉ
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/addresses/{id}/default:
     put:
@@ -335,15 +335,15 @@ paths:
           schema:
             type: integer
       responses:
-        '200':
+        "200":
           description: Đặt mặc định thành công
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessResponse'
-        '404':
+                $ref: "#/components/schemas/SuccessResponse"
+        "404":
           description: Không tìm thấy địa chỉ
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"

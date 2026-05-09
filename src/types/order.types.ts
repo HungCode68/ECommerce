@@ -18,21 +18,24 @@ export type OrderItem = {
 
 export type Order = {
   id: number
+  order_number: string
   user_id: number
-  address_id: number
-  items: OrderItem[]
-  subtotal: number
-  shipping_fee: number
-  discount: number
-  total_payable: number
+  customer_name?: string
+  first_item_title?: string
+  item_count?: number
   status: OrderStatus
-  payment_method: PaymentMethod
-  order_coupon_code?: string
-  shipping_coupon_code?: string
+  total_amount: string | number
+  payment_status: string
   note?: string
-  cancel_reason?: string
-  created_at: string
+  placed_at: string
   updated_at: string
+  paid_at?: string
+  completed_at?: string
+  cancelled_at?: string
+  // Legacy fields for compatibility
+  payment_method?: PaymentMethod
+  total_payable?: number
+  created_at?: string
 }
 
 export type CreateOrderRequest = {
@@ -66,4 +69,6 @@ export type OrderFilterParams = {
   page?: number
   limit?: number
   status?: OrderStatus
+  q?: string
+  category_id?: number
 }
