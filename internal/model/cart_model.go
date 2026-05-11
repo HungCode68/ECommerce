@@ -64,6 +64,7 @@ type CartItemResponse struct {
 	ProductName string `json:"product_name"`
 	VariantID   int64  `json:"variant_id"`
 	VariantName string `json:"variant_name"`
+	ThumbnailURL string `json:"thumbnail_url"`
 
 	Price    float64 `json:"price"`
 	Quantity int     `json:"quantity"`

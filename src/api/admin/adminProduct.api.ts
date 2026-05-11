@@ -18,6 +18,11 @@ type AdminProductListParams = {
   limit: number
   q?: string
   category_id?: number
+  brand?: string
+}
+
+type UploadImageResponse = {
+  url: string
 }
 
 export const adminProductApi = {
@@ -77,6 +82,17 @@ export const adminProductApi = {
       { headers: { 'Content-Type': 'multipart/form-data' } },
     )
     return res.data.data
+  },
+
+  uploadImage: async (file: File) => {
+    const formData = new FormData()
+    formData.append('image', file)
+    const res = await axiosClient.post<ApiResponse<UploadImageResponse>>(
+      '/api/admin/product/upload-image',
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    )
+    return res.data.data.url
   },
 
   getDeleted: async (params: { page: number; limit: number }) => {

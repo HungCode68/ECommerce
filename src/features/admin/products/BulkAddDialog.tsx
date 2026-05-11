@@ -139,7 +139,7 @@ export function BulkAddDialog({ open, onOpenChange }: BulkAddDialogProps) {
                   <AlertCircle className="h-5 w-5 text-amber-500 shrink-0" />
                   <div className="text-sm text-amber-800">
                     <p className="font-semibold mb-1">Cấu trúc file CSV chuẩn:</p>
-                    <p className="opacity-80">Name, Slug, MinPrice, DiscountPercent, ShortDescription, Description, Brand, Status, CategoryIDs (phân cách bởi dấu ;)</p>
+                    <p className="opacity-80">Name, Slug, ThumbnailURL, MinPrice, DiscountPercent, ShortDescription, Description, Brand, Status, CategoryIDs (phân cách bởi dấu ;)</p>
                   </div>
                 </div>
               </div>

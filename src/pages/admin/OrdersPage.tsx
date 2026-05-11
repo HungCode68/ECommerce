@@ -2,18 +2,17 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { adminOrderApi } from '@/api/admin/adminOrder.api'
-import { adminStatsApi } from '@/api/admin/adminStats.api'
 import { adminCategoryApi } from '@/api/admin/adminCategory.api'
 import { queryKeys } from '@/lib/queryKeys'
 import { Pagination } from '@/components/shared/Pagination'
 import { TableSkeleton } from '@/components/shared/LoadingSkeleton'
 import { EmptyState } from '@/components/shared/EmptyState'
-import { formatVND, formatDate, formatDateTime } from '@/utils/formatters/format'
+import { formatDateTime } from '@/utils/formatters/format'
 import { ROUTES } from '@/utils/constants'
 import { usePagination } from '@/hooks/usePagination'
 import { cn } from '@/lib/utils'
 import type { Order, OrderStatus } from '@/types/order.types'
-import { getInitials, getAvatarColor, formatShortCurrency } from '@/utils/adminDashboard'
+import { getInitials, getAvatarColor } from '@/utils/adminDashboard'
 
 const STATUS_OPTIONS: { label: string; value: OrderStatus | ''; icon: string }[] = [
   { label: 'Tất cả trạng thái', value: '', icon: 'apps' },
@@ -362,4 +361,3 @@ export function OrdersPage() {
     </div>
   )
 }
-

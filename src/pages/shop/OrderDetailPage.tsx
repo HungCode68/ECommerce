@@ -21,6 +21,15 @@ export function OrderDetailPage() {
   if (isLoading) return <div className="container mx-auto px-4 py-8"><LoadingSkeleton rows={8} /></div>
   if (!order) return <div className="container mx-auto px-4 py-20 text-center text-slate-500">Không tìm thấy đơn hàng</div>
 
+  const items = order.items ?? []
+  const subtotal = order.subtotal ?? items.reduce((sum, item) => {
+    const unitPrice = item.unit_price ?? item.price ?? 0
+    return sum + unitPrice * item.quantity
+  }, 0)
+  const shippingFee = order.shipping_fee ?? 0
+  const discount = order.discount ?? 0
+  const totalPayable = order.total_payable ?? Number(order.total_amount ?? 0)
+
   return (
     <div className="container mx-auto max-w-2xl px-4 py-8">
       <div className="mb-6 flex items-center gap-3">
@@ -40,22 +49,22 @@ export function OrderDetailPage() {
       <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm mb-4">
         <h2 className="mb-4 font-semibold text-slate-800">Sản phẩm</h2>
         <div className="space-y-3">
-          {order.items.map((item, i) => (
+          {items.map((item, i) => (
             <div key={i} className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-800">{item.product_name ?? `Sản phẩm #${item.product_id}`}</p>
+                <p className="text-sm font-medium text-slate-800">{item.product_name ?? item.title ?? `Sản phẩm #${item.product_id}`}</p>
                 <p className="text-xs text-slate-400">x{item.quantity}</p>
               </div>
-              <p className="font-mono text-sm font-semibold">{formatVND(item.price * item.quantity)}</p>
+              <p className="font-mono text-sm font-semibold">{formatVND((item.unit_price ?? item.price ?? 0) * item.quantity)}</p>
             </div>
           ))}
         </div>
 
         <div className="mt-4 space-y-1.5 text-sm border-t border-slate-100 pt-4">
-          <div className="flex justify-between text-slate-500"><span>Tạm tính</span><span>{formatVND(order.subtotal)}</span></div>
-          <div className="flex justify-between text-slate-500"><span>Vận chuyển</span><span>{order.shipping_fee === 0 ? <span className="text-green-600">Miễn phí</span> : formatVND(order.shipping_fee)}</span></div>
-          {order.discount > 0 && <div className="flex justify-between text-green-600"><span>Giảm giá</span><span>-{formatVND(order.discount)}</span></div>}
-          <div className="flex justify-between font-bold text-slate-900 pt-2 border-t border-slate-100"><span>Tổng cộng</span><span className="text-primary">{formatVND(order.total_payable)}</span></div>
+          <div className="flex justify-between text-slate-500"><span>Tạm tính</span><span>{formatVND(subtotal)}</span></div>
+          <div className="flex justify-between text-slate-500"><span>Vận chuyển</span><span>{shippingFee === 0 ? <span className="text-green-600">Miễn phí</span> : formatVND(shippingFee)}</span></div>
+          {discount > 0 && <div className="flex justify-between text-green-600"><span>Giảm giá</span><span>-{formatVND(discount)}</span></div>}
+          <div className="flex justify-between font-bold text-slate-900 pt-2 border-t border-slate-100"><span>Tổng cộng</span><span className="text-primary">{formatVND(totalPayable)}</span></div>
         </div>
       </div>
 

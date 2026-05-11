@@ -1,0 +1,14 @@
+CREATE TABLE IF NOT EXISTS banners (
+  id BIGINT NOT NULL AUTO_INCREMENT,
+  title VARCHAR(255) NOT NULL,
+  image_url VARCHAR(500) NOT NULL,
+  mobile_image_url VARCHAR(500) NULL,
+  link_url VARCHAR(500) NULL,
+  position VARCHAR(100) NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  sort_order INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_banners_position_active (position, is_active, sort_order)
+);

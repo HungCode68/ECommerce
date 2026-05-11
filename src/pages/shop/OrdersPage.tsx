@@ -74,7 +74,9 @@ export function OrdersPage() {
               </div>
               <div className="mt-3 flex items-center justify-between">
                 <p className="text-sm text-slate-500">{order.items?.length ?? 0} sản phẩm</p>
-                <p className="font-semibold text-slate-900">{formatVND(order.total_payable)}</p>
+                <p className="font-semibold text-slate-900">
+                  {formatVND(order.total_payable ?? Number(order.total_amount ?? 0))}
+                </p>
               </div>
               {order.status === 'pending' && (
                 <button

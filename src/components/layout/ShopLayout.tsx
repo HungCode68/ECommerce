@@ -1,12 +1,11 @@
-import { useEffect, useState } from 'react'
+import { startTransition, useState } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   User,
-  Menu,
-  X,
   LogOut,
   MapPin,
   ClipboardList,
+  LayoutDashboard,
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '@/store/authStore'
@@ -57,6 +56,12 @@ function UserMenu() {
   const { user, isAuthenticated, logout } = useAuthStore()
   const [open, setOpen] = useState(false)
   const navigate = useNavigate()
+  const goTo = (path: string) => {
+    setOpen(false)
+    startTransition(() => {
+      navigate(path)
+    })
+  }
 
   if (!isAuthenticated) {
     return (
@@ -91,20 +96,30 @@ function UserMenu() {
             onClick={() => setOpen(false)}
           />
           <div className="absolute right-0 top-10 z-20 w-52 rounded-xl border border-outline-variant/30 bg-surface-container-lowest py-2 shadow-xl">
+            {user?.role === 'admin' && (
+              <>
+                <MenuItem
+                  icon={<LayoutDashboard className="h-4 w-4" />}
+                  label="Trang quản trị"
+                  onClick={() => goTo(ROUTES.ADMIN_DASHBOARD)}
+                />
+                <hr className="my-2 border-outline-variant/20" />
+              </>
+            )}
             <MenuItem
               icon={<ClipboardList className="h-4 w-4" />}
               label="Đơn hàng của tôi"
-              onClick={() => { navigate(ROUTES.ORDERS); setOpen(false) }}
+              onClick={() => goTo(ROUTES.ORDERS)}
             />
             <MenuItem
               icon={<MapPin className="h-4 w-4" />}
               label="Địa chỉ giao hàng"
-              onClick={() => { navigate(ROUTES.ADDRESSES); setOpen(false) }}
+              onClick={() => goTo(ROUTES.ADDRESSES)}
             />
             <MenuItem
               icon={<User className="h-4 w-4" />}
               label="Thông tin tài khoản"
-              onClick={() => { navigate(ROUTES.PROFILE); setOpen(false) }}
+              onClick={() => goTo(ROUTES.PROFILE)}
             />
             <hr className="my-2 border-outline-variant/20" />
             <MenuItem
@@ -149,7 +164,6 @@ export function ShopLayout() {
   const { totalCount } = useCartStore()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const { user, isAuthenticated } = useAuthStore()
   const navigate = useNavigate()
 
   const { data: categories = [] } = useQuery({
@@ -157,12 +171,6 @@ export function ShopLayout() {
     queryFn: categoryApi.getAll,
     staleTime: 5 * 60 * 1000, // cache 5 minutes
   })
-
-  useEffect(() => {
-    if (isAuthenticated && user?.role === 'admin') {
-      navigate(ROUTES.ADMIN_DASHBOARD, { replace: true })
-    }
-  }, [isAuthenticated, user, navigate])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -175,95 +183,114 @@ export function ShopLayout() {
   return (
     <div className="min-h-screen bg-background text-on-surface font-body selection:bg-primary-container selection:text-white flex flex-col">
       {/* Promotional Top Banner */}
-      <div className="w-full bg-primary py-2 px-8 flex justify-center items-center gap-4 text-white font-label text-xs tracking-widest overflow-hidden relative z-50">
-        <span className="opacity-80">ƯU ĐÃI ĐỘC QUYỀN TRONG THÁNG: GIẢM 20% CHO CÁC DÒNG LAPTOP KC29 TECH CORE</span>
-        <div className="h-1 w-1 bg-white rounded-full"></div>
-        <Link to={ROUTES.PRODUCTS} className="font-bold underline decoration-primary-container underline-offset-4 cursor-pointer">MUA NGAY</Link>
+      <div className="w-full bg-primary py-2 px-4 flex justify-center items-center gap-4 text-white font-label text-[10px] tracking-widest overflow-hidden relative">
+        <span className="opacity-80 text-center">ƯU ĐÃI ĐỘC QUYỀN TRONG THÁNG: GIẢM 20% CHO CÁC DÒNG LAPTOP KC29 TECH CORE</span>
+        <div className="hidden h-1 w-1 rounded-full bg-white sm:block"></div>
+        <Link to={ROUTES.PRODUCTS} className="hidden font-bold underline decoration-primary-container underline-offset-4 sm:inline">
+          MUA NGAY
+        </Link>
       </div>
 
       {/* Navigation Header */}
-      <nav className="absolute top-12 md:top-14 left-1/2 -translate-x-1/2 w-[95%] max-w-screen-2xl z-40 glass-panel shadow-[0_40px_60px_-15px_rgba(0,0,0,0.06)] px-6 lg:px-8 py-3 flex items-center justify-between rounded-2xl border border-white/40">
-        <div className="flex items-center gap-8 xl:gap-12">
-          <Link to={ROUTES.HOME} className="font-headline text-2xl font-bold tracking-tighter text-on-surface">KC29 TECH</Link>
-
-          <div className="hidden lg:flex items-center gap-6">
-            {categories.map((cat) => (
-              <Link
-                key={cat.id}
-                to={`${ROUTES.PRODUCTS}?category_id=${cat.id}`}
-                className="flex items-center gap-2 font-label text-[11px] font-bold uppercase tracking-widest text-on-surface hover:text-primary transition-colors"
+      <header className="sticky top-0 z-40 w-full px-3 pt-3 md:px-5 md:pt-4 lg:px-6">
+        <nav className="w-full rounded-[26px] border border-white/40 bg-white/92 px-4 py-3 shadow-[0_28px_55px_-22px_rgba(15,23,42,0.18)] backdrop-blur-xl md:px-6 lg:px-8">
+          <div className="mx-auto flex w-full max-w-[1680px] items-center gap-3 lg:gap-6">
+            <div className="flex min-w-0 items-center gap-3 lg:gap-8">
+              <button
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 text-on-surface transition hover:border-primary hover:text-primary lg:hidden"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                aria-label="Menu"
               >
-                <span className="material-symbols-outlined text-lg opacity-70">{getCategoryIcon(cat.name)}</span>
-                {cat.name}
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-4 lg:gap-6">
-          <form onSubmit={handleSearch} className="hidden md:flex bg-surface-container-high/50 items-center px-4 py-2 gap-2 rounded-full focus-within:ring-2 focus-within:ring-primary/20 transition-all">
-            <span className="material-symbols-outlined text-outline-variant text-xl">search</span>
-            <input
-              className="bg-transparent border-none focus:ring-0 text-sm w-48 placeholder:text-outline-variant"
-              placeholder="Tìm kiếm công nghệ..."
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </form>
-
-          <div className="flex items-center gap-4">
-            <Link to={ROUTES.CART} className="relative text-on-surface hover:text-primary transition-transform active:scale-95 flex items-center justify-center">
-              <span className="material-symbols-outlined text-[24px]">shopping_cart</span>
-              {totalCount > 0 && (
-                <span className="absolute -top-1.5 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white shadow-sm ring-2 ring-white">
-                  {totalCount > 9 ? '9+' : totalCount}
+                <span className="material-symbols-outlined text-[22px]">
+                  {mobileMenuOpen ? 'close' : 'menu'}
                 </span>
-              )}
-            </Link>
+              </button>
 
-            <UserMenu />
+              <Link to={ROUTES.HOME} className="shrink-0 font-headline text-xl font-bold tracking-tighter text-on-surface sm:text-2xl">
+                KC29 TECH
+              </Link>
+            </div>
 
-            {/* Mobile menu toggle */}
-            <button
-              className="flex items-center justify-center text-on-surface hover:text-primary lg:hidden transition-transform active:scale-95"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              aria-label="Menu"
-            >
-              {mobileMenuOpen ? (
-                <span className="material-symbols-outlined text-[24px]">close</span>
-              ) : (
-                <span className="material-symbols-outlined text-[24px]">menu</span>
-              )}
-            </button>
-          </div>
-        </div>
+            <div className="hidden min-w-0 flex-1 items-center justify-center lg:flex">
+              <div className="flex min-w-0 items-center gap-5 xl:gap-7">
+                {categories.slice(0, 6).map((cat) => (
+                  <Link
+                    key={cat.id}
+                    to={`${ROUTES.PRODUCTS}?category_id=${cat.id}`}
+                    className="flex shrink-0 items-center gap-2 font-label text-[11px] font-bold uppercase tracking-widest text-on-surface hover:text-primary transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-lg opacity-70">{getCategoryIcon(cat.name)}</span>
+                    <span className="whitespace-nowrap">{cat.name}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
 
-        {/* Mobile menu */}
-        {mobileMenuOpen && (
-          <div className="absolute top-full left-0 mt-4 w-full bg-surface-container-lowest/95 backdrop-blur-xl rounded-2xl shadow-xl lg:hidden p-4 flex flex-col gap-4 border border-outline-variant/20">
-            <form onSubmit={handleSearch} className="flex bg-surface-container-high/50 items-center px-4 py-3 gap-2 rounded-xl">
-              <span className="material-symbols-outlined text-outline-variant text-xl">search</span>
-              <input
-                className="bg-transparent border-none focus:ring-0 text-sm w-full placeholder:text-outline-variant"
-                placeholder="Tìm kiếm công nghệ..."
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </form>
-            <div className="flex flex-col gap-2">
-              <NavItem to={ROUTES.HOME}>Trang chủ</NavItem>
-              <NavItem to={ROUTES.PRODUCTS}>Tất cả sản phẩm</NavItem>
-              {categories.map((cat) => (
-                <NavItem key={cat.id} to={`${ROUTES.PRODUCTS}?category_id=${cat.id}`}>{cat.name}</NavItem>
-              ))}
+            <div className="ml-auto flex min-w-0 items-center gap-2 sm:gap-3 lg:gap-4">
+              <form
+                onSubmit={handleSearch}
+                className="hidden min-w-0 flex-1 items-center gap-2 rounded-full bg-slate-100/90 px-4 py-2.5 transition-all focus-within:ring-2 focus-within:ring-primary/20 md:flex md:w-[240px] lg:w-[320px] xl:w-[420px]"
+              >
+                <span className="material-symbols-outlined shrink-0 text-outline-variant text-xl">search</span>
+                <input
+                  className="w-full min-w-0 bg-transparent border-none text-sm text-slate-700 placeholder:text-outline-variant focus:ring-0"
+                  placeholder="Tìm kiếm công nghệ..."
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </form>
+
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(true)}
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-on-surface transition hover:border-primary hover:text-primary md:hidden"
+                aria-label="Mở tìm kiếm"
+              >
+                <span className="material-symbols-outlined text-[22px]">search</span>
+              </button>
+
+              <Link to={ROUTES.CART} className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-on-surface transition hover:bg-slate-100 hover:text-primary active:scale-95">
+                <span className="material-symbols-outlined text-[24px]">shopping_cart</span>
+                {totalCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-white shadow-sm ring-2 ring-white">
+                    {totalCount > 9 ? '9+' : totalCount}
+                  </span>
+                )}
+              </Link>
+
+              <div className="shrink-0">
+                <UserMenu />
+              </div>
             </div>
           </div>
-        )}
-      </nav>
 
-      <main className="flex-1 pt-36">
+          {/* Mobile menu */}
+          {mobileMenuOpen && (
+            <div className="mx-auto mt-4 flex w-full max-w-[1680px] flex-col gap-4 rounded-[22px] border border-slate-200 bg-white/95 p-4 shadow-lg lg:hidden">
+              <form onSubmit={handleSearch} className="flex items-center gap-2 rounded-2xl bg-slate-100 px-4 py-3">
+                <span className="material-symbols-outlined text-outline-variant text-xl">search</span>
+                <input
+                  className="w-full bg-transparent border-none text-sm placeholder:text-outline-variant focus:ring-0"
+                  placeholder="Tìm kiếm công nghệ..."
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </form>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <NavItem to={ROUTES.HOME}>Trang chủ</NavItem>
+                <NavItem to={ROUTES.PRODUCTS}>Tất cả sản phẩm</NavItem>
+                {categories.map((cat) => (
+                  <NavItem key={cat.id} to={`${ROUTES.PRODUCTS}?category_id=${cat.id}`}>{cat.name}</NavItem>
+                ))}
+              </div>
+            </div>
+          )}
+        </nav>
+      </header>
+
+      <main className="flex-1 pt-4 md:pt-5">
         <Outlet />
       </main>
 

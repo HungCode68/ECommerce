@@ -25,10 +25,10 @@ func (pr *ProductRepo) CreateProduct(product *model.Product, categoryIDs []int64
 		return nil, err
 	}
 
-	query := `INSERT INTO products(name, slug, short_description, description, brand, status, is_published, published_at, min_price, discount_percent) 
-              VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	query := `INSERT INTO products(name, slug, thumbnail_url, short_description, description, brand, status, is_published, published_at, min_price, discount_percent)
+              VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
-	res, err := tx.Exec(query, product.Name, product.Slug, product.ShortDescription, product.Description, product.Brand, product.Status, product.IsPublished, product.PublishedAt, product.MinPrice, product.DiscountPercent)
+	res, err := tx.Exec(query, product.Name, product.Slug, product.ThumbnailURL, product.ShortDescription, product.Description, product.Brand, product.Status, product.IsPublished, product.PublishedAt, product.MinPrice, product.DiscountPercent)
 	if err != nil {
 		tx.Rollback()
 		return nil, fmt.Errorf("cannot insert product: %v", err)
@@ -77,8 +77,8 @@ func (pr *ProductRepo) BulkCreateProducts(products []*model.Product, categoryIDs
 		return fmt.Errorf("could not begin transaction: %w", err)
 	}
 
-	query := `INSERT INTO products(name, slug, short_description, description, brand, status, is_published, published_at, min_price, discount_percent) 
-			  VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	query := `INSERT INTO products(name, slug, thumbnail_url, short_description, description, brand, status, is_published, published_at, min_price, discount_percent)
+			  VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	stmt, err := tx.Prepare(query)
 	if err != nil {
 		tx.Rollback()
@@ -95,7 +95,7 @@ func (pr *ProductRepo) BulkCreateProducts(products []*model.Product, categoryIDs
 	defer catStmt.Close()
 
 	for i, product := range products {
-		res, err := stmt.Exec(product.Name, product.Slug, product.ShortDescription, product.Description, product.Brand, product.Status, product.IsPublished, product.PublishedAt, product.MinPrice, product.DiscountPercent)
+		res, err := stmt.Exec(product.Name, product.Slug, product.ThumbnailURL, product.ShortDescription, product.Description, product.Brand, product.Status, product.IsPublished, product.PublishedAt, product.MinPrice, product.DiscountPercent)
 		if err != nil {
 			tx.Rollback()
 			return fmt.Errorf("cannot insert product %s: %w", product.Name, err)
@@ -130,13 +130,13 @@ func (pr *ProductRepo) BulkCreateProducts(products []*model.Product, categoryIDs
 // GetProductByID - Lấy sản phẩm theo ID
 func (pr *ProductRepo) GetProductByID(id int64) (*model.Product, error) {
 
-	query := `SELECT id, name, slug, short_description, description, brand, status, is_published, published_at, min_price, discount_percent, avg_rating, rating_count, created_by, updated_by, created_at, updated_at, deleted_at 
+	query := `SELECT id, name, slug, thumbnail_url, short_description, description, brand, status, is_published, published_at, min_price, discount_percent, avg_rating, rating_count, created_by, updated_by, created_at, updated_at, deleted_at
 			  FROM products 
 			  WHERE id=? AND deleted_at IS NULL`
 
 	rows := pr.DB.QueryRow(query, id)
 	var product model.Product
-	err := rows.Scan(&product.ID, &product.Name, &product.Slug, &product.ShortDescription, &product.Description, &product.Brand, &product.Status, &product.IsPublished, &product.PublishedAt, &product.MinPrice, &product.DiscountPercent, &product.AvgRating, &product.RatingCount, &product.CreatedBy, &product.UpdatedBy, &product.CreatedAt, &product.UpdatedAt, &product.DeletedAt)
+	err := rows.Scan(&product.ID, &product.Name, &product.Slug, &product.ThumbnailURL, &product.ShortDescription, &product.Description, &product.Brand, &product.Status, &product.IsPublished, &product.PublishedAt, &product.MinPrice, &product.DiscountPercent, &product.AvgRating, &product.RatingCount, &product.CreatedBy, &product.UpdatedBy, &product.CreatedAt, &product.UpdatedAt, &product.DeletedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -145,13 +145,13 @@ func (pr *ProductRepo) GetProductByID(id int64) (*model.Product, error) {
 
 // GetProductByName
 func (pr *ProductRepo) GetProductByName(name string) (*model.Product, error) {
-	query := `SELECT id, name, slug, short_description, description, brand, status, is_published, published_at, min_price, discount_percent, avg_rating, rating_count, created_by, updated_by, created_at, updated_at, deleted_at 
+	query := `SELECT id, name, slug, thumbnail_url, short_description, description, brand, status, is_published, published_at, min_price, discount_percent, avg_rating, rating_count, created_by, updated_by, created_at, updated_at, deleted_at
 			  FROM products 
 			  WHERE name=? AND deleted_at IS NULL`
 
 	rows := pr.DB.QueryRow(query, name)
 	var product model.Product
-	err := rows.Scan(&product.ID, &product.Name, &product.Slug, &product.ShortDescription, &product.Description, &product.Brand, &product.Status, &product.IsPublished, &product.PublishedAt, &product.MinPrice, &product.DiscountPercent, &product.AvgRating, &product.RatingCount, &product.CreatedBy, &product.UpdatedBy, &product.CreatedAt, &product.UpdatedAt, &product.DeletedAt)
+	err := rows.Scan(&product.ID, &product.Name, &product.Slug, &product.ThumbnailURL, &product.ShortDescription, &product.Description, &product.Brand, &product.Status, &product.IsPublished, &product.PublishedAt, &product.MinPrice, &product.DiscountPercent, &product.AvgRating, &product.RatingCount, &product.CreatedBy, &product.UpdatedBy, &product.CreatedAt, &product.UpdatedAt, &product.DeletedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -160,13 +160,13 @@ func (pr *ProductRepo) GetProductByName(name string) (*model.Product, error) {
 
 // GetProductBySlug
 func (pr *ProductRepo) GetProductBySlug(slug string) (*model.Product, error) {
-	query := `SELECT id, name, slug, short_description, description, brand, status, is_published, published_at, min_price, discount_percent, avg_rating, rating_count, created_by, updated_by, created_at, updated_at, deleted_at 
+	query := `SELECT id, name, slug, thumbnail_url, short_description, description, brand, status, is_published, published_at, min_price, discount_percent, avg_rating, rating_count, created_by, updated_by, created_at, updated_at, deleted_at
 			  FROM products 
 			  WHERE slug=? AND deleted_at IS NULL`
 
 	rows := pr.DB.QueryRow(query, slug)
 	var product model.Product
-	err := rows.Scan(&product.ID, &product.Name, &product.Slug, &product.ShortDescription, &product.Description, &product.Brand, &product.Status, &product.IsPublished, &product.PublishedAt, &product.MinPrice, &product.DiscountPercent, &product.AvgRating, &product.RatingCount, &product.CreatedBy, &product.UpdatedBy, &product.CreatedAt, &product.UpdatedAt, &product.DeletedAt)
+	err := rows.Scan(&product.ID, &product.Name, &product.Slug, &product.ThumbnailURL, &product.ShortDescription, &product.Description, &product.Brand, &product.Status, &product.IsPublished, &product.PublishedAt, &product.MinPrice, &product.DiscountPercent, &product.AvgRating, &product.RatingCount, &product.CreatedBy, &product.UpdatedBy, &product.CreatedAt, &product.UpdatedAt, &product.DeletedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -183,7 +183,7 @@ func (pr *ProductRepo) GetManyProduct(ids []int64) ([]model.Product, error) {
 	placeholders = placeholders[:len(placeholders)-1]
 
 	query := fmt.Sprintf(`
-        SELECT id, name, slug, short_description, description, brand, status, is_published, published_at, min_price, discount_percent, avg_rating, rating_count, created_by, updated_by, created_at, updated_at, deleted_at 
+        SELECT id, name, slug, thumbnail_url, short_description, description, brand, status, is_published, published_at, min_price, discount_percent, avg_rating, rating_count, created_by, updated_by, created_at, updated_at, deleted_at
         FROM products 
         WHERE id IN (%s) AND deleted_at IS NULL`, placeholders)
 
@@ -201,7 +201,7 @@ func (pr *ProductRepo) GetManyProduct(ids []int64) ([]model.Product, error) {
 	products := []model.Product{}
 	for rows.Next() {
 		var product model.Product
-		err := rows.Scan(&product.ID, &product.Name, &product.Slug, &product.ShortDescription, &product.Description, &product.Brand, &product.Status, &product.IsPublished, &product.PublishedAt, &product.MinPrice, &product.DiscountPercent, &product.AvgRating, &product.RatingCount, &product.CreatedBy, &product.UpdatedBy, &product.CreatedAt, &product.UpdatedAt, &product.DeletedAt)
+		err := rows.Scan(&product.ID, &product.Name, &product.Slug, &product.ThumbnailURL, &product.ShortDescription, &product.Description, &product.Brand, &product.Status, &product.IsPublished, &product.PublishedAt, &product.MinPrice, &product.DiscountPercent, &product.AvgRating, &product.RatingCount, &product.CreatedBy, &product.UpdatedBy, &product.CreatedAt, &product.UpdatedAt, &product.DeletedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -283,7 +283,7 @@ func (pr *ProductRepo) SearchProducts(req *model.SearchProductsRequest) ([]model
 	offset := (page - 1) * limit
 
 	baseQuery := `
-		SELECT p.id, p.name, p.slug, p.short_description, p.description, p.brand, 
+		SELECT p.id, p.name, p.slug, p.thumbnail_url, p.short_description, p.description, p.brand,
 		       p.status, p.is_published, p.published_at, p.min_price, p.discount_percent,
 		       p.avg_rating, p.rating_count, p.created_by, p.updated_by,
 		       p.created_at, p.updated_at, p.deleted_at
@@ -305,7 +305,7 @@ func (pr *ProductRepo) SearchProducts(req *model.SearchProductsRequest) ([]model
 	for rows.Next() {
 		var p model.Product
 		err := rows.Scan(
-			&p.ID, &p.Name, &p.Slug, &p.ShortDescription, &p.Description,
+			&p.ID, &p.Name, &p.Slug, &p.ThumbnailURL, &p.ShortDescription, &p.Description,
 			&p.Brand, &p.Status, &p.IsPublished, &p.PublishedAt,
 			&p.MinPrice, &p.DiscountPercent, &p.AvgRating, &p.RatingCount,
 			&p.CreatedBy, &p.UpdatedBy, &p.CreatedAt, &p.UpdatedAt, &p.DeletedAt,
@@ -352,10 +352,10 @@ func (pr *ProductRepo) UpdateProduct(product *model.Product, categoryIDs []int64
 	}
 
 	query := `UPDATE products 
-              SET name=?, slug=?, short_description=?, description=?, brand=?, status=?, is_published=?, published_at=?, min_price=?, discount_percent=?, updated_at=NOW() 
+              SET name=?, slug=?, thumbnail_url=?, short_description=?, description=?, brand=?, status=?, is_published=?, published_at=?, min_price=?, discount_percent=?, updated_at=NOW()
               WHERE id=? AND deleted_at IS NULL`
 
-	res, err := tx.Exec(query, product.Name, product.Slug, product.ShortDescription, product.Description, product.Brand, product.Status, product.IsPublished, product.PublishedAt, product.MinPrice, product.DiscountPercent, product.ID)
+	res, err := tx.Exec(query, product.Name, product.Slug, product.ThumbnailURL, product.ShortDescription, product.Description, product.Brand, product.Status, product.IsPublished, product.PublishedAt, product.MinPrice, product.DiscountPercent, product.ID)
 	if err != nil {
 		tx.Rollback()
 		return nil, fmt.Errorf("cannot update product: %v", err)
@@ -513,7 +513,7 @@ func (pr *ProductRepo) BulkDeleteSoftProducts(ids []int64) error {
 }
 
 func (pr *ProductRepo) GetAllProductsSoftDeleted() ([]model.Product, error) {
-	rows, err := pr.DB.Query("SELECT id, name, slug, short_description, description, brand, status, is_published, published_at, min_price, discount_percent, avg_rating, rating_count, created_by, updated_by, created_at, updated_at, deleted_at FROM products where status='archived' AND deleted_at IS NOT NULL")
+	rows, err := pr.DB.Query("SELECT id, name, slug, thumbnail_url, short_description, description, brand, status, is_published, published_at, min_price, discount_percent, avg_rating, rating_count, created_by, updated_by, created_at, updated_at, deleted_at FROM products where status='archived' AND deleted_at IS NOT NULL")
 	if err != nil {
 		return nil, err
 	}
@@ -521,7 +521,7 @@ func (pr *ProductRepo) GetAllProductsSoftDeleted() ([]model.Product, error) {
 	products := []model.Product{}
 	for rows.Next() {
 		var product model.Product
-		if err := rows.Scan(&product.ID, &product.Name, &product.Slug, &product.ShortDescription, &product.Description, &product.Brand, &product.Status, &product.IsPublished, &product.PublishedAt, &product.MinPrice, &product.DiscountPercent, &product.AvgRating, &product.RatingCount, &product.CreatedBy, &product.UpdatedBy, &product.CreatedAt, &product.UpdatedAt, &product.DeletedAt); err != nil {
+		if err := rows.Scan(&product.ID, &product.Name, &product.Slug, &product.ThumbnailURL, &product.ShortDescription, &product.Description, &product.Brand, &product.Status, &product.IsPublished, &product.PublishedAt, &product.MinPrice, &product.DiscountPercent, &product.AvgRating, &product.RatingCount, &product.CreatedBy, &product.UpdatedBy, &product.CreatedAt, &product.UpdatedAt, &product.DeletedAt); err != nil {
 			return nil, err
 		}
 		products = append(products, product)

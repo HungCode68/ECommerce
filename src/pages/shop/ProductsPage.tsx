@@ -10,7 +10,6 @@ import { Pagination } from '@/components/shared/Pagination'
 import { CardSkeleton } from '@/components/shared/LoadingSkeleton'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { usePagination } from '@/hooks/usePagination'
-import { SlidersHorizontal } from 'lucide-react'
 
 export function ProductsPage() {
   const { page, limit, totalPages, goToPage } = usePagination({ initialLimit: 16 })
@@ -29,8 +28,6 @@ export function ProductsPage() {
   const [maxPrice, setMaxPrice] = useState<string>(
     searchParams.get('max_price') || ''
   )
-  const [showFilter, setShowFilter] = useState(false)
-
   // Sync URL changes (e.g. from navbar clicks) to local state
   useEffect(() => {
     const urlCategory = searchParams.get('category_id') ? Number(searchParams.get('category_id')) : undefined
@@ -208,7 +205,7 @@ export function ProductsPage() {
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {products.map((p, index) => (
-                  <ProductCard key={p.id} product={p} isHero={index === 0} index={index} />
+                  <ProductCard key={p.id} product={p} isHero={index === 0} />
                 ))}
               </div>
               

@@ -1,15 +1,24 @@
 package productreview
 
 import (
+	"bytes"
+	"crypto/sha1"
 	"encoding/json"
+	"encoding/hex"
 	"fmt"
 	"golang/internal/controller/productreviews"
 	"golang/internal/logger"
 	"golang/internal/middleware"
 	"golang/internal/model"
 	"golang/internal/validator"
+	"io"
+	"mime/multipart"
 	"net/http"
+	"os"
+	"sort"
 	"strconv"
+	"strings"
+	"time"
 )
 
 type productReviewHandler struct {
@@ -103,4 +112,135 @@ func (h *productReviewHandler) DeleteReviewHandler(w http.ResponseWriter, r *htt
 	}
 
 	h.writeJson(w, http.StatusOK, resp)
+}
+
+func buildReviewCloudinarySignature(params map[string]string, apiSecret string) string {
+	keys := make([]string, 0, len(params))
+	for key, value := range params {
+		if value == "" {
+			continue
+		}
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	parts := make([]string, 0, len(keys))
+	for _, key := range keys {
+		parts = append(parts, fmt.Sprintf("%s=%s", key, params[key]))
+	}
+
+	hash := sha1.Sum([]byte(strings.Join(parts, "&") + apiSecret))
+	return hex.EncodeToString(hash[:])
+}
+
+func uploadReviewImageToCloudinary(file multipart.File, filename string) (string, error) {
+	cloudName := os.Getenv("CLOUDINARY_CLOUD_NAME")
+	apiKey := os.Getenv("CLOUDINARY_API_KEY")
+	apiSecret := os.Getenv("CLOUDINARY_API_SECRET")
+	if cloudName == "" || apiKey == "" || apiSecret == "" {
+		return "", fmt.Errorf("missing cloudinary env config")
+	}
+
+	folder := os.Getenv("CLOUDINARY_REVIEW_UPLOAD_FOLDER")
+	if folder == "" {
+		folder = "ecommerce/reviews"
+	}
+
+	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
+	signature := buildReviewCloudinarySignature(map[string]string{
+		"folder":    folder,
+		"timestamp": timestamp,
+	}, apiSecret)
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	if err := writer.WriteField("api_key", apiKey); err != nil {
+		return "", err
+	}
+	if err := writer.WriteField("timestamp", timestamp); err != nil {
+		return "", err
+	}
+	if err := writer.WriteField("folder", folder); err != nil {
+		return "", err
+	}
+	if err := writer.WriteField("signature", signature); err != nil {
+		return "", err
+	}
+
+	part, err := writer.CreateFormFile("file", filename)
+	if err != nil {
+		return "", err
+	}
+	if _, err := io.Copy(part, file); err != nil {
+		return "", err
+	}
+	if err := writer.Close(); err != nil {
+		return "", err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("https://api.cloudinary.com/v1_1/%s/image/upload", cloudName), body)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	var cloudinaryResp struct {
+		SecureURL string `json:"secure_url"`
+		Error     *struct {
+			Message string `json:"message"`
+		} `json:"error,omitempty"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&cloudinaryResp); err != nil {
+		return "", err
+	}
+
+	if resp.StatusCode >= 400 {
+		if cloudinaryResp.Error != nil && cloudinaryResp.Error.Message != "" {
+			return "", fmt.Errorf(cloudinaryResp.Error.Message)
+		}
+		return "", fmt.Errorf("cloudinary upload failed with status %d", resp.StatusCode)
+	}
+
+	if cloudinaryResp.SecureURL == "" {
+		return "", fmt.Errorf("cloudinary did not return secure_url")
+	}
+
+	return cloudinaryResp.SecureURL, nil
+}
+
+func (h *productReviewHandler) UploadReviewImageHandler(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		h.errJson(w, http.StatusBadRequest, "Failed to parse form data")
+		return
+	}
+
+	file, header, err := r.FormFile("image")
+	if err != nil {
+		h.errJson(w, http.StatusBadRequest, "Missing 'image' in form-data")
+		return
+	}
+	defer file.Close()
+
+	imageURL, err := uploadReviewImageToCloudinary(file, header.Filename)
+	if err != nil {
+		logger.ErrorLogger.Printf("UploadReviewImageHandler error: %v", err)
+		h.errJson(w, http.StatusInternalServerError, "Failed to upload review image")
+		return
+	}
+
+	h.writeJson(w, http.StatusOK, map[string]any{
+		"code":    http.StatusOK,
+		"message": "Upload review image successfully",
+		"data": map[string]string{
+			"url": imageURL,
+		},
+	})
 }

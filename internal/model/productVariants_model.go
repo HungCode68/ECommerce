@@ -13,6 +13,7 @@ type ProductsVariants struct {
 	StockQuantity  int       `db:"stock_quantity"`
 	AllowBackorder bool      `db:"allow_backorder"`
 	IsActive       bool      `db:"is_active"`
+	ThumbnailURL   *string   `db:"thumbnail_url"`
 	CreatedAt      time.Time `db:"created_at"`
 	UpdatedAt      time.Time `db:"updated_at"`
 }
@@ -26,6 +27,7 @@ type CreateVariantRequest struct {
 	StockQuantity  int     `json:"stock_quantity" validate:"gte=0"`
 	IsActive       bool    `json:"is_active"`
 	AllowBackorder bool    `json:"allow_backorder"`
+	ThumbnailURL   string  `json:"thumbnail_url" validate:"omitempty,max=500"`
 }
 
 type UpdateVariantRequest struct {
@@ -37,6 +39,7 @@ type UpdateVariantRequest struct {
 	StockQuantity  int     `json:"stock_quantity" validate:"gte=0"`
 	IsActive       bool    `json:"is_active"`
 	AllowBackorder bool    `json:"allow_backorder"`
+	ThumbnailURL   string  `json:"thumbnail_url" validate:"omitempty,max=500"`
 }
 
 type CreateVariantResponse struct {
@@ -64,6 +67,7 @@ type AdminVariantResponse struct {
 	StockQuantity  int      `json:"stock_quantity"`
 	IsActive       bool     `json:"is_active"`
 	AllowBackorder bool     `json:"allow_backorder"`
+	ThumbnailURL   *string  `json:"thumbnail_url,omitempty"`
 	CreatedAt      string   `json:"created_at"`
 	UpdatedAt      string   `json:"updated_at"`
 }
@@ -76,4 +80,5 @@ type UserVariantResponse struct {
 	OptionValues  string  `json:"option_values"`
 	Price         float64 `json:"price"`
 	StockQuantity int     `json:"stock_quantity"`
+	ThumbnailURL  *string `json:"thumbnail_url,omitempty"`
 }

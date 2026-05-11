@@ -33,6 +33,7 @@ func (c *productVariantController) CreateVariant(req model.CreateVariantRequest,
 		StockQuantity:  req.StockQuantity,
 		IsActive:       req.IsActive,
 		AllowBackorder: req.AllowBackorder,
+		ThumbnailURL:   &req.ThumbnailURL,
 	}
 	createVariant, err := c.VariantRepo.CreateProductVariant(newVariant)
 	if err != nil {
@@ -51,6 +52,7 @@ func (c *productVariantController) CreateVariant(req model.CreateVariantRequest,
 			StockQuantity:  createVariant.StockQuantity,
 			IsActive:       createVariant.IsActive,
 			AllowBackorder: createVariant.AllowBackorder,
+			ThumbnailURL:   createVariant.ThumbnailURL,
 			CreatedAt:      createVariant.CreatedAt.String(),
 		},
 	}
@@ -79,6 +81,7 @@ func (c *productVariantController) UpdateVariant(req model.UpdateVariantRequest,
 		StockQuantity:  req.StockQuantity,
 		IsActive:       req.IsActive,
 		AllowBackorder: req.AllowBackorder,
+		ThumbnailURL:   &req.ThumbnailURL,
 	}
 
 	err = c.VariantRepo.UpdateProductVariant(updatedVariant)
@@ -104,6 +107,7 @@ func (c *productVariantController) UpdateVariant(req model.UpdateVariantRequest,
 			StockQuantity:  updatedData.StockQuantity,
 			IsActive:       updatedData.IsActive,
 			AllowBackorder: updatedData.AllowBackorder,
+			ThumbnailURL:   updatedData.ThumbnailURL,
 			CreatedAt:      updatedData.CreatedAt.String(),
 		},
 	}, nil

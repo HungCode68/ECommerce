@@ -49,6 +49,14 @@ export function OrderDetailPage() {
   }
 
   const nextStatuses = NEXT_STATUSES[order.status] ?? []
+  const items = order.items ?? []
+  const subtotal = order.subtotal ?? items.reduce((sum, item) => {
+    const unitPrice = item.unit_price ?? item.price ?? 0
+    return sum + unitPrice * item.quantity
+  }, 0)
+  const shippingFee = order.shipping_fee ?? 0
+  const discount = order.discount ?? 0
+  const totalPayable = order.total_payable ?? Number(order.total_amount ?? 0)
 
   return (
     <div className="space-y-6">
@@ -74,24 +82,24 @@ export function OrderDetailPage() {
           <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
             <h3 className="mb-4 font-semibold text-slate-800">Sản phẩm</h3>
             <div className="space-y-3">
-              {order.items.map((item, i) => (
+              {items.map((item, i) => (
                 <div key={i} className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
                   <div>
-                    <p className="text-sm font-medium text-slate-800">{item.product_name ?? `SP #${item.product_id}`}</p>
+                    <p className="text-sm font-medium text-slate-800">{item.product_name ?? item.title ?? `SP #${item.product_id}`}</p>
                     <p className="text-xs text-slate-400">x{item.quantity}</p>
                   </div>
-                  <p className="font-mono text-sm font-semibold">{formatVND(item.price * item.quantity)}</p>
+                  <p className="font-mono text-sm font-semibold">{formatVND((item.unit_price ?? item.price ?? 0) * item.quantity)}</p>
                 </div>
               ))}
             </div>
             <div className="mt-4 space-y-1.5 text-sm">
-              <Row label="Tạm tính" value={formatVND(order.subtotal)} />
-              <Row label="Phí vận chuyển" value={formatVND(order.shipping_fee)} />
-              {order.discount > 0 && (
-                <Row label="Giảm giá" value={`-${formatVND(order.discount)}`} valueClass="text-green-600" />
+              <Row label="Tạm tính" value={formatVND(subtotal)} />
+              <Row label="Phí vận chuyển" value={formatVND(shippingFee)} />
+              {discount > 0 && (
+                <Row label="Giảm giá" value={`-${formatVND(discount)}`} valueClass="text-green-600" />
               )}
               <div className="border-t border-slate-100 pt-2">
-                <Row label="Tổng thanh toán" value={formatVND(order.total_payable)} valueClass="text-lg font-bold text-slate-900" />
+                <Row label="Tổng thanh toán" value={formatVND(totalPayable)} valueClass="text-lg font-bold text-slate-900" />
               </div>
             </div>
           </div>

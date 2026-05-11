@@ -29,10 +29,14 @@ func (c *productReviewsController) CreateReview(ctx context.Context, req model.C
 		return nil, errors.New("bạn phải mua sản phẩm này và đơn hàng đã hoàn thành mới được đánh giá")
 	}
 	toCreate := &model.ProductReview{
-		ProductID: productID,
-		Body:      req.Body,
-		Rating:    req.Rating,
-		UserID:    userID,
+		ProductID:         productID,
+		Body:              req.Body,
+		Rating:            req.Rating,
+		PerformanceRating: req.PerformanceRating,
+		BatteryRating:     req.BatteryRating,
+		CameraRating:      req.CameraRating,
+		ImageURLs:         req.ImageURLs,
+		UserID:            userID,
 	}
 
 	created, err := c.reviewRepo.CreateProductReview(toCreate)
@@ -41,13 +45,19 @@ func (c *productReviewsController) CreateReview(ctx context.Context, req model.C
 	}
 
 	resp := model.ProductReviewResponse{
-		ID:        created.ID,
-		ProductID: created.ProductID,
-		Body:      created.Body,
-		Rating:    created.Rating,
-		UserID:    created.UserID,
-		CreatedAt: created.CreatedAt,
-		UpdatedAt: created.UpdatedAt,
+		ID:                created.ID,
+		ProductID:         created.ProductID,
+		Body:              created.Body,
+		Rating:            created.Rating,
+		PerformanceRating: created.PerformanceRating,
+		BatteryRating:     created.BatteryRating,
+		CameraRating:      created.CameraRating,
+		ImageURLs:         created.ImageURLs,
+		UserID:            created.UserID,
+		UserName:          created.UserName,
+		VerifiedPurchase:  true,
+		CreatedAt:         created.CreatedAt,
+		UpdatedAt:         created.UpdatedAt,
 	}
 
 	return &model.CreateProductReviewResponse{
@@ -73,24 +83,60 @@ func (c *productReviewsController) ListReviews(productID int64) (*model.ProductR
 	}
 
 	respReviews := make([]model.ProductReviewResponse, 0, len(reviews))
+	ratingBreakdown := make(map[int]int64)
+	var performanceTotal float64
+	var batteryTotal float64
+	var cameraTotal float64
 	for _, r := range reviews {
+		ratingBreakdown[r.Rating]++
+		performanceTotal += float64(r.PerformanceRating)
+		batteryTotal += float64(r.BatteryRating)
+		cameraTotal += float64(r.CameraRating)
 		respReviews = append(respReviews, model.ProductReviewResponse{
-			ID:        r.ID,
-			ProductID: r.ProductID,
-			Body:      r.Body,
-			Rating:    r.Rating,
-			UserID:    r.UserID,
-			CreatedAt: r.CreatedAt,
-			UpdatedAt: r.UpdatedAt,
+			ID:                r.ID,
+			ProductID:         r.ProductID,
+			Body:              r.Body,
+			Rating:            r.Rating,
+			PerformanceRating: r.PerformanceRating,
+			BatteryRating:     r.BatteryRating,
+			CameraRating:      r.CameraRating,
+			ImageURLs:         r.ImageURLs,
+			UserID:            r.UserID,
+			UserName:          r.UserName,
+			VerifiedPurchase:  r.VerifiedPurchase,
+			CreatedAt:         r.CreatedAt,
+			UpdatedAt:         r.UpdatedAt,
+		})
+	}
+
+	var performanceAvg float64
+	var batteryAvg float64
+	var cameraAvg float64
+	if len(reviews) > 0 {
+		countFloat := float64(len(reviews))
+		performanceAvg = performanceTotal / countFloat
+		batteryAvg = batteryTotal / countFloat
+		cameraAvg = cameraTotal / countFloat
+	}
+
+	breakdown := make([]model.RatingBreakdownItem, 0, 5)
+	for star := 5; star >= 1; star-- {
+		breakdown = append(breakdown, model.RatingBreakdownItem{
+			Rating: star,
+			Count:  ratingBreakdown[star],
 		})
 	}
 
 	return &model.ProductReviewListResponse{
-		Message:     "Reviews fetched successfully",
-		ProductID:   productID,
-		AvgRating:   avg,
-		RatingCount: count,
-		Reviews:     respReviews,
+		Message:         "Reviews fetched successfully",
+		ProductID:       productID,
+		AvgRating:       avg,
+		RatingCount:     count,
+		PerformanceAvg:  performanceAvg,
+		BatteryAvg:      batteryAvg,
+		CameraAvg:       cameraAvg,
+		RatingBreakdown: breakdown,
+		Reviews:         respReviews,
 	}, nil
 }
 

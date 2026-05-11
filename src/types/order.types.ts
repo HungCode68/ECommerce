@@ -8,10 +8,17 @@ export type OrderStatus =
 export type PaymentMethod = 'cod' | 'bank_transfer'
 
 export type OrderItem = {
+  id?: number
+  order_id?: number
   product_id: number
   variant_id: number
   quantity: number
   price: number
+  title?: string
+  sku?: string
+  unit_price?: number
+  line_subtotal?: number
+  option_values?: string
   product_name?: string
   variant_info?: string
 }
@@ -25,6 +32,9 @@ export type Order = {
   item_count?: number
   status: OrderStatus
   total_amount: string | number
+  subtotal?: number
+  shipping_fee?: number
+  discount?: number
   payment_status: string
   note?: string
   placed_at: string
@@ -32,6 +42,8 @@ export type Order = {
   paid_at?: string
   completed_at?: string
   cancelled_at?: string
+  cancel_reason?: string
+  items?: OrderItem[]
   // Legacy fields for compatibility
   payment_method?: PaymentMethod
   total_payable?: number

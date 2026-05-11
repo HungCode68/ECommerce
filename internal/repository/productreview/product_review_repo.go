@@ -16,10 +16,32 @@ func NewProductReviewRepo(db *sql.DB) ProductReviewRepository {
 	}
 }
 func (pr *productReviewRepo) CreateProductReview(review *model.ProductReview) (*model.ProductReview, error) {
-	res, err := pr.DB.Exec(`
-		INSERT INTO product_reviews (product_id, user_id, rating, body, created_at, updated_at)
-		VALUES (?, ?, ?, ?, NOW(), NOW())`,
-		review.ProductID, review.UserID, review.Rating, review.Body,
+	tx, err := pr.DB.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	res, err := tx.Exec(`
+		INSERT INTO product_reviews (
+			product_id,
+			user_id,
+			rating,
+			performance_rating,
+			battery_rating,
+			camera_rating,
+			body,
+			created_at,
+			updated_at
+		)
+		VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+		review.ProductID,
+		review.UserID,
+		review.Rating,
+		review.PerformanceRating,
+		review.BatteryRating,
+		review.CameraRating,
+		review.Body,
 	)
 	if err != nil {
 		return nil, err
@@ -31,6 +53,24 @@ func (pr *productReviewRepo) CreateProductReview(review *model.ProductReview) (*
 	}
 
 	review.ID = id
+
+	for index, imageURL := range review.ImageURLs {
+		if imageURL == "" {
+			continue
+		}
+		if _, err := tx.Exec(`
+			INSERT INTO product_review_images (review_id, image_url, sort_order)
+			VALUES (?, ?, ?)`,
+			review.ID, imageURL, index,
+		); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
 	now := time.Now().Format(time.RFC3339)
 	review.CreatedAt = now
 	review.UpdatedAt = now
@@ -39,9 +79,21 @@ func (pr *productReviewRepo) CreateProductReview(review *model.ProductReview) (*
 
 func (pr *productReviewRepo) GetProductReviewsByProductID(productID int64) ([]model.ProductReview, error) {
 	rows, err := pr.DB.Query(`
-		SELECT id, product_id, user_id, rating, body, created_at, updated_at
-		FROM product_reviews
-		WHERE product_id = ?
+		SELECT
+			pr.id,
+			pr.product_id,
+			pr.user_id,
+			pr.rating,
+			pr.performance_rating,
+			pr.battery_rating,
+			pr.camera_rating,
+			pr.body,
+			pr.created_at,
+			pr.updated_at,
+		       COALESCE(u.username, '') as user_name
+		FROM product_reviews pr
+		LEFT JOIN users u ON u.id = pr.user_id
+		WHERE pr.product_id = ?
 		ORDER BY created_at DESC`, productID)
 	if err != nil {
 		return nil, err
@@ -51,10 +103,55 @@ func (pr *productReviewRepo) GetProductReviewsByProductID(productID int64) ([]mo
 	reviews := []model.ProductReview{}
 	for rows.Next() {
 		var r model.ProductReview
-		if err := rows.Scan(&r.ID, &r.ProductID, &r.UserID, &r.Rating, &r.Body, &r.CreatedAt, &r.UpdatedAt); err != nil {
+		if err := rows.Scan(
+			&r.ID,
+			&r.ProductID,
+			&r.UserID,
+			&r.Rating,
+			&r.PerformanceRating,
+			&r.BatteryRating,
+			&r.CameraRating,
+			&r.Body,
+			&r.CreatedAt,
+			&r.UpdatedAt,
+			&r.UserName,
+		); err != nil {
 			return nil, err
 		}
+		r.VerifiedPurchase = true
 		reviews = append(reviews, r)
+	}
+
+	if len(reviews) == 0 {
+		return reviews, nil
+	}
+
+	imageRows, err := pr.DB.Query(`
+		SELECT review_id, image_url
+		FROM product_review_images
+		WHERE review_id IN (
+			SELECT id FROM product_reviews WHERE product_id = ?
+		)
+		ORDER BY review_id ASC, sort_order ASC, id ASC`,
+		productID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer imageRows.Close()
+
+	imagesByReviewID := make(map[int64][]string)
+	for imageRows.Next() {
+		var reviewID int64
+		var imageURL string
+		if err := imageRows.Scan(&reviewID, &imageURL); err != nil {
+			return nil, err
+		}
+		imagesByReviewID[reviewID] = append(imagesByReviewID[reviewID], imageURL)
+	}
+
+	for index := range reviews {
+		reviews[index].ImageURLs = imagesByReviewID[reviews[index].ID]
 	}
 
 	return reviews, nil

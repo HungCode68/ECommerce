@@ -120,7 +120,8 @@ func (r *cartRepository) GetCartItemsWithDetails(ctx context.Context, cartID int
 			COALESCE(pv.title, pv.sku) as variant_name,
 			COALESCE(pv.price_override, p.min_price) as price,
 			ci.quantity,
-			pv.stock_quantity
+			pv.stock_quantity,
+			COALESCE(pv.thumbnail_url, p.thumbnail_url) as thumbnail_url
 		FROM cart_items ci
 		JOIN products p ON ci.product_id = p.id
 		JOIN product_variants pv ON ci.variant_id = pv.id
@@ -139,6 +140,7 @@ func (r *cartRepository) GetCartItemsWithDetails(ctx context.Context, cartID int
 	for rows.Next() {
 		var item model.CartItemResponse
 		var stockQuantity int
+		var thumbURL sql.NullString
 
 		err := rows.Scan(
 			&item.ItemID,
@@ -149,11 +151,14 @@ func (r *cartRepository) GetCartItemsWithDetails(ctx context.Context, cartID int
 			&item.Price,
 			&item.Quantity,
 			&stockQuantity,
+			&thumbURL,
 		)
 		if err != nil {
 			logger.ErrorLogger.Printf("Repo: Error scanning row: %v", err)
 			return nil, err
 		}
+
+		item.ThumbnailURL = thumbURL.String
 
 		// Tính toán các giá trị
 		item.SubTotal = item.Price * float64(item.Quantity)

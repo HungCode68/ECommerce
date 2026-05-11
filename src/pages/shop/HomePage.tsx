@@ -2,12 +2,17 @@ import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { ROUTES } from '@/utils/constants'
 import { productApi } from '@/api/product.api'
+import { bannerApi } from '@/api/banner.api'
 import { queryKeys } from '@/lib/queryKeys'
 import { ProductCard } from '@/features/shop/products/ProductCard'
 import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton'
 import { formatVND } from '@/utils/formatters/format'
+import { useAuthStore } from '@/store/authStore'
+import type { Banner } from '@/types/banner.types'
 
 export function HomePage() {
+  const { user } = useAuthStore()
+  const isAdmin = user?.role === 'admin'
   const { data: productsData, isLoading } = useQuery({
     queryKey: queryKeys.products.list({ limit: 6 }),
     queryFn: () => productApi.search({ limit: 6 }),
@@ -18,38 +23,64 @@ export function HomePage() {
     queryFn: () => productApi.search({ limit: 3, sort_by: 'created_at', sort_order: 'desc' }),
   })
 
+  const { data: heroBannersData } = useQuery({
+    queryKey: queryKeys.banners.list('home_hero'),
+    queryFn: () => bannerApi.getActive('home_hero'),
+  })
+
   const products = productsData?.data || []
   const recentProducts = recentProductsData?.data || []
+  const heroBannerSlots = [1, 2]
+    .map((sortOrder) => {
+      const slotBanner = heroBannersData?.find((banner) => banner.sort_order === sortOrder)
+      if (!slotBanner) return null
+
+      return {
+        slotKey: `home_hero_${sortOrder}`,
+        banner: slotBanner,
+      }
+    })
+    .filter((slot): slot is { slotKey: string; banner: Banner } => Boolean(slot))
 
   return (
     <div className="pb-24">
-      {/* Hero Promotional Banner */}
-      <section className="max-w-screen-2xl mx-auto px-4 md:px-8 mb-16">
-        <div className="relative w-full aspect-[16/9] lg:aspect-[21/9] overflow-hidden group rounded-3xl glow-effect bg-inverse-surface border border-outline-variant/20">
-          <img
-            className="absolute top-1/2 right-0 -translate-y-1/2 w-full lg:w-2/3 h-full object-cover object-left opacity-60 lg:opacity-90 group-hover:scale-105 transition-transform duration-1000 ease-out mix-blend-luminosity"
-            alt="A clean, minimalist high-tech laptop with sleek cyan glass interfaces and floating holographic displays."
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuBU0nCUfNX0DQiqTQRsXG3IxgoL9E4VF5bCaR__SP12GFEFDHrRvdCKyGzi1958J6sMueTAZpFhDaoHiWNR-r1KGBQ8tpjC7x9XZVN-lE8BIvCTd_cqKL1IVlyW6jm6lcNzmKOAB_EOX9l_AKwLq-Xcfg6yS1Y7UV5nRwtb0WEVefj9Upjnd2EanEBrMPYeWdduX4tVkb6tSK4GWD3YZSCU9rVC--ifnrxYZriVKIDydpnIzlD32FvvSKu0hRBDVz5ZFyytoHACPcmu"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-inverse-surface via-inverse-surface/90 lg:via-inverse-surface/80 to-transparent flex flex-col justify-center px-8 lg:px-16 z-10">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="h-[2px] w-8 bg-primary-container shadow-[0_0_10px_rgba(6,182,212,0.8)]"></div>
-              <span className="text-primary-container font-headline font-bold tracking-[0.2em] text-xs md:text-sm uppercase drop-shadow-[0_0_8px_rgba(6,182,212,0.5)]">THẾ HỆ MỚI 2024</span>
-            </div>
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold font-headline leading-[1.1] mb-6 tracking-tight max-w-xl text-on-error">
-              KC29 TECH <br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-container to-primary-fixed-dim drop-shadow-[0_0_15px_rgba(76,215,246,0.3)]">PRO ULTRA</span>
-            </h1>
-            <p className="text-inverse-on-surface/80 font-body max-w-md mb-10 text-base md:text-lg leading-relaxed font-light">
-              Định nghĩa lại giới hạn của hiệu năng. Chipset Quantum-S thế hệ mới nhất tích hợp trong thân máy mỏng chỉ 12mm.
-            </p>
-            <div className="flex gap-4">
-              <Link to={ROUTES.PRODUCTS} className="primary-gradient text-white px-8 py-4 font-label font-bold text-sm tracking-widest rounded-full hover:shadow-[0_0_20px_rgba(6,182,212,0.4)] hover:scale-105 transition-all duration-300">
-                KHÁM PHÁ NGAY
-              </Link>
-            </div>
+      {/* Hero Promotional Banners */}
+      {heroBannerSlots.length > 0 && (
+        <section className="mx-auto mb-12 max-w-screen-2xl px-2 md:px-4 lg:px-6">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {heroBannerSlots.map(({ slotKey, banner }) => (
+              <div
+                key={slotKey}
+                className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md"
+              >
+                <Link to={banner.link_url || ROUTES.PRODUCTS} className="block">
+                  <div className="aspect-[21/8] w-full overflow-hidden bg-slate-100">
+                    <picture>
+                      {banner.mobile_image_url && (
+                        <source media="(max-width: 767px)" srcSet={banner.mobile_image_url} />
+                      )}
+                      <img
+                        src={banner.image_url}
+                        alt={banner.title}
+                        className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]"
+                      />
+                    </picture>
+                  </div>
+                </Link>
+
+                {isAdmin && (
+                  <Link
+                    to={`${ROUTES.ADMIN_SETTINGS}?slot=${slotKey}`}
+                    className="absolute right-3 top-3 rounded-full bg-slate-900/82 px-3 py-1.5 text-xs font-bold text-white backdrop-blur transition hover:bg-slate-900"
+                  >
+                    Sửa banner
+                  </Link>
+                )}
+              </div>
+            ))}
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Recently Viewed & Recommended Bento Grid */}
       <section className="max-w-screen-2xl mx-auto px-4 md:px-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mb-24">
@@ -64,8 +95,8 @@ export function HomePage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {products.map((product, index) => (
-                <ProductCard key={product.id} product={product} index={index} />
+              {products.map((product) => (
+                <ProductCard key={product.id} product={product} />
               ))}
             </div>
           )}
@@ -73,7 +104,7 @@ export function HomePage() {
           <div className="col-span-1 sm:col-span-3 bg-primary-container/5 p-8 border border-primary-container/20 flex justify-between items-center relative overflow-hidden group mt-6 rounded-3xl">
             <div className="relative z-10">
               <h3 className="text-2xl font-headline font-bold mb-2">XÂY DỰNG CẤU HÌNH CỦA RIÊNG BẠN</h3>
-              <p className="text-on-surface-variant max-w-sm mb-6">Tùy chọn linh kiện cao cấp từ KINETIC Lab để tạo ra cỗ máy chiến đấu thực thụ.</p>
+              <p className="text-on-surface-variant max-w-sm mb-6">Tùy chọn linh kiện cao cấp từ KC29 TECH để tạo ra cỗ máy chiến đấu thực thụ.</p>
               <Link to={ROUTES.PRODUCTS} className="bg-primary text-white px-6 py-3 font-label font-bold text-xs rounded-full hover:shadow-lg transition-shadow inline-block">
                 BẮT ĐẦU CẤU HÌNH
               </Link>
@@ -126,4 +157,3 @@ export function HomePage() {
     </div>
   )
 }
-

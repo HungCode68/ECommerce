@@ -101,6 +101,15 @@ export function AdminLayout() {
           <div className="flex items-center gap-3">
             <button
               type="button"
+              onClick={() => navigate(ROUTES.HOME)}
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 shadow-sm transition-colors hover:border-cyan-200 hover:text-cyan-600"
+            >
+              <span className="material-symbols-outlined text-[18px]">storefront</span>
+              Về trang người dùng
+            </button>
+
+            <button
+              type="button"
               className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 shadow-sm transition-colors hover:text-cyan-500"
               aria-label="Tìm kiếm"
             >
@@ -137,6 +146,12 @@ export function AdminLayout() {
                     Xin chào, {displayName}
                   </DropdownMenu.Label>
                   <DropdownMenu.Separator className="my-1 h-px bg-slate-100" />
+                  <DropdownMenu.Item
+                    className="cursor-pointer rounded-lg px-3 py-2 text-sm text-slate-600 outline-none transition-colors hover:bg-slate-50 hover:text-slate-900"
+                    onSelect={() => navigate(ROUTES.HOME)}
+                  >
+                    Về trang người dùng
+                  </DropdownMenu.Item>
                   <DropdownMenu.Item
                     className="cursor-pointer rounded-lg px-3 py-2 text-sm text-slate-600 outline-none transition-colors hover:bg-slate-50 hover:text-slate-900"
                     onSelect={() => navigate(ROUTES.ADMIN_SETTINGS)}

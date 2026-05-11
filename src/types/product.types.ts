@@ -9,6 +9,7 @@ export type ProductVariant = {
   stock_quantity?: number
   is_active?: boolean
   allow_backorder?: boolean
+  thumbnail_url?: string | null
   created_at?: string
   updated_at?: string
   // Legacy aliases kept for older UI code paths while the app finishes
@@ -23,6 +24,7 @@ export type Product = {
   id: number
   name: string
   slug: string
+  thumbnail_url?: string | null
   short_description?: string
   description: string
   brand?: string
@@ -59,6 +61,7 @@ export type ProductSearchParams = {
 export type CreateProductRequest = {
   name: string
   slug: string
+  thumbnail_url?: string
   short_description?: string
   description: string
   brand?: string
@@ -84,6 +87,7 @@ export type CreateVariantRequest = {
   stock_quantity: number
   is_active: boolean
   allow_backorder: boolean
+  thumbnail_url?: string
 }
 
 export type UpdateVariantRequest = Partial<CreateVariantRequest>
@@ -120,13 +124,41 @@ export type ProductHistoryGroup = {
 export type Review = {
   id: number
   product_id: number
+  user_id: number
   user_name: string
   rating: number
-  comment: string
+  performance_rating: number
+  battery_rating: number
+  camera_rating: number
+  image_urls?: string[]
+  body?: string | null
+  verified_purchase?: boolean
   created_at: string
+  updated_at?: string
+}
+
+export type ReviewRatingBreakdown = {
+  rating: number
+  count: number
+}
+
+export type ProductReviewSummary = {
+  message?: string
+  product_id: number
+  avg_rating: number
+  rating_count: number
+  performance_avg: number
+  battery_avg: number
+  camera_avg: number
+  rating_breakdown: ReviewRatingBreakdown[]
+  reviews: Review[]
 }
 
 export type CreateReviewRequest = {
   rating: number
-  comment: string
+  body: string
+  performance_rating: number
+  battery_rating: number
+  camera_rating: number
+  image_urls?: string[]
 }

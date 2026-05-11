@@ -1,16 +1,24 @@
 package product
 
 import (
+	"bytes"
+	"crypto/sha1"
 	"encoding/csv"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"golang/internal/controller/product"
 	"golang/internal/logger"
 	"golang/internal/model"
 	"golang/internal/validator"
+	"io"
+	"mime/multipart"
 	"net/http"
+	"os"
+	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func parsePaginationParams(r *http.Request) (page int, limit int, sortBy string, sortOrder string) {
@@ -112,18 +120,19 @@ func (h *productHandler) AdminImportProductsCSVHandler(w http.ResponseWriter, r 
 			continue // Skip dòng tiêu đề
 		}
 
-		// Dự kiến 9 cột: Name, Slug, MinPrice, DiscountPercent, ShortDescription, Description, Brand, Status, CategoryIDs
-		if len(row) < 9 {
-			h.errJson(w, http.StatusBadRequest, fmt.Sprintf("Row %d: Missing columns (expected at least 9)", i+1))
+		// Dự kiến 10 cột: Name, Slug, ThumbnailURL, MinPrice, DiscountPercent, ShortDescription, Description, Brand, Status, CategoryIDs
+		if len(row) < 10 {
+			h.errJson(w, http.StatusBadRequest, fmt.Sprintf("Row %d: Missing columns (expected at least 10)", i+1))
 			return
 		}
 
-		minPrice, _ := strconv.ParseFloat(strings.TrimSpace(row[2]), 64)
-		discountPercent, _ := strconv.ParseFloat(strings.TrimSpace(row[3]), 64)
+		thumbnailURL := strings.TrimSpace(row[2])
+		minPrice, _ := strconv.ParseFloat(strings.TrimSpace(row[3]), 64)
+		discountPercent, _ := strconv.ParseFloat(strings.TrimSpace(row[4]), 64)
 		isPublished := true // Mặc định true
 
 		var categoryIDs []int64
-		catStr := strings.TrimSpace(row[8])
+		catStr := strings.TrimSpace(row[9])
 		if catStr != "" {
 			parts := strings.Split(catStr, ";")
 			for _, part := range parts {
@@ -137,12 +146,13 @@ func (h *productHandler) AdminImportProductsCSVHandler(w http.ResponseWriter, r 
 		req := model.CreateProductRequest{
 			Name:             strings.TrimSpace(row[0]),
 			Slug:             strings.TrimSpace(row[1]),
+			ThumbnailURL:     thumbnailURL,
 			MinPrice:         minPrice,
 			DiscountPercent:  discountPercent,
-			ShortDescription: strings.TrimSpace(row[4]),
-			Description:      strings.TrimSpace(row[5]),
-			Brand:            strings.TrimSpace(row[6]),
-			Status:           strings.TrimSpace(row[7]),
+			ShortDescription: strings.TrimSpace(row[5]),
+			Description:      strings.TrimSpace(row[6]),
+			Brand:            strings.TrimSpace(row[7]),
+			Status:           strings.TrimSpace(row[8]),
 			IsPublished:      isPublished,
 			CategoryIDs:      categoryIDs,
 		}
@@ -170,6 +180,243 @@ func (h *productHandler) AdminImportProductsCSVHandler(w http.ResponseWriter, r 
 		"message": response.Message,
 		"data":    response,
 	})
+}
+
+func buildCloudinarySignature(params map[string]string, apiSecret string) string {
+	keys := make([]string, 0, len(params))
+	for key, value := range params {
+		if value == "" {
+			continue
+		}
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	parts := make([]string, 0, len(keys))
+	for _, key := range keys {
+		parts = append(parts, fmt.Sprintf("%s=%s", key, params[key]))
+	}
+
+	hash := sha1.Sum([]byte(strings.Join(parts, "&") + apiSecret))
+	return hex.EncodeToString(hash[:])
+}
+
+func uploadImageToCloudinary(file multipart.File, filename string) (string, error) {
+	cloudName := os.Getenv("CLOUDINARY_CLOUD_NAME")
+	apiKey := os.Getenv("CLOUDINARY_API_KEY")
+	apiSecret := os.Getenv("CLOUDINARY_API_SECRET")
+	if cloudName == "" || apiKey == "" || apiSecret == "" {
+		return "", fmt.Errorf("missing cloudinary env config")
+	}
+
+	folder := os.Getenv("CLOUDINARY_UPLOAD_FOLDER")
+	if folder == "" {
+		folder = "ecommerce/products"
+	}
+
+	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
+	signature := buildCloudinarySignature(map[string]string{
+		"folder":    folder,
+		"timestamp": timestamp,
+	}, apiSecret)
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	if err := writer.WriteField("api_key", apiKey); err != nil {
+		return "", err
+	}
+	if err := writer.WriteField("timestamp", timestamp); err != nil {
+		return "", err
+	}
+	if err := writer.WriteField("folder", folder); err != nil {
+		return "", err
+	}
+	if err := writer.WriteField("signature", signature); err != nil {
+		return "", err
+	}
+
+	part, err := writer.CreateFormFile("file", filename)
+	if err != nil {
+		return "", err
+	}
+	if _, err := io.Copy(part, file); err != nil {
+		return "", err
+	}
+	if err := writer.Close(); err != nil {
+		return "", err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("https://api.cloudinary.com/v1_1/%s/image/upload", cloudName), body)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	var cloudinaryResp struct {
+		SecureURL string `json:"secure_url"`
+		Error     *struct {
+			Message string `json:"message"`
+		} `json:"error,omitempty"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&cloudinaryResp); err != nil {
+		return "", err
+	}
+
+	if resp.StatusCode >= 400 {
+		if cloudinaryResp.Error != nil && cloudinaryResp.Error.Message != "" {
+			return "", fmt.Errorf(cloudinaryResp.Error.Message)
+		}
+		return "", fmt.Errorf("cloudinary upload failed with status %d", resp.StatusCode)
+	}
+
+	if cloudinaryResp.SecureURL == "" {
+		return "", fmt.Errorf("cloudinary did not return secure_url")
+	}
+
+	return cloudinaryResp.SecureURL, nil
+}
+
+func (h *productHandler) AdminUploadProductImageHandler(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		h.errJson(w, http.StatusBadRequest, "Failed to parse form data")
+		return
+	}
+
+	file, header, err := r.FormFile("image")
+	if err != nil {
+		h.errJson(w, http.StatusBadRequest, "Missing 'image' in form-data")
+		return
+	}
+	defer file.Close()
+
+	imageURL, err := uploadImageToCloudinary(file, header.Filename)
+	if err != nil {
+		logger.ErrorLogger.Printf("AdminUploadProductImageHandler error: %v", err)
+		h.errJson(w, http.StatusInternalServerError, "Failed to upload image")
+		return
+	}
+
+	h.writeJson(w, http.StatusOK, map[string]any{
+		"code":    http.StatusOK,
+		"message": "Upload image successfully",
+		"data": map[string]string{
+			"url": imageURL,
+		},
+	})
+}
+
+func (h *productHandler) AdminUploadImageFromURLHandler(w http.ResponseWriter, r *http.Request) {
+	var reqBody struct {
+		URL string `json:"url"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+		h.errJson(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	if reqBody.URL == "" {
+		h.errJson(w, http.StatusBadRequest, "URL is required")
+		return
+	}
+
+	imageURL, err := uploadImageFromURLToCloudinary(reqBody.URL)
+	if err != nil {
+		logger.ErrorLogger.Printf("AdminUploadImageFromURLHandler error: %v", err)
+		h.errJson(w, http.StatusInternalServerError, "Failed to upload image from URL")
+		return
+	}
+
+	h.writeJson(w, http.StatusOK, map[string]any{
+		"code":    http.StatusOK,
+		"message": "Upload image from URL successfully",
+		"data": map[string]string{
+			"url": imageURL,
+		},
+	})
+}
+
+func uploadImageFromURLToCloudinary(imageURL string) (string, error) {
+	cloudName := os.Getenv("CLOUDINARY_CLOUD_NAME")
+	apiKey := os.Getenv("CLOUDINARY_API_KEY")
+	apiSecret := os.Getenv("CLOUDINARY_API_SECRET")
+	if cloudName == "" || apiKey == "" || apiSecret == "" {
+		return "", fmt.Errorf("missing cloudinary env config")
+	}
+
+	folder := os.Getenv("CLOUDINARY_UPLOAD_FOLDER")
+	if folder == "" {
+		folder = "ecommerce/products"
+	}
+
+	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
+	signature := buildCloudinarySignature(map[string]string{
+		"folder":    folder,
+		"timestamp": timestamp,
+	}, apiSecret)
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	if err := writer.WriteField("api_key", apiKey); err != nil {
+		return "", err
+	}
+	if err := writer.WriteField("timestamp", timestamp); err != nil {
+		return "", err
+	}
+	if err := writer.WriteField("folder", folder); err != nil {
+		return "", err
+	}
+	if err := writer.WriteField("signature", signature); err != nil {
+		return "", err
+	}
+	// Use remote URL as the "file" field
+	if err := writer.WriteField("file", imageURL); err != nil {
+		return "", err
+	}
+
+	if err := writer.Close(); err != nil {
+		return "", err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("https://api.cloudinary.com/v1_1/%s/image/upload", cloudName), body)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	var cloudinaryResp struct {
+		SecureURL string `json:"secure_url"`
+		Error     *struct {
+			Message string `json:"message"`
+		} `json:"error,omitempty"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&cloudinaryResp); err != nil {
+		return "", err
+	}
+
+	if resp.StatusCode >= 400 {
+		if cloudinaryResp.Error != nil && cloudinaryResp.Error.Message != "" {
+			return "", fmt.Errorf(cloudinaryResp.Error.Message)
+		}
+		return "", fmt.Errorf("cloudinary upload failed with status %d", resp.StatusCode)
+	}
+
+	return cloudinaryResp.SecureURL, nil
 }
 
 // UpdateProductHandler - Cập nhật sản phẩm

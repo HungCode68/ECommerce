@@ -1,8 +1,9 @@
 import axiosClient from '@/lib/axiosClient'
-import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
+import type { PaginatedResponse } from '@/types/api.types'
 import type {
   CreateReviewRequest,
   Product,
+  ProductReviewSummary,
   ProductSearchParams,
   Review,
 } from '@/types/product.types'
@@ -45,17 +46,17 @@ export const productApi = {
   },
 
   getReviews: async (productId: number) => {
-    const res = await axiosClient.get<ApiResponse<Review[]>>(
+    const res = await axiosClient.get<ProductReviewSummary>(
       `/api/product/${productId}/reviews`,
     )
-    return res.data.data
+    return res.data
   },
 
   createReview: async (productId: number, data: CreateReviewRequest) => {
-    const res = await axiosClient.post<ApiResponse<Review>>(
+    const res = await axiosClient.post<{ review: Review }>(
       `/api/product/${productId}/reviews`,
       data,
     )
-    return res.data.data
+    return res.data.review
   },
 }

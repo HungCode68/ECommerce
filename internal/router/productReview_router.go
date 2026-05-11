@@ -17,6 +17,7 @@ func NewProductReviewRouter(mux *http.ServeMux, h productreview.ProductReviewHan
 
 	// Authenticated user: create review
 	authUserGroup.HandleFunc("POST", "/product/{id}/reviews", h.CreateReviewHandler)
+	authUserGroup.HandleFunc("POST", "/product/reviews/upload-image", h.UploadReviewImageHandler)
 
 	// Admin: delete review
 	adminGroup.HandleFunc("DELETE", "/product/reviews/{reviewId}", h.DeleteReviewHandler)

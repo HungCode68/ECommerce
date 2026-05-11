@@ -30,7 +30,7 @@ export function LoginPage() {
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      navigate(user.role === 'admin' ? ROUTES.ADMIN_DASHBOARD : ROUTES.HOME, { replace: true })
+      navigate(ROUTES.HOME, { replace: true })
     }
   }, [isAuthenticated, user, navigate])
 

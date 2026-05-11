@@ -11,8 +11,6 @@ type ProductFilterProps = {
   minPrice?: string
   maxPrice?: string
   onPriceChange?: (min: string, max: string) => void
-  // all categories list to show in sidebar
-  categories?: { id: number; name: string }[]
 }
 
 export function ProductFilter({
@@ -23,7 +21,6 @@ export function ProductFilter({
   minPrice = '0',
   maxPrice = '50M',
   onPriceChange,
-  categories = [],
 }: ProductFilterProps) {
   // Fetch brands dynamically based on selected category
   const { data: brandData } = useQuery({

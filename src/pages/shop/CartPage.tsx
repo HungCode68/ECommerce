@@ -82,8 +82,8 @@ export function CartPage() {
                   onChange={() => toggleSelect(item.id)}
                   className="rounded border-slate-300"
                 />
-                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-300">
-                  <ShoppingBag className="h-6 w-6" />
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-slate-100 overflow-hidden">
+                  <img src={item.thumbnail_url} alt={item.product_name} className="h-full w-full object-contain" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="truncate font-medium text-slate-800">{item.product_name}</p>

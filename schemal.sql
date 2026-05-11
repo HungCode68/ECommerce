@@ -165,12 +165,25 @@ CREATE TABLE product_reviews (
   product_id BIGINT NOT NULL,
   user_id INT NOT NULL,
   rating TINYINT NOT NULL,
+  performance_rating TINYINT NOT NULL DEFAULT 5,
+  battery_rating TINYINT NOT NULL DEFAULT 5,
+  camera_rating TINYINT NOT NULL DEFAULT 5,
   body LONGTEXT,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE INDEX idx_reviews_product ON product_reviews(product_id);
+
+CREATE TABLE product_review_images (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  review_id BIGINT NOT NULL,
+  image_url VARCHAR(500) NOT NULL,
+  sort_order INT NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (review_id) REFERENCES product_reviews(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE INDEX idx_review_images_review ON product_review_images(review_id, sort_order);
 
 -- Bảng carts
 CREATE TABLE carts (

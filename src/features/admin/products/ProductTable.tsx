@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Plus, Trash2, Pencil, RotateCcw, Search, Upload } from 'lucide-react'
+import { Plus, Trash2, Pencil, RotateCcw, Search, Upload, Package2 } from 'lucide-react'
 import { adminProductApi } from '@/api/admin/adminProduct.api'
 import { categoryApi } from '@/api/category.api'
 import { queryKeys } from '@/lib/queryKeys'
@@ -24,6 +24,7 @@ export function ProductTable() {
   const [search, setSearch] = useState('')
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | undefined>(undefined)
+  const [selectedBrand, setSelectedBrand] = useState<string | undefined>(undefined)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [bulkAddOpen, setBulkAddOpen] = useState(false)
 
@@ -34,10 +35,10 @@ export function ProductTable() {
 
 
   const { data, isLoading } = useQuery({
-    queryKey: queryKeys.admin.products.list({ q: search, page, limit, category_id: selectedCategoryId }),
+    queryKey: queryKeys.admin.products.list({ q: search, page, limit, category_id: selectedCategoryId, brand: selectedBrand }),
     queryFn: () =>
-      search || selectedCategoryId
-        ? adminProductApi.search({ q: search, page, limit, category_id: selectedCategoryId })
+      search || selectedCategoryId || selectedBrand
+        ? adminProductApi.search({ q: search, page, limit, category_id: selectedCategoryId, brand: selectedBrand })
         : adminProductApi.getAllPaged({ page, limit }),
   })
 
@@ -91,6 +92,23 @@ export function ProductTable() {
             <option key={cat.id} value={cat.id}>
               {cat.name}
             </option>
+          ))}
+        </select>
+
+        {/* Brand Filter */}
+        <select
+          value={selectedBrand ?? ''}
+          onChange={(e) => {
+            const val = e.target.value || undefined
+            setSelectedBrand(val)
+            goToPage(1)
+          }}
+          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 outline-none focus:border-blue-500 transition-colors"
+        >
+          <option value="">Tất cả thương hiệu</option>
+          {/* Extract unique brands from the current data if available, or just show the selected one */}
+          {Array.from(new Set(products.map(p => p.brand).filter(Boolean))).sort().map(brand => (
+            <option key={brand} value={brand!}>{brand}</option>
           ))}
         </select>
         <div className="ml-auto flex gap-2">
@@ -149,8 +167,8 @@ export function ProductTable() {
                     className="rounded border-slate-300"
                   />
                 </th>
+                 <th className="px-4 py-3 text-left font-medium text-slate-600">Ảnh</th>
                 <th className="px-4 py-3 text-left font-medium text-slate-600">Tên sản phẩm</th>
-                <th className="px-4 py-3 text-left font-medium text-slate-600">Danh mục</th>
                 <th className="px-4 py-3 text-right font-medium text-slate-600">Giá</th>
                 <th className="px-4 py-3 text-right font-medium text-slate-600">Kho</th>
                 <th className="px-4 py-3 text-center font-medium text-slate-600">Thao tác</th>
@@ -216,15 +234,30 @@ function ProductRow({
         />
       </td>
       <td className="px-4 py-3">
+        <div className="h-10 w-10 overflow-hidden rounded-lg border border-slate-100 bg-slate-50">
+          {product.thumbnail_url ? (
+            <img
+              src={product.thumbnail_url}
+              alt={product.name}
+              className="h-full w-full object-contain"
+              onError={(e) => {
+                const img = e.target as HTMLImageElement
+                img.src = 'https://placehold.co/100x100?text=No+Image'
+                img.onerror = null
+              }}
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-slate-300">
+              <Package2 className="h-5 w-5" />
+            </div>
+          )}
+        </div>
+      </td>
+      <td className="px-4 py-3">
         <div>
           <p className="font-medium text-slate-800 line-clamp-1">{product.name}</p>
           <p className="text-xs text-slate-400">{product.slug}</p>
         </div>
-      </td>
-      <td className="px-4 py-3 text-slate-500">
-        {product.categories && product.categories.length > 0
-          ? product.categories[0].name
-          : product.category_name ?? '-'}
       </td>
       <td className="px-4 py-3 text-right font-medium text-slate-900">
         {product.min_price ? formatVND(product.min_price) : '0đ'}

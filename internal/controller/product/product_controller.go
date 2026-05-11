@@ -172,6 +172,7 @@ func (prt *productController) CreateProductController(product model.CreateProduc
 	productToCreate := &model.Product{
 		Name:             product.Name,
 		Slug:             finalSlug,
+		ThumbnailURL:     stringToPtr(product.ThumbnailURL),
 		ShortDescription: stringToPtr(product.ShortDescription),
 		Description:      stringToPtr(product.Description),
 		Brand:            stringToPtr(product.Brand),
@@ -196,6 +197,7 @@ func (prt *productController) CreateProductController(product model.CreateProduc
 		ID:               createdProduct.ID,
 		Name:             createdProduct.Name,
 		Slug:             createdProduct.Slug,
+		ThumbnailURL:     createdProduct.ThumbnailURL,
 		ShortDescription: createdProduct.ShortDescription,
 		Description:      createdProduct.Description,
 		Brand:            createdProduct.Brand,
@@ -223,6 +225,7 @@ func (prt *productController) CreateProductController(product model.CreateProduc
 					StockQuantity:  v.StockQuantity,
 					IsActive:       v.IsActive,
 					AllowBackorder: v.AllowBackorder,
+					ThumbnailURL:   v.ThumbnailURL,
 					CreatedAt:      v.CreatedAt.Format(time.RFC3339),
 					UpdatedAt:      v.UpdatedAt.Format(time.RFC3339),
 				})
@@ -284,6 +287,7 @@ func (prt *productController) AdminImportProductsController(reqs []model.CreateP
 		productEntity := &model.Product{
 			Name:             req.Name,
 			Slug:             req.Slug,
+			ThumbnailURL:     stringToPtr(req.ThumbnailURL),
 			ShortDescription: stringToPtr(req.ShortDescription),
 			Description:      stringToPtr(req.Description),
 			Brand:            stringToPtr(req.Brand),
@@ -391,6 +395,7 @@ func (prt *productController) AdminGetProductController(reqProduct *model.GetPro
 			StockQuantity:  v.StockQuantity,
 			AllowBackorder: v.AllowBackorder,
 			IsActive:       v.IsActive,
+			ThumbnailURL:   v.ThumbnailURL,
 			CreatedAt:      v.CreatedAt.String(),
 			UpdatedAt:      v.UpdatedAt.String(),
 		})
@@ -404,6 +409,7 @@ func (prt *productController) AdminGetProductController(reqProduct *model.GetPro
 		ID:               pro.ID,
 		Name:             pro.Name,
 		Slug:             pro.Slug,
+		ThumbnailURL:     pro.ThumbnailURL,
 		ShortDescription: pro.ShortDescription,
 		Description:      pro.Description,
 		Brand:            pro.Brand,
@@ -474,6 +480,7 @@ func (prt *productController) UserGetProductDetailController(reqProduct *model.G
 				ProductID:     v.ProductID,
 				SKU:           v.SKU,
 				StockQuantity: v.StockQuantity,
+				ThumbnailURL:  v.ThumbnailURL,
 			}
 			if v.Title != nil {
 				resp.Title = *v.Title
@@ -495,6 +502,7 @@ func (prt *productController) UserGetProductDetailController(reqProduct *model.G
 		Message:          "Product retrieved successfully",
 		ID:               pro.ID,
 		Name:             pro.Name,
+		ThumbnailURL:     pro.ThumbnailURL,
 		ShortDescription: pro.ShortDescription,
 		Description:      pro.Description,
 		Brand:            pro.Brand,
@@ -574,6 +582,7 @@ func (prt *productController) UpdateProductController(ctx context.Context, req m
 		ID:               id,
 		Name:             finalName,
 		Slug:             finalSlug,
+		ThumbnailURL:     mergeStringPtr(req.ThumbnailURL, existingProduct.ThumbnailURL),
 		ShortDescription: mergeStringPtr(req.ShortDescription, existingProduct.ShortDescription),
 		Description:      mergeStringPtr(req.Description, existingProduct.Description),
 		Brand:            mergeStringPtr(req.Brand, existingProduct.Brand),
@@ -615,6 +624,14 @@ func (prt *productController) UpdateProductController(ctx context.Context, req m
 			Field:    "short_description",
 			OldValue: existingProduct.ShortDescription,
 			NewValue: req.ShortDescription,
+		}
+	}
+	if req.ThumbnailURL != "" &&
+		(existingProduct.ThumbnailURL == nil || *existingProduct.ThumbnailURL != req.ThumbnailURL) {
+		changes["thumbnail_url"] = model.ProductChangeLog{
+			Field:    "thumbnail_url",
+			OldValue: existingProduct.ThumbnailURL,
+			NewValue: req.ThumbnailURL,
 		}
 	}
 	if existingProduct.Description != stringToPtr(req.Description) && req.Description != "" {
@@ -731,6 +748,7 @@ func (prt *productController) UpdateProductController(ctx context.Context, req m
 		ID:               updatedProduct.ID,
 		Name:             updatedProduct.Name,
 		Slug:             updatedProduct.Slug,
+		ThumbnailURL:     updatedProduct.ThumbnailURL,
 		ShortDescription: updatedProduct.ShortDescription,
 		Description:      updatedProduct.Description,
 		Brand:            updatedProduct.Brand,
@@ -763,6 +781,7 @@ func (prt *productController) UpdateProductController(ctx context.Context, req m
 					StockQuantity:  v.StockQuantity,
 					IsActive:       v.IsActive,
 					AllowBackorder: v.AllowBackorder,
+					ThumbnailURL:   v.ThumbnailURL,
 					CreatedAt:      v.CreatedAt.Format(time.RFC3339),
 					UpdatedAt:      v.UpdatedAt.Format(time.RFC3339),
 				})
@@ -791,6 +810,7 @@ func (prt *productController) AdminGetAllProductsController(req *model.SearchPro
 			ID:               pro.ID,
 			Name:             pro.Name,
 			Slug:             pro.Slug,
+			ThumbnailURL:     pro.ThumbnailURL,
 			ShortDescription: pro.ShortDescription,
 			Description:      pro.Description,
 			Brand:            pro.Brand,
@@ -823,6 +843,7 @@ func (prt *productController) AdminGetAllProductsController(req *model.SearchPro
 						StockQuantity:  v.StockQuantity,
 						IsActive:       v.IsActive,
 						AllowBackorder: v.AllowBackorder,
+						ThumbnailURL:   v.ThumbnailURL,
 						CreatedAt:      v.CreatedAt.Format(time.RFC3339),
 						UpdatedAt:      v.UpdatedAt.Format(time.RFC3339),
 					})
@@ -854,6 +875,7 @@ func (prt *productController) UserGetAllProductsController(req *model.SearchProd
 		responses = append(responses, model.UserProductResponse{
 			ID:               pro.ID,
 			Name:             pro.Name,
+			ThumbnailURL:     pro.ThumbnailURL,
 			ShortDescription: pro.ShortDescription,
 			Brand:            pro.Brand,
 			MinPrice:         minPrice,
@@ -884,6 +906,7 @@ func (prt *productController) UserSearchProductByNameController(req *model.Searc
 		res = append(res, model.UserProductResponse{
 			ID:               pro.ID,
 			Name:             pro.Name,
+			ThumbnailURL:     pro.ThumbnailURL,
 			ShortDescription: pro.ShortDescription,
 			Brand:            pro.Brand,
 			MinPrice:         minPrice,
@@ -912,6 +935,7 @@ func (prt *productController) AdminSearchProductsController(req *model.SearchPro
 			ID:               pro.ID,
 			Name:             pro.Name,
 			Slug:             pro.Slug,
+			ThumbnailURL:     pro.ThumbnailURL,
 			ShortDescription: pro.ShortDescription,
 			Description:      pro.Description,
 			Brand:            pro.Brand,
@@ -944,6 +968,7 @@ func (prt *productController) AdminSearchProductsController(req *model.SearchPro
 						StockQuantity:  v.StockQuantity,
 						IsActive:       v.IsActive,
 						AllowBackorder: v.AllowBackorder,
+						ThumbnailURL:   v.ThumbnailURL,
 						CreatedAt:      v.CreatedAt.Format(time.RFC3339),
 						UpdatedAt:      v.UpdatedAt.Format(time.RFC3339),
 					})
@@ -973,6 +998,7 @@ func (prt *productController) AdminGetManyProductByIDController(ids []int64) ([]
 			ID:               pro.ID,
 			Name:             pro.Name,
 			Slug:             pro.Slug,
+			ThumbnailURL:     pro.ThumbnailURL,
 			ShortDescription: pro.ShortDescription,
 			Description:      pro.Description,
 			Brand:            pro.Brand,
@@ -1005,6 +1031,7 @@ func (prt *productController) AdminGetManyProductByIDController(ids []int64) ([]
 						StockQuantity:  v.StockQuantity,
 						IsActive:       v.IsActive,
 						AllowBackorder: v.AllowBackorder,
+						ThumbnailURL:   v.ThumbnailURL,
 						CreatedAt:      v.CreatedAt.Format(time.RFC3339),
 						UpdatedAt:      v.UpdatedAt.Format(time.RFC3339),
 					})
@@ -1029,6 +1056,7 @@ func (prt *productController) UserGetProductController(reqProduct *model.GetProd
 	return &model.UserProductResponse{
 		ID:               pro.ID,
 		Name:             pro.Name,
+		ThumbnailURL:     pro.ThumbnailURL,
 		ShortDescription: pro.ShortDescription,
 		Brand:            pro.Brand,
 		MinPrice:         minPrice,
@@ -1056,6 +1084,7 @@ func (prt *productController) AdminGetAllSoftDeletedProductsController() (*model
 			ID:               pro.ID,
 			Name:             pro.Name,
 			Slug:             pro.Slug,
+			ThumbnailURL:     pro.ThumbnailURL,
 			ShortDescription: pro.ShortDescription,
 			Description:      pro.Description,
 			Brand:            pro.Brand,
@@ -1088,6 +1117,7 @@ func (prt *productController) AdminGetAllSoftDeletedProductsController() (*model
 						StockQuantity:  v.StockQuantity,
 						IsActive:       v.IsActive,
 						AllowBackorder: v.AllowBackorder,
+						ThumbnailURL:   v.ThumbnailURL,
 						CreatedAt:      v.CreatedAt.Format(time.RFC3339),
 						UpdatedAt:      v.UpdatedAt.Format(time.RFC3339),
 					})

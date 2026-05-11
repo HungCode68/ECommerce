@@ -19,6 +19,11 @@ export const queryKeys = {
     detail: (id: number) => ['categories', 'detail', id] as const,
   },
 
+  banners: {
+    all: ['banners'] as const,
+    list: (position?: string) => ['banners', 'list', position] as const,
+  },
+
   // Cart
   cart: ['cart'] as const,
 
@@ -65,6 +70,10 @@ export const queryKeys = {
       list: (params: Record<string, unknown>) =>
         ['admin', 'categories', 'list', params] as const,
       detail: (id: number) => ['admin', 'categories', 'detail', id] as const,
+    },
+    banners: {
+      all: ['admin', 'banners'] as const,
+      list: ['admin', 'banners', 'list'] as const,
     },
     orders: {
       all: ['admin', 'orders'] as const,

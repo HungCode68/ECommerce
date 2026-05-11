@@ -1,9 +1,10 @@
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Loader2 } from 'lucide-react'
+import { ImagePlus, Loader2, Trash2 } from 'lucide-react'
 import { adminProductApi } from '@/api/admin/adminProduct.api'
 import { adminCategoryApi } from '@/api/admin/adminCategory.api'
 import { queryKeys } from '@/lib/queryKeys'
@@ -12,12 +13,22 @@ import { getErrorMessage } from '@/utils/httpError'
 import { bindNumericInput } from '@/utils/numberInput'
 import type { Product } from '@/types/product.types'
 
+const optionalText = z.preprocess((value) => {
+  if (typeof value !== 'string') {
+    return value
+  }
+
+  const trimmed = value.trim()
+  return trimmed === '' ? undefined : trimmed
+}, z.string().optional())
+
 const productSchema = z.object({
   name: z.string().min(2, 'Tên tối thiểu 2 ký tự'),
   slug: z.string().min(2, 'Slug tối thiểu 2 ký tự'),
-  short_description: z.string().max(500, 'Mô tả ngắn tối đa 500 ký tự').optional(),
+  thumbnail_url: optionalText.pipe(z.string().max(500, 'URL ảnh tối đa 500 ký tự').optional()),
+  short_description: optionalText.pipe(z.string().max(500, 'Mô tả ngắn tối đa 500 ký tự').optional()),
   description: z.string().min(10, 'Mô tả tối thiểu 10 ký tự'),
-  brand: z.string().optional(),
+  brand: optionalText,
   status: z.enum(['draft', 'active', 'inactive', 'archived']).default('active'),
   is_published: z.boolean().default(true),
   is_coupon_eligible: z.boolean().default(true),
@@ -34,6 +45,22 @@ type ProductFormProps = {
   onSuccess: (newProduct?: Product) => void
 }
 
+function getProductCategoryId(product?: Product): number {
+  if (!product) {
+    return 0
+  }
+
+  if (typeof product.category_id === 'number' && product.category_id > 0) {
+    return product.category_id
+  }
+
+  const firstCategory = product.categories?.[0] as
+    | { id?: number; ID?: number }
+    | undefined
+
+  return firstCategory?.id ?? firstCategory?.ID ?? 0
+}
+
 export function ProductForm({ product, onSuccess }: ProductFormProps) {
   const qc = useQueryClient()
   const isEdit = !!product
@@ -46,7 +73,9 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
   const {
     register,
     handleSubmit,
+    reset,
     setValue,
+    watch,
     formState: { errors },
   } = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
@@ -54,13 +83,14 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
       ? {
           name: product.name ?? '',
           slug: product.slug ?? '',
+          thumbnail_url: product.thumbnail_url ?? undefined,
           short_description: product.short_description ?? undefined,
           description: product.description ?? '',
           brand: product.brand ?? undefined,
           status: product.status ?? 'active',
           is_published: product.is_published ?? true,
           is_coupon_eligible: product.is_coupon_eligible ?? true,
-          category_id: product.category_id ?? product.categories?.[0]?.id ?? 0,
+          category_id: getProductCategoryId(product),
           min_price: product.min_price ?? 0,
           discount_percent: product.discount_percent ?? 0,
           stock: product.stock ?? 0,
@@ -73,15 +103,50 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
         },
   })
 
+  useEffect(() => {
+    if (!product) {
+      return
+    }
+
+    reset({
+      name: product.name ?? '',
+      slug: product.slug ?? '',
+      thumbnail_url: product.thumbnail_url ?? undefined,
+      short_description: product.short_description ?? undefined,
+      description: product.description ?? '',
+      brand: product.brand ?? undefined,
+      status: product.status ?? 'active',
+      is_published: product.is_published ?? true,
+      is_coupon_eligible: product.is_coupon_eligible ?? true,
+      category_id: getProductCategoryId(product),
+      min_price: product.min_price ?? 0,
+      discount_percent: product.discount_percent ?? 0,
+      stock: product.stock ?? 0,
+    })
+  }, [product, reset])
+
+  const thumbnailUrl = watch('thumbnail_url')
+  const selectedCategoryId = watch('category_id')
+
+  const { mutate: uploadImage, isPending: isUploadingImage } = useMutation({
+    mutationFn: (file: File) => adminProductApi.uploadImage(file),
+    onSuccess: (url) => {
+      setValue('thumbnail_url', url, { shouldDirty: true, shouldValidate: true })
+      toast.success('Tải ảnh lên thành công!')
+    },
+    onError: (error) => toast.error(getErrorMessage(error, 'Không thể tải ảnh lên')),
+  })
+
   const { mutate, isPending } = useMutation({
     mutationFn: (data: ProductFormData) => {
       // Create a clean payload with only backend-supported fields
       const payload = {
         name: data.name,
         slug: data.slug,
-        short_description: data.short_description,
+        thumbnail_url: data.thumbnail_url ?? undefined,
+        short_description: data.short_description ?? undefined,
         description: data.description,
-        brand: data.brand,
+        brand: data.brand ?? undefined,
         status: data.status,
         is_published: data.is_published,
         is_coupon_eligible: data.is_coupon_eligible,
@@ -96,7 +161,7 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
     onSuccess: (data) => {
       toast.success(isEdit ? 'Cập nhật thành công!' : 'Thêm sản phẩm thành công!')
       qc.invalidateQueries({ queryKey: queryKeys.admin.products.all })
-      onSuccess(data)
+      onSuccess(data && typeof data.id === 'number' ? data : undefined)
     },
     onError: (error) => toast.error(getErrorMessage(error, 'Có lỗi xảy ra, vui lòng thử lại')),
   })
@@ -113,6 +178,7 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
     setValue('slug', slug)
   }
 
+  const categoryField = register('category_id')
   const minPriceField = register('min_price')
   const discountPercentField = register('discount_percent')
 
@@ -142,6 +208,69 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
             />
           </Field>
 
+          <Field label="Ảnh đại diện" error={errors.thumbnail_url?.message}>
+            <div className="space-y-3">
+              <div className="flex flex-col gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50/60 p-4 md:flex-row md:items-center md:justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-slate-700">Tải ảnh từ máy</p>
+                  <p className="text-xs text-slate-500">
+                    Chọn ảnh, hệ thống sẽ tự upload và lưu link ảnh cho sản phẩm.
+                  </p>
+                </div>
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800">
+                  {isUploadingImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
+                  {isUploadingImage ? 'Đang tải...' : 'Chọn ảnh'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={isUploadingImage}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) {
+                        uploadImage(file)
+                      }
+                      e.target.value = ''
+                    }}
+                  />
+                </label>
+              </div>
+
+              {thumbnailUrl ? (
+                <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                  <div className="aspect-[4/3] w-full bg-slate-50">
+                    <img
+                      src={thumbnailUrl}
+                      alt="Ảnh xem trước sản phẩm"
+                      className="h-full w-full object-contain"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-3 py-2">
+                    <input
+                      {...register('thumbnail_url')}
+                      readOnly
+                      className={cn(inputClass(!!errors.thumbnail_url), 'border-0 bg-transparent px-0 py-0 text-xs text-slate-500 focus:ring-0')}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setValue('thumbnail_url', '', { shouldDirty: true, shouldValidate: true })}
+                      className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Xóa ảnh
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <input
+                  {...register('thumbnail_url')}
+                  placeholder="https://..."
+                  className={inputClass(!!errors.thumbnail_url)}
+                />
+              )}
+            </div>
+          </Field>
+
           <Field label="Thương hiệu" error={errors.brand?.message}>
             <input
               {...register('brand')}
@@ -152,7 +281,15 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
 
           <Field label="Danh mục *" error={errors.category_id?.message}>
             <select
-              {...register('category_id')}
+              {...categoryField}
+              value={selectedCategoryId ? String(selectedCategoryId) : ''}
+              onChange={(e) => {
+                categoryField.onChange(e)
+                setValue('category_id', Number(e.target.value), {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                })
+              }}
               className={inputClass(!!errors.category_id)}
             >
               <option value="">-- Chọn danh mục --</option>

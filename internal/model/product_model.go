@@ -13,6 +13,7 @@ type Product struct {
 	ID               int64   `db:"id"`
 	Name             string  `db:"name"`
 	Slug             string  `db:"slug"`
+	ThumbnailURL     *string `db:"thumbnail_url" json:"thumbnail_url,omitempty"`
 	ShortDescription *string `db:"short_description"` // Có thể NULL
 	Description      *string `db:"description"`       // Có thể NULL
 	Brand            *string `db:"brand"`             // Có thể NULL
@@ -50,6 +51,7 @@ type GetProductRequest struct {
 type CreateProductRequest struct {
 	Name             string  `json:"name" validate:"required,min=2,max=255"`
 	Slug             string  `json:"slug" validate:"omitempty,min=2,max=255"`
+	ThumbnailURL     string  `json:"thumbnail_url" validate:"omitempty,max=500"`
 	MinPrice         float64 `json:"min_price" validate:"omitempty,gte=0"`
 	DiscountPercent  float64 `json:"discount_percent" validate:"omitempty,gte=0,lte=100"`
 	ShortDescription string  `json:"short_description" validate:"omitempty,max=500"`
@@ -66,6 +68,7 @@ type CreateProductRequest struct {
 type UpdateProductRequest struct {
 	Name             string   `json:"name" validate:"omitempty,min=3,max=255"`
 	Slug             string   `json:"slug" validate:"omitempty,min=3,max=255"`
+	ThumbnailURL     string   `json:"thumbnail_url" validate:"omitempty,max=500"`
 	MinPrice         *float64 `json:"min_price" validate:"omitempty,min=0"`
 	DiscountPercent  *float64 `json:"discount_percent" validate:"omitempty,gte=0,lte=100"`
 	ShortDescription string   `json:"short_description" validate:"omitempty,max=500"`
@@ -123,6 +126,7 @@ type PaginationMeta struct {
 type UserProductResponse struct {
 	ID               int64   `json:"id"`
 	Name             string  `json:"name"`
+	ThumbnailURL     *string `json:"thumbnail_url,omitempty"`
 	ShortDescription *string `json:"short_description,omitempty"`
 	Brand            *string `json:"brand,omitempty"`
 	MinPrice         float64 `json:"min_price"`
@@ -144,6 +148,7 @@ type UserProductDetailResponse struct {
 	Message          string     `json:"message,omitempty"`
 	ID               int64      `json:"id"`
 	Name             string     `json:"name"`
+	ThumbnailURL     *string    `json:"thumbnail_url,omitempty"`
 	ShortDescription *string    `json:"short_description,omitempty"`
 	Description      *string    `json:"description,omitempty"`
 	Brand            *string    `json:"brand,omitempty"`
@@ -169,6 +174,7 @@ type AdminProductResponse struct {
 	ID               int64                  `json:"id"`
 	Name             string                 `json:"name"`
 	Slug             string                 `json:"slug"`
+	ThumbnailURL     *string                `json:"thumbnail_url,omitempty"`
 	ShortDescription *string                `json:"short_description,omitempty"`
 	Description      *string                `json:"description,omitempty"`
 	Brand            *string                `json:"brand,omitempty"`

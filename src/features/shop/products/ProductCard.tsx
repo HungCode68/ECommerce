@@ -10,24 +10,15 @@ import { getCheapestVariant, getVariantStock } from '@/utils/productVariant'
 import { ROUTES } from '@/utils/constants'
 import type { Product } from '@/types/product.types'
 import { cn } from '@/lib/utils'
-
-const MOCK_IMAGES = [
-  "https://lh3.googleusercontent.com/aida/ADBb0ui0Sn7vY1W8msHWD6mxuGsJV_rdw0aBLFlNFjO7l8WvU19Z5yo21ihfFAz-ltxm5qASFT0wTWkGBqBKLgWMwRknnX-INlFb5Z2Ly5tdXCKHM5VKwJIphO895gCHJ_HnbfSz2hf-KwphOvUSs7AkA2cge-F5yQPTQrx53jhQDXwhFd0r4Omhd5veg_qCGWS2BkAnxfPN_HLtQZnBcoQRgkOYNwdzc5Jgdpme8THgAyyg1-6rsoFUnKe9FO71LB6CrLqHUhYIF3YPZA",
-  "https://lh3.googleusercontent.com/aida/ADBb0uhvKpZavNo5vI2FYbLLpSMlFhSSGrRKg-YQdX4KmvBMW_Uq9Q5598RKA6zpK9Mqew_QnLXZwtqoqx_SZ4h6A59U8GIMkroPs41EDC4tB-2V5kxuxljuxiVpsk8fC--fh2dDqdwIqoqMKlzwblR9MKtMwkXK5kaA8jjAPNbSXZPkN936Gkx9bB8VVjezHusATfl2SiQ_q8FpUvsxum9Pm6jGm1stbXdLlH9jlpLUrqwg3u74T_IVlmoAOqDI",
-  "https://lh3.googleusercontent.com/aida/ADBb0ugO3Okau-3p05aVaG-sw_Ri66p4Tkpgh4fT3YGhwWuIOAgJnxepHG5X80sPZ3ASE5VxZGULxzGQBchA1FvV3q-NTHnbmWXXlHLjImCwdbVBgsN6Rwvn7NxHEyQL_HspmvY3Hb0P0GYtZDt-jyM_7NPtCG_I6dlt0Yte7vcCeBSehmIBSpi94-Y9bYNsbBRcXxisA-qnEhhnUmOufrDyW8XkaYuXpDB7D9Qb2NAlBkmwpzzfedr6eV7xAG34AMzYMiFDjg2dJyLMWw",
-  "https://lh3.googleusercontent.com/aida/ADBb0uhiVKKTNjPkWdw8naF7JVY8P5wuMfSgeVwFh5eKIxr6aKABYqCXbQ74EW1FeojYI3YWOqqGO3Jdn1gXpSZmKFPN2X1l7p8raHBqfWtRUz4p6BYVNKxp_mN4NG_Q95I5gYvCaTCrypG7PpnAPUgB1ZlK-28YX2jRXYQvBIOeVX6Mu_nQVEjHxSd3n75clxD8m85e7xZs5NwVZwFmXXKFw7R8nlQeL6MwrG1m45XptYgwHEASCd89s2bzHb72p7c-NWtyu2vXwVs9oQ",
-  "https://lh3.googleusercontent.com/aida/ADBb0ui3fZ6876iCmrZyuVfJx06m1lj6o5HqqEr-9wHUnWGVyO94wk61XKoAoUbs-W-chIYjTA-B40Zh0OzIpJXVgCTxduHt2BFOLdHZkDbNyncGHN7BFAk3OKNQBSCOPvkLGgy7tuJ5B2mZ4gFxy6WmrxhxFS_gq9V7mcYsx_kXQ9LqL22ROwEFlCudRcLd-6aqY_VKImpZDCBMQg9fxYTehxwMAxlNgFAGQUq_SHt5Vot538xJ6Goa_8xhWtFSPst9zmaGxIK3s_LgzOU"
-]
+import { ProductImage } from '@/components/shared/ProductImage'
 
 type ProductCardProps = {
   product: Product
   isHero?: boolean
-  index?: number
 }
 
-export function ProductCard({ product, isHero = false, index = 0 }: ProductCardProps) {
+export function ProductCard({ product, isHero = false }: ProductCardProps) {
   const qc = useQueryClient()
-  const imageUrl = MOCK_IMAGES[index % MOCK_IMAGES.length]
   const stock = typeof product.stock === 'number' ? product.stock : undefined
   const displayPrice = product.final_price ?? product.min_price ?? 0
 
@@ -66,10 +57,10 @@ export function ProductCard({ product, isHero = false, index = 0 }: ProductCardP
       <article className="product-card col-span-1 md:col-span-2 xl:col-span-2 bg-surface-container-lowest rounded-[24px] overflow-hidden ghost-border flex flex-col md:flex-row relative group ambient-shadow p-6 gap-8">
         <Link to={ROUTES.PRODUCT_DETAIL(product.id)} className="w-full md:w-1/2 relative bg-surface rounded-2xl p-8 flex items-center justify-center overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-primary-container/5 to-transparent"></div>
-          <img 
-            alt={product.name} 
-            className="w-full h-auto object-contain z-10 transition-transform duration-700 group-hover:scale-105" 
-            src={imageUrl}
+          <ProductImage
+            src={product.thumbnail_url}
+            alt={product.name}
+            imgClassName="z-10 h-auto transition-transform duration-700 group-hover:scale-105"
           />
           <span className="absolute top-4 left-4 px-3 py-1 bg-surface-container-lowest/80 backdrop-blur-md rounded-full text-xs font-bold text-primary tracking-wide">
             FEATURED
@@ -115,10 +106,10 @@ export function ProductCard({ product, isHero = false, index = 0 }: ProductCardP
   return (
     <article className="product-card bg-surface-container-lowest rounded-[24px] overflow-hidden ghost-border flex flex-col relative group ambient-shadow p-5 lg:p-6 gap-4 lg:gap-6">
       <Link to={ROUTES.PRODUCT_DETAIL(product.id)} className="w-full aspect-[4/5] relative bg-surface rounded-2xl p-6 flex items-center justify-center overflow-hidden">
-        <img 
-          alt={product.name} 
-          className="w-full h-auto object-contain z-10 transition-transform duration-700 group-hover:scale-110" 
-          src={imageUrl}
+        <ProductImage
+          src={product.thumbnail_url}
+          alt={product.name}
+          imgClassName="z-10 h-auto transition-transform duration-700 group-hover:scale-110"
         />
         {stock === 0 && (
           <span className="absolute top-4 left-4 px-2 py-1 bg-error/10 text-error rounded-md text-[10px] font-bold tracking-wide z-20">

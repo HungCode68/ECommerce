@@ -1,10 +1,10 @@
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Loader2, Package2, X } from 'lucide-react'
+import { ImagePlus, Loader2, Package2, Trash2, X } from 'lucide-react'
 import { adminProductApi } from '@/api/admin/adminProduct.api'
 import { queryKeys } from '@/lib/queryKeys'
 import { cn } from '@/lib/utils'
@@ -35,9 +35,17 @@ const variantSchema = z.object({
   stock_quantity: z.coerce.number().min(0, 'Tồn kho phải >= 0'),
   is_active: z.boolean().default(true),
   allow_backorder: z.boolean().default(false),
+  thumbnail_url: z.string().optional(),
 })
 
 type VariantFormData = z.infer<typeof variantSchema>
+
+type VariantOptionGroup = {
+  label: string
+  values: string[]
+}
+
+type VariantSelectionMap = Record<string, string[]>
 
 const QUICK_OPTIONS = [
   {
@@ -52,11 +60,7 @@ const QUICK_OPTIONS = [
     label: 'RAM',
     values: ['4GB', '8GB', '12GB', '16GB', '32GB', '64GB'],
   },
-  {
-    label: 'Kích thước',
-    values: ['13 inch', '14 inch', '15 inch', '16 inch', 'Màn hình 6.1', 'Màn hình 6.7'],
-  },
-]
+] satisfies VariantOptionGroup[]
 
 type VariantFormProps = {
   productId: number
@@ -68,9 +72,44 @@ type VariantFormProps = {
 export function VariantForm({ productId, productName, variant, onClose }: VariantFormProps) {
   const qc = useQueryClient()
   const isEdit = !!variant
+  const [isBulkMode, setIsBulkMode] = useState(false)
+  const [bulkSelections, setBulkSelections] = useState<VariantSelectionMap>({})
+
+  const parseOptionEntries = (options: string) =>
+    options
+      .split(',')
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .map((part) => {
+        const [label, ...rest] = part.split(':')
+        return {
+          label: label?.trim() ?? '',
+          value: rest.join(':').trim(),
+        }
+      })
+      .filter((entry) => entry.label && entry.value)
+
+  const normalizeToken = (value: string) =>
+    value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '')
+
+  const colorMap: Record<string, string> = {
+    Đen: 'BLK',
+    Trắng: 'WHT',
+    Xanh: 'BLU',
+    Đỏ: 'RED',
+    Vàng: 'GLD',
+    Xám: 'GRY',
+    Bạc: 'SLV',
+    Hồng: 'PNK',
+    Tím: 'PUR',
+    'Vàng Đồng': 'BRZ',
+  }
 
   const generateAutoSKU = (name: string, options: string) => {
-    // 1. Process Product Name
     let namePart = name
       .replace(/iPhone/i, 'IP')
       .replace(/Samsung Galaxy/i, 'SG')
@@ -86,46 +125,31 @@ export function VariantForm({ productId, productName, variant, onClose }: Varian
       .join('')
       .replace(/[^A-Z0-9]/g, '')
 
-    // 2. Extract values
-    const getVal = (label: string) => {
-      const match = options.match(new RegExp(`${label}:\\s*([^,]+)`, 'i'))
-      return match ? match[1].trim() : ''
-    }
+    const optionTokens = parseOptionEntries(options).map(({ label, value }) => {
+      if (label === 'Màu sắc') {
+        return colorMap[value] || normalizeToken(value).slice(0, 4)
+      }
 
-    const capacity = getVal('Dung lượng').replace(/GB|TB/i, '')
-    const colorMap: Record<string, string> = {
-      Đen: 'BLK',
-      Trắng: 'WHT',
-      Xanh: 'BLU',
-      Đỏ: 'RED',
-      Vàng: 'GLD',
-      Xám: 'GRY',
-      Bạc: 'SLV',
-      Hồng: 'PNK',
-      Tím: 'PUR',
-      'Vàng Đồng': 'BRZ',
-    }
-    const colorRaw = getVal('Màu sắc')
-    const color = colorMap[colorRaw] || (colorRaw ? colorRaw.slice(0, 3).toUpperCase() : '')
+      if (label === 'Dung lượng') {
+        return normalizeToken(value)
+      }
 
-    const parts = [namePart]
-    if (capacity) parts.push(capacity)
-    if (color) parts.push(color)
+      if (label === 'Kích thước') {
+        return normalizeToken(value).replace(/INCH/g, 'IN')
+      }
+
+      return normalizeToken(value).slice(0, 6)
+    })
+
+    const parts = [namePart, ...optionTokens.filter(Boolean)]
     parts.push('VN')
 
     return parts.filter(Boolean).join('-')
   }
 
   const generateAutoTitle = (name: string, options: string) => {
-    const getVal = (label: string) => {
-      const match = options.match(new RegExp(`${label}:\\s*([^,]+)`, 'i'))
-      return match ? match[1].trim() : ''
-    }
-
-    const color = getVal('Màu sắc')
-    const capacity = getVal('Dung lượng')
-
-    return [name, color, capacity].filter(Boolean).join(' ')
+    const values = parseOptionEntries(options).map((entry) => entry.value)
+    return [name, ...values].filter(Boolean).join(' ')
   }
 
   const {
@@ -146,6 +170,7 @@ export function VariantForm({ productId, productName, variant, onClose }: Varian
           stock_quantity: variant.stock_quantity ?? variant.stock ?? 0,
           is_active: variant.is_active ?? true,
           allow_backorder: variant.allow_backorder ?? false,
+          thumbnail_url: variant.thumbnail_url ?? '',
         }
       : {
           sku: '',
@@ -156,16 +181,99 @@ export function VariantForm({ productId, productName, variant, onClose }: Varian
           stock_quantity: 0,
           is_active: true,
           allow_backorder: false,
+          thumbnail_url: '',
         },
+  })
+  const thumbnailUrl = watch('thumbnail_url')
+
+  const { mutate: uploadImage, isPending: isUploadingImage } = useMutation({
+    mutationFn: (file: File) => adminProductApi.uploadImage(file),
+    onSuccess: (url) => {
+      setValue('thumbnail_url', url, { shouldDirty: true, shouldValidate: true })
+      toast.success('Tải ảnh lên thành công!')
+    },
+    onError: (error) => toast.error(getErrorMessage(error, 'Không thể tải ảnh lên')),
   })
   const currentOptionValues = watch('option_values')
 
+  const buildBulkCombinations = (selections: VariantSelectionMap) => {
+    const activeGroups = QUICK_OPTIONS
+      .map((group) => ({
+        label: group.label,
+        values: selections[group.label] ?? [],
+      }))
+      .filter((group) => group.values.length > 0)
+
+    if (activeGroups.length === 0) {
+      return [] as Array<Array<{ label: string; value: string }>>
+    }
+
+    return activeGroups.reduce<Array<Array<{ label: string; value: string }>>>(
+      (combinations, group) => {
+        if (combinations.length === 0) {
+          return group.values.map((value) => [{ label: group.label, value }])
+        }
+
+        return combinations.flatMap((combo) =>
+          group.values.map((value) => [...combo, { label: group.label, value }]),
+        )
+      },
+      [],
+    )
+  }
+
+  const bulkCombinations = buildBulkCombinations(bulkSelections)
+
+  const formatCombinationOptionValues = (entries: Array<{ label: string; value: string }>) =>
+    entries.map((entry) => `${entry.label}: ${entry.value}`).join(', ')
+
+  useEffect(() => {
+    if (isEdit || !isBulkMode) {
+      return
+    }
+
+    if (bulkCombinations.length === 0) {
+      setValue('sku', 'AUTO-BULK')
+      setValue('title', productName)
+      setValue('option_values', 'Tự động tạo theo tổ hợp')
+      return
+    }
+
+    const previewOptions = formatCombinationOptionValues(bulkCombinations[0])
+    setValue('sku', generateAutoSKU(productName, previewOptions))
+    setValue('title', generateAutoTitle(productName, previewOptions))
+    setValue('option_values', previewOptions)
+  }, [bulkCombinations, isBulkMode, isEdit, productName, setValue])
+
   const isOptionSelected = (label: string, value: string) => {
+    if (isBulkMode && !isEdit) {
+      return (bulkSelections[label] ?? []).includes(value)
+    }
+
     const pair = `${label}: ${value}`
     return currentOptionValues?.includes(pair)
   }
 
+  const toggleBulkOption = (label: string, value: string) => {
+    setBulkSelections((current) => {
+      const currentValues = current[label] ?? []
+      const nextValues = currentValues.includes(value)
+        ? currentValues.filter((item) => item !== value)
+        : [...currentValues, value]
+
+      return {
+        ...current,
+        [label]: nextValues,
+      }
+    })
+  }
+
   const appendOption = (label: string, value: string) => {
+    if (isBulkMode && !isEdit) {
+      toggleBulkOption(label, value)
+      return
+    }
+
     const pair = `${label}: ${value}`
     let newOptions = ''
 
@@ -209,7 +317,7 @@ export function VariantForm({ productId, productName, variant, onClose }: Varian
   const stockQuantityField = register('stock_quantity')
 
   const { mutate, isPending } = useMutation({
-    mutationFn: (data: VariantFormData) => {
+    mutationFn: async (data: VariantFormData) => {
       const normalizedOptionValues = normalizeVariantOptionValues(data.option_values)
       const shouldPreserveOriginal =
         isEdit &&
@@ -224,12 +332,38 @@ export function VariantForm({ productId, productName, variant, onClose }: Varian
           : normalizedOptionValues,
       }
 
-      return isEdit
-        ? adminProductApi.updateVariant(productId, variant.id, payload)
-        : adminProductApi.createVariant(productId, payload)
+      if (isEdit) {
+        await adminProductApi.updateVariant(productId, variant.id, payload)
+        return { mode: 'edit' as const, count: 1 }
+      }
+
+      if (isBulkMode) {
+        if (bulkCombinations.length === 0) {
+          throw new Error('Chọn ít nhất một giá trị để tạo biến thể hàng loạt')
+        }
+
+        for (const combination of bulkCombinations) {
+          const optionValues = formatCombinationOptionValues(combination)
+          await adminProductApi.createVariant(productId, {
+            ...payload,
+            sku: generateAutoSKU(productName, optionValues),
+            title: generateAutoTitle(productName, optionValues),
+            option_values: optionValues,
+          })
+        }
+
+        return { mode: 'bulk' as const, count: bulkCombinations.length }
+      }
+
+      await adminProductApi.createVariant(productId, payload)
+      return { mode: 'create' as const, count: 1 }
     },
-    onSuccess: () => {
-      toast.success(isEdit ? 'Cập nhật biến thể thành công!' : 'Thêm biến thể thành công!')
+    onSuccess: (result) => {
+      if (result.mode === 'bulk') {
+        toast.success(`Đã tạo ${result.count} biến thể thành công!`)
+      } else {
+        toast.success(isEdit ? 'Cập nhật biến thể thành công!' : 'Thêm biến thể thành công!')
+      }
       qc.invalidateQueries({ queryKey: queryKeys.admin.products.all })
       qc.invalidateQueries({ queryKey: queryKeys.products.all })
       qc.invalidateQueries({ queryKey: queryKeys.admin.products.detail(productId) })
@@ -266,12 +400,71 @@ export function VariantForm({ productId, productName, variant, onClose }: Varian
       </div>
 
       <form onSubmit={handleSubmit((data) => mutate(data))} className="space-y-4">
+        {!isEdit && (
+          <div className="rounded-2xl border border-cyan-100 bg-cyan-50/70 p-4">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-slate-800">Tạo hàng loạt theo tổ hợp</p>
+                <p className="text-xs leading-5 text-slate-500">
+                  Chọn nhiều màu, dung lượng hoặc RAM để hệ thống tự sinh toàn bộ biến thể.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsBulkMode((current) => {
+                    const next = !current
+
+                    if (!next) {
+                      setBulkSelections({})
+                      setValue('sku', '')
+                      setValue('title', '')
+                      setValue('option_values', '')
+                    }
+
+                    return next
+                  })
+                }}
+                className={cn(
+                  'rounded-full px-3 py-1.5 text-xs font-semibold transition-colors',
+                  isBulkMode
+                    ? 'bg-cyan-600 text-white'
+                    : 'border border-slate-200 bg-white text-slate-600 hover:border-cyan-300 hover:text-cyan-700',
+                )}
+              >
+                {isBulkMode ? 'Đang bật tạo hàng loạt' : 'Bật tạo hàng loạt'}
+              </button>
+            </div>
+
+            {isBulkMode && (
+              <div className="mt-3 space-y-2 rounded-xl border border-cyan-100 bg-white/80 p-3">
+                <p className="text-xs font-medium text-slate-600">
+                  Sẽ tạo <span className="font-bold text-cyan-700">{bulkCombinations.length}</span> biến thể
+                </p>
+                {bulkCombinations.length > 0 && (
+                  <div className="space-y-1 text-xs text-slate-500">
+                    {bulkCombinations.slice(0, 6).map((combination, index) => (
+                      <p key={`${formatCombinationOptionValues(combination)}-${index}`}>
+                        {formatCombinationOptionValues(combination)}
+                      </p>
+                    ))}
+                    {bulkCombinations.length > 6 && (
+                      <p>... và thêm {bulkCombinations.length - 6} biến thể nữa</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="grid gap-4 md:grid-cols-2">
           <Field label="SKU *" error={errors.sku?.message}>
             <input
               {...register('sku')}
               placeholder="SKU-001-L-BLACK"
               className={inputClass(!!errors.sku)}
+              disabled={isBulkMode && !isEdit}
             />
           </Field>
 
@@ -280,6 +473,7 @@ export function VariantForm({ productId, productName, variant, onClose }: Varian
               {...register('title')}
               placeholder="iPhone 15 Pro Max Đen 128GB"
               className={inputClass(!!errors.title)}
+              disabled={isBulkMode && !isEdit}
             />
           </Field>
 
@@ -316,9 +510,12 @@ export function VariantForm({ productId, productName, variant, onClose }: Varian
               rows={2}
               placeholder="Màu: Đen, Dung lượng: 128GB"
               className={cn(inputClass(!!errors.option_values), 'resize-none')}
+              readOnly={isBulkMode && !isEdit}
             />
             <p className="mt-1.5 text-xs leading-5 text-slate-400">
-              Có thể nhập hoặc chọn từ gợi ý bên trên. Hệ thống sẽ tự lưu thành JSON hợp lệ.
+              {isBulkMode && !isEdit
+                ? 'Chế độ hàng loạt sẽ tự tạo option_values cho từng tổ hợp từ các lựa chọn bên trên.'
+                : 'Có thể nhập hoặc chọn từ gợi ý bên trên. Hệ thống sẽ tự lưu thành JSON hợp lệ.'}
             </p>
           </Field>
         </div>
@@ -364,6 +561,53 @@ export function VariantForm({ productId, productName, variant, onClose }: Varian
               />
             </Field>
           </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-100 bg-white/80 p-4 shadow-sm">
+          <Field label="Ảnh biến thể (Tùy chọn)" error={errors.thumbnail_url?.message}>
+            <div className="space-y-3">
+              <div className="flex flex-col gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50/60 p-4 md:flex-row md:items-center md:justify-between">
+                <div className="space-y-1">
+                  <p className="text-[11px] font-bold text-slate-700">Tải ảnh mới</p>
+                  <p className="text-[10px] text-slate-500">Nếu để trống, sẽ dùng ảnh mặc định của sản phẩm.</p>
+                </div>
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-slate-800">
+                  {isUploadingImage ? <Loader2 className="h-3 w-3 animate-spin" /> : <ImagePlus className="h-3 w-3" />}
+                  {isUploadingImage ? 'Đang tải...' : 'Chọn ảnh'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={isUploadingImage}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) uploadImage(file)
+                      e.target.value = ''
+                    }}
+                  />
+                </label>
+              </div>
+
+              {thumbnailUrl && (
+                <div className="flex items-center gap-3 overflow-hidden rounded-xl border border-slate-200 bg-white p-2">
+                  <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg bg-slate-50">
+                    <img src={thumbnailUrl} alt="Preview" className="h-full w-full object-contain" />
+                  </div>
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <p className="truncate text-[10px] text-slate-400">{thumbnailUrl}</p>
+                    <button
+                      type="button"
+                      onClick={() => setValue('thumbnail_url', '', { shouldDirty: true, shouldValidate: true })}
+                      className="inline-flex w-fit items-center gap-1 rounded-md text-[10px] font-bold text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      Xóa ảnh
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </Field>
         </div>
 
         <div className="rounded-2xl border border-slate-100 bg-white/80 p-4 shadow-sm">

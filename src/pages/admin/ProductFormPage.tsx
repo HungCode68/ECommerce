@@ -292,6 +292,12 @@ export function ProductFormPage() {
                     return
                   }
 
+                  if (!isEdit) {
+                    toast.error('Sản phẩm đã lưu nhưng chưa mở được bước biến thể. Hãy vào lại từ danh sách sản phẩm.')
+                    navigate(ROUTES.ADMIN_PRODUCTS, { replace: true })
+                    return
+                  }
+
                   void refetch()
                 }}
               />
@@ -370,6 +376,9 @@ export function ProductFormPage() {
                       <thead className="border-b border-slate-100 bg-surface-container-low/50">
                         <tr>
                           <th className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+                            Ảnh
+                          </th>
+                          <th className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
                             Biến thể
                           </th>
                           <th className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
@@ -399,24 +408,44 @@ export function ProductFormPage() {
 
                           return (
                             <tr key={variant.id} className="group border-b border-slate-50 transition-colors hover:bg-slate-50/80">
-                              <td className="px-4 py-4 font-semibold text-slate-800">
-                                {formatVariantLabel(variant)}
+                              <td className="px-4 py-3 align-middle">
+                                <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-slate-100 border border-slate-100 shadow-sm flex items-center justify-center">
+                                  {variant.thumbnail_url || product.thumbnail_url ? (
+                                    <img
+                                      src={variant.thumbnail_url || product.thumbnail_url || ''}
+                                      alt={variant.sku}
+                                      className="h-full w-full object-cover"
+                                      onError={(e) => {
+                                        (e.target as HTMLImageElement).src = 'https://placehold.co/100x100/f1f5f9/64748b?text=No+Image'
+                                      }}
+                                    />
+                                  ) : (
+                                    <Package2 className="h-6 w-6 text-slate-300" />
+                                  )}
+                                </div>
                               </td>
-                              <td className="px-4 py-4 text-slate-500">
-                                {formatVariantOptionValues(variant.option_values)}
+                              <td className="px-4 py-3 align-middle font-bold text-slate-800">
+                                <div className="max-w-[200px] truncate">
+                                  {formatVariantLabel(variant)}
+                                </div>
                               </td>
-                              <td className="px-4 py-4 font-mono text-xs text-slate-400">
+                              <td className="px-4 py-3 align-middle text-slate-500 text-xs">
+                                <div className="min-w-[150px] whitespace-pre-wrap">
+                                  {formatVariantOptionValues(variant.option_values).replace(/\n/g, ', ')}
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 align-middle font-mono text-xs text-slate-400">
                                 {variant.sku}
                               </td>
-                              <td className="px-4 py-4 text-right font-mono font-medium text-slate-900">
+                              <td className="px-4 py-3 align-middle text-right font-mono font-medium text-slate-900">
                                 {formatVND(price)}
                               </td>
-                              <td className="px-4 py-4 text-right font-mono">
+                              <td className="px-4 py-3 align-middle text-right font-mono">
                                 <span className={cn('font-semibold', stock === 0 ? 'text-red-500' : stock <= 5 ? 'text-amber-600' : 'text-slate-700')}>
                                   {formatNumber(stock)}
                                 </span>
                               </td>
-                              <td className="px-4 py-4">
+                              <td className="px-4 py-3 align-middle">
                                 <span
                                   className={cn(
                                     'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide',
@@ -434,7 +463,7 @@ export function ProductFormPage() {
                                   {isVariantActive(variant) ? 'Đang bán' : 'Đã ẩn'}
                                 </span>
                               </td>
-                              <td className="px-4 py-4">
+                              <td className="px-4 py-3 align-middle">
                                 <div className="flex items-center justify-end gap-2">
                                   <button
                                     type="button"
@@ -581,6 +610,12 @@ export function ProductFormPage() {
               onSuccess={(newProduct) => {
                 if (!isEdit && newProduct) {
                   navigate(ROUTES.ADMIN_PRODUCT_EDIT(newProduct.id), { replace: true })
+                  return
+                }
+
+                if (!isEdit) {
+                  toast.error('Sản phẩm đã lưu nhưng chưa mở được bước biến thể. Hãy vào lại từ danh sách sản phẩm.')
+                  navigate(ROUTES.ADMIN_PRODUCTS, { replace: true })
                   return
                 }
 

@@ -35,6 +35,8 @@ func main() {
 
 	module.InitCategoryModule(db.Connection, mux)
 
+	module.InitBannerModule(db.Connection, mux)
+
 	module.InitCartModule(db.Connection, mux)
 
 	module.InitOrderModule(db.Connection, mux)
