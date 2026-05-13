@@ -17,6 +17,7 @@ export const ROUTES = {
   ADMIN_COUPONS: '/admin/coupons',
   ADMIN_USERS: '/admin/users',
   ADMIN_REVIEWS: '/admin/reviews',
+  ADMIN_BANNER_SETTINGS: '/admin/banner-settings',
   ADMIN_SETTINGS: '/admin/settings',
 
   // Shop Routes
@@ -52,4 +53,3 @@ export const ORDER_STATUS_COLOR: Record<string, string> = {
   cancelled: 'bg-red-100 text-red-800',
   returned: 'bg-orange-100 text-orange-800'
 };
-

@@ -75,8 +75,11 @@ const UsersPage = lazy(() =>
 const ReviewsPage = lazy(() =>
   import('@/pages/admin/ReviewsPage').then((module) => ({ default: module.ReviewsPage })),
 )
-const SettingsPage = lazy(() =>
+const BannerSettingsPage = lazy(() =>
   import('@/pages/admin/SettingsPage').then((module) => ({ default: module.SettingsPage })),
+)
+const GeneralSettingsPage = lazy(() =>
+  import('@/pages/admin/GeneralSettingsPage').then((module) => ({ default: module.GeneralSettingsPage })),
 )
 
 function PageLoader() {
@@ -225,10 +228,18 @@ export function AppRoutes() {
             }
           />
           <Route
+            path="banner-settings"
+            element={
+              <SuspensePage>
+                <BannerSettingsPage />
+              </SuspensePage>
+            }
+          />
+          <Route
             path="settings"
             element={
               <SuspensePage>
-                <SettingsPage />
+                <GeneralSettingsPage />
               </SuspensePage>
             }
           />

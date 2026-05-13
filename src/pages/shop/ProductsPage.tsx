@@ -1,222 +1,397 @@
-import { useState, useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import { categoryApi } from '@/api/category.api'
 import { productApi } from '@/api/product.api'
-import { queryKeys } from '@/lib/queryKeys'
-import { ProductCard } from '@/features/shop/products/ProductCard'
-import { ProductFilter } from '@/features/shop/products/ProductFilter'
-import { SearchInput } from '@/components/shared/SearchInput'
+import { ProductFilters } from '@/features/shop/products/ProductFilters'
+import { ProductGrid } from '@/features/shop/products/ProductGrid'
+import { ProductSortBar } from '@/features/shop/products/ProductSortBar'
 import { Pagination } from '@/components/shared/Pagination'
-import { CardSkeleton } from '@/components/shared/LoadingSkeleton'
-import { EmptyState } from '@/components/shared/EmptyState'
-import { usePagination } from '@/hooks/usePagination'
+import { queryKeys } from '@/lib/queryKeys'
+import { ROUTES } from '@/utils/constants'
+import type { Product } from '@/types/product.types'
+
+type FilterOption = {
+  label: string
+  value: string
+}
+
+const PAGE_SIZE = 24
+
+function getPriceRangeValues(priceRange: string) {
+  switch (priceRange) {
+    case 'under_5m':
+      return { min: undefined, max: 5_000_000 }
+    case '5m_10m':
+      return { min: 5_000_000, max: 10_000_000 }
+    case '10m_20m':
+      return { min: 10_000_000, max: 20_000_000 }
+    case 'over_20m':
+      return { min: 20_000_000, max: undefined }
+    default:
+      return { min: undefined, max: undefined }
+  }
+}
+
+function parseVariantTokens(value?: string | null) {
+  if (!value) return []
+  return value
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean)
+}
+
+function extractRamValues(products: Product[]): FilterOption[] {
+  const ramSet = new Set<string>()
+
+  products.forEach((product) => {
+    const candidates = [
+      product.name,
+      ...(product.variants ?? []).flatMap((variant) => [variant.title ?? '', variant.option_values ?? '']),
+    ]
+
+    candidates.forEach((candidate) => {
+      const matches = candidate.match(/\b(4|6|8|12|16|18|24)\s?GB\b/gi)
+      matches?.forEach((match) => ramSet.add(match.replace(/\s+/g, '').toUpperCase()))
+    })
+  })
+
+  return Array.from(ramSet)
+    .sort((a, b) => Number(a.replace('GB', '')) - Number(b.replace('GB', '')))
+    .map((value) => ({ label: value, value }))
+}
+
+function extractColorValues(products: Product[]): FilterOption[] {
+  const colorSet = new Set<string>()
+  const dictionary = [
+    'Black', 'Silver', 'White', 'Gold', 'Blue', 'Green', 'Purple', 'Violet', 'Pink', 'Gray', 'Grey',
+    'Đen', 'Bạc', 'Trắng', 'Vàng', 'Xanh', 'Xanh dương', 'Xanh lá', 'Tím', 'Hồng', 'Xám',
+  ]
+
+  products.forEach((product) => {
+    const candidates = [
+      product.name,
+      ...(product.variants ?? []).flatMap((variant) => [variant.title ?? '', variant.option_values ?? '']),
+    ]
+
+    candidates.forEach((candidate) => {
+      dictionary.forEach((color) => {
+        if (candidate.toLowerCase().includes(color.toLowerCase())) {
+          colorSet.add(color)
+        }
+      })
+
+      parseVariantTokens(candidate).forEach((token) => {
+        const [label, value] = token.split(':').map((item) => item.trim())
+        if (label && value && ['màu', 'màu sắc', 'color'].includes(label.toLowerCase())) {
+          colorSet.add(value)
+        }
+      })
+    })
+  })
+
+  return Array.from(colorSet).map((value) => ({ label: value, value }))
+}
+
+function matchesRam(product: Product, selectedRam: string[]) {
+  if (selectedRam.length === 0) return true
+  const haystack = [
+    product.name,
+    ...(product.variants ?? []).flatMap((variant) => [variant.title ?? '', variant.option_values ?? '']),
+  ]
+    .join(' ')
+    .toUpperCase()
+
+  return selectedRam.some((ram) => haystack.includes(ram.toUpperCase()))
+}
+
+function matchesColor(product: Product, selectedColors: string[]) {
+  if (selectedColors.length === 0) return true
+  const haystack = [
+    product.name,
+    ...(product.variants ?? []).flatMap((variant) => [variant.title ?? '', variant.option_values ?? '']),
+  ]
+    .join(' ')
+    .toLowerCase()
+
+  return selectedColors.some((color) => haystack.includes(color.toLowerCase()))
+}
+
+function sortProducts(products: Product[], sort: string) {
+  const next = [...products]
+
+  switch (sort) {
+    case 'price_asc':
+      return next.sort((a, b) => (a.final_price ?? a.min_price) - (b.final_price ?? b.min_price))
+    case 'price_desc':
+      return next.sort((a, b) => (b.final_price ?? b.min_price) - (a.final_price ?? a.min_price))
+    case 'popular':
+      return next.sort((a, b) => (b.rating_count || 0) - (a.rating_count || 0) || (b.avg_rating || 0) - (a.avg_rating || 0))
+    default:
+      return next
+  }
+}
 
 export function ProductsPage() {
-  const { page, limit, totalPages, goToPage } = usePagination({ initialLimit: 16 })
   const [searchParams, setSearchParams] = useSearchParams()
-  
-  const [search, setSearch] = useState(searchParams.get('q') || '')
-  const [category, setCategory] = useState<number | undefined>(
-    searchParams.get('category_id') ? Number(searchParams.get('category_id')) : undefined
-  )
-  const [brand, setBrand] = useState<string | undefined>(
-    searchParams.get('brand') || undefined
-  )
-  const [minPrice, setMinPrice] = useState<string>(
-    searchParams.get('min_price') || '0'
-  )
-  const [maxPrice, setMaxPrice] = useState<string>(
-    searchParams.get('max_price') || ''
-  )
-  // Sync URL changes (e.g. from navbar clicks) to local state
-  useEffect(() => {
-    const urlCategory = searchParams.get('category_id') ? Number(searchParams.get('category_id')) : undefined
-    const urlSearch = searchParams.get('q') || ''
-    const urlBrand = searchParams.get('brand') || undefined
-    const urlMinPrice = searchParams.get('min_price') || '0'
-    const urlMaxPrice = searchParams.get('max_price') || ''
-    
-    setCategory(urlCategory)
-    setSearch(urlSearch)
-    setBrand(urlBrand)
-    setMinPrice(urlMinPrice)
-    setMaxPrice(urlMaxPrice)
-  }, [searchParams])
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
 
-  const handleCategoryChange = (id?: number) => {
-    setCategory(id)
-    goToPage(1)
-    
-    const params = new URLSearchParams(searchParams)
-    if (id) {
-      params.set('category_id', id.toString())
-    } else {
-      params.delete('category_id')
-    }
-    setSearchParams(params)
-  }
+  const page = Number(searchParams.get('page') || '1')
+  const search = searchParams.get('q') || ''
+  const categoryId = searchParams.get('category_id') ? Number(searchParams.get('category_id')) : undefined
+  const selectedBrands = searchParams.getAll('brand').filter(Boolean)
+  const priceRange = searchParams.get('price_range') || ''
+  const selectedRam = searchParams.getAll('ram').filter(Boolean)
+  const selectedColors = searchParams.getAll('color').filter(Boolean)
+  const sort = searchParams.get('sort') || 'newest'
+  const viewMode = searchParams.get('view') === 'list' ? 'list' : 'grid'
 
-  const handleBrandChange = (b?: string) => {
-    setBrand(b)
-    goToPage(1)
-    
-    const params = new URLSearchParams(searchParams)
-    if (b) {
-      params.set('brand', b)
-    } else {
-      params.delete('brand')
-    }
-    setSearchParams(params)
-  }
+  const priceValues = getPriceRangeValues(priceRange)
+  const usesClientSideFilters =
+    selectedBrands.length > 0 || selectedRam.length > 0 || selectedColors.length > 0 || Boolean(priceRange)
 
-  const handleSearchChange = (v: string) => {
-    setSearch(v)
-    goToPage(1)
-    
-    const params = new URLSearchParams(searchParams)
-    if (v) {
-      params.set('q', v)
-    } else {
-      params.delete('q')
-    }
-    setSearchParams(params)
-  }
+  const { data: categories = [] } = useQuery({
+    queryKey: queryKeys.categories.all,
+    queryFn: categoryApi.getAll,
+    staleTime: 5 * 60 * 1000,
+  })
 
-  const handlePriceChange = (min: string, max: string) => {
-    setMinPrice(min)
-    setMaxPrice(max)
-    goToPage(1)
+  const currentCategory = categories.find((category) => category.id === categoryId)
 
-    const params = new URLSearchParams(searchParams)
-    if (min && min !== '0') {
-      params.set('min_price', min)
-    } else {
-      params.delete('min_price')
-    }
-
-    if (max) {
-      params.set('max_price', max)
-    } else {
-      params.delete('max_price')
-    }
-    setSearchParams(params)
-  }
-
-  const { data, isLoading } = useQuery({
-    queryKey: queryKeys.products.list({ 
-      q: search, 
-      page, 
-      limit, 
-      category_id: category, 
-      brand,
-      min_price: minPrice && minPrice !== '0' ? Number(minPrice) : undefined,
-      max_price: maxPrice ? Number(maxPrice) : undefined
+  const listingQuery = useQuery({
+    queryKey: queryKeys.products.list({
+      q: search,
+      page,
+      limit: PAGE_SIZE,
+      category_id: categoryId,
+      brand: selectedBrands.length === 1 ? selectedBrands[0] : undefined,
+      min_price: priceValues.min,
+      max_price: priceValues.max,
+      sort_by:
+        sort === 'price_asc' || sort === 'price_desc'
+          ? 'price'
+          : sort === 'popular'
+            ? 'rating'
+            : 'newest',
+      sort_order: sort === 'price_asc' ? 'asc' : 'desc',
     }),
     queryFn: () =>
-      productApi.search({ 
-        q: search, 
-        page, 
-        limit, 
-        category_id: category, 
-        brand,
-        min_price: minPrice && minPrice !== '0' ? Number(minPrice) : undefined,
-        max_price: maxPrice ? Number(maxPrice) : undefined
+      productApi.search({
+        q: search || undefined,
+        page,
+        limit: PAGE_SIZE,
+        category_id: categoryId,
+        brand: selectedBrands.length === 1 ? selectedBrands[0] : undefined,
+        min_price: priceValues.min,
+        max_price: priceValues.max,
+        sort_by:
+          sort === 'price_asc' || sort === 'price_desc'
+            ? 'price'
+            : sort === 'popular'
+              ? 'rating'
+              : 'newest',
+        sort_order: sort === 'price_asc' ? 'asc' : 'desc',
       }),
   })
 
-  const products = data?.data ?? []
-  const total = data?.pagination?.total ?? 0
-  const pages = totalPages(total)
+  const catalogQuery = useQuery({
+    queryKey: queryKeys.products.list({
+      source: 'catalog',
+      q: search,
+      category_id: categoryId,
+    }),
+    queryFn: () =>
+      productApi.searchDetail({
+        q: search || undefined,
+        page: 1,
+        limit: 200,
+        category_id: categoryId,
+      }),
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const catalogProducts = useMemo(() => {
+    return catalogQuery.data?.data ?? []
+  }, [catalogQuery.data?.data])
+
+  const brandOptions = useMemo(() => {
+    const source = catalogProducts.length > 0 ? catalogProducts : listingQuery.data?.data ?? []
+    return Array.from(
+      new Set(source.map((product) => product.brand).filter((brand): brand is string => Boolean(brand?.trim()))),
+    ).sort((a, b) => a.localeCompare(b, 'vi'))
+  }, [catalogProducts, listingQuery.data?.data])
+
+  const ramOptions = useMemo(() => extractRamValues(catalogProducts), [catalogProducts])
+  const colorOptions = useMemo(() => extractColorValues(catalogProducts), [catalogProducts])
+
+  const frontendFilteredProducts = useMemo(() => {
+    if (!usesClientSideFilters) return []
+
+    const base = catalogProducts.filter((product) => {
+      const matchesBrand =
+        selectedBrands.length === 0 ||
+        selectedBrands.includes(product.brand ?? '')
+      const productPrice = product.final_price ?? product.min_price
+      const matchesPrice =
+        (priceValues.min === undefined || productPrice >= priceValues.min) &&
+        (priceValues.max === undefined || productPrice <= priceValues.max)
+
+      return matchesBrand && matchesPrice && matchesRam(product, selectedRam) && matchesColor(product, selectedColors)
+    })
+
+    return sortProducts(base, sort)
+  }, [catalogProducts, selectedBrands, selectedRam, selectedColors, sort, usesClientSideFilters, priceValues.max, priceValues.min])
+
+  const displayedProducts = usesClientSideFilters
+    ? frontendFilteredProducts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+    : listingQuery.data?.data ?? []
+
+  const totalProducts = usesClientSideFilters
+    ? frontendFilteredProducts.length
+    : listingQuery.data?.pagination?.total ?? 0
+
+  const totalPages = Math.max(1, Math.ceil(totalProducts / PAGE_SIZE))
+
+  useEffect(() => {
+    if (page > totalPages) {
+      const nextParams = new URLSearchParams(searchParams)
+      nextParams.set('page', '1')
+      setSearchParams(nextParams, { replace: true })
+    }
+  }, [page, totalPages, searchParams, setSearchParams])
+
+  const updateParams = (updater: (params: URLSearchParams) => void) => {
+    const nextParams = new URLSearchParams(searchParams)
+    updater(nextParams)
+    nextParams.set('page', '1')
+    setSearchParams(nextParams)
+  }
+
+  const handleCategoryChange = (id?: number) => {
+    updateParams((params) => {
+      if (id) params.set('category_id', String(id))
+      else params.delete('category_id')
+    })
+  }
+
+  const handleBrandToggle = (brand: string) => {
+    updateParams((params) => {
+      const current = params.getAll('brand')
+      params.delete('brand')
+      const next = current.includes(brand)
+        ? current.filter((item) => item !== brand)
+        : [...current, brand]
+      next.forEach((item) => params.append('brand', item))
+    })
+  }
+
+  const handlePriceRangeChange = (value: string) => {
+    updateParams((params) => {
+      if (params.get('price_range') === value) params.delete('price_range')
+      else params.set('price_range', value)
+    })
+  }
+
+  const handleRamToggle = (value: string) => {
+    updateParams((params) => {
+      const current = params.getAll('ram')
+      params.delete('ram')
+      const next = current.includes(value)
+        ? current.filter((item) => item !== value)
+        : [...current, value]
+      next.forEach((item) => params.append('ram', item))
+    })
+  }
+
+  const handleColorToggle = (value: string) => {
+    updateParams((params) => {
+      const current = params.getAll('color')
+      params.delete('color')
+      const next = current.includes(value)
+        ? current.filter((item) => item !== value)
+        : [...current, value]
+      next.forEach((item) => params.append('color', item))
+    })
+  }
+
+  const handleReset = () => {
+    const nextParams = new URLSearchParams()
+    if (search) nextParams.set('q', search)
+    setSearchParams(nextParams)
+  }
+
+  const handleSortChange = (value: string) => {
+    updateParams((params) => {
+      params.set('sort', value)
+    })
+  }
+
+  const handleViewModeChange = (mode: 'grid' | 'list') => {
+    const nextParams = new URLSearchParams(searchParams)
+    nextParams.set('view', mode)
+    setSearchParams(nextParams)
+  }
+
+  const handlePageChange = (nextPage: number) => {
+    const nextParams = new URLSearchParams(searchParams)
+    nextParams.set('page', String(nextPage))
+    setSearchParams(nextParams)
+  }
+
+  const isLoading =
+    listingQuery.isLoading ||
+    (usesClientSideFilters && catalogQuery.isLoading)
 
   return (
-    <div className="w-full max-w-screen-2xl mx-auto px-4 md:px-8 py-8 lg:py-12">
-      {/* Promotional Banner */}
-      <section className="w-full relative rounded-[24px] overflow-hidden bg-surface-container-low min-h-[400px] flex items-center p-8 md:p-16 mb-12 ambient-shadow">
-        <div className="absolute inset-0 z-0">
-          <img 
-            alt="Kinetic Pro Ultra Promotion" 
-            className="w-full h-full object-cover opacity-90 object-right-bottom" 
-            src="https://lh3.googleusercontent.com/aida/ADBb0ujF2x_WVfaULDvVb8Pa_6AGpRnmqVgTGk9mJWW3Td-sCyKmr1jzzb2F9rSK1K6bORf_jl367NJ5txKFiwO3ONfbB3i8kk-vVZB6BU8mlyrdZAjzkPGHxX0uwZUqMbZCXrKgi0f_LzglFvGEtpEp3xtBMaWcvZ-Q85WMlMNeTq6JiGh3sVJ6xmZyyUf_d71iMlcS-cDme0goQkNH9uJsK4qfhAzeDK-hghhG-nXXz0s6Y56ZT4NJpaQwHoX2dZkgErfS40HISkvFgUk"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/80 to-transparent"></div>
-        </div>
-        <div className="relative z-10 max-w-xl flex flex-col gap-6">
-          <span className="px-4 py-1.5 rounded-full bg-surface-container-lowest/50 backdrop-blur-md text-primary font-body text-sm font-bold tracking-widest uppercase inline-flex items-center gap-2 w-max ghost-border">
-            <span className="w-2 h-2 rounded-full bg-primary-container animate-pulse"></span>
-            New Release
-          </span>
-          <h1 className="font-headline text-display-lg md:text-6xl lg:text-7xl font-bold tracking-tight text-on-surface leading-tight">
-            Kinetic Pro Ultra. <br/>
-            <span className="gradient-text">Beyond Reality.</span>
-          </h1>
-          <p className="font-body text-body-lg text-on-surface-variant max-w-md leading-relaxed">
-            Experience the next generation of spatial computing embedded in a sleek, titanium frame. Pre-order now and redefine your digital horizon.
-          </p>
-          <div className="flex gap-4 mt-4">
-            <button className="gradient-bg text-white px-8 py-4 rounded-xl font-body font-bold text-label-lg transition-transform hover:scale-105 active:scale-95 flex items-center gap-2">
-              Pre-order Now
-              <span className="material-symbols-outlined text-sm">arrow_forward</span>
-            </button>
-            <button className="bg-surface-container-lowest text-primary px-8 py-4 rounded-xl font-body font-bold text-label-lg transition-transform hover:scale-105 active:scale-95 ghost-border hover:border-primary-container/40">
-              Watch Keynote
-            </button>
-          </div>
-        </div>
-      </section>
+    <main className="mx-auto max-w-[1200px] px-4 py-6 md:px-6">
+      <nav className="mb-6 flex items-center gap-2 text-sm text-[#4a4455]">
+        <Link to={ROUTES.HOME} className="hover:text-[#630ed4]">Trang chủ</Link>
+        <span>&gt;</span>
+        <span className="text-[#1c1b1b]">{currentCategory?.name || 'Tất cả sản phẩm'}</span>
+      </nav>
 
-      {/* Category Layout Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
-        {/* Left Sidebar: Filters */}
-        <ProductFilter
-          selectedCategory={category}
+      <div className="flex gap-4">
+        <ProductFilters
+          categories={categories.map((category) => ({ id: category.id, name: category.name }))}
+          selectedCategory={categoryId}
           onCategoryChange={handleCategoryChange}
-          selectedBrand={brand}
-          onBrandChange={handleBrandChange}
-          minPrice={minPrice}
-          maxPrice={maxPrice}
-          onPriceChange={handlePriceChange}
+          brands={brandOptions}
+          selectedBrands={selectedBrands}
+          onBrandToggle={handleBrandToggle}
+          priceRange={priceRange}
+          onPriceRangeChange={handlePriceRangeChange}
+          ramOptions={ramOptions}
+          selectedRam={selectedRam}
+          onRamToggle={handleRamToggle}
+          colorOptions={colorOptions}
+          selectedColors={selectedColors}
+          onColorToggle={handleColorToggle}
+          onReset={handleReset}
+          mobileOpen={mobileFiltersOpen}
+          onCloseMobile={() => setMobileFiltersOpen(false)}
         />
 
-        {/* Main Product Grid */}
-        <section className="col-span-1 lg:col-span-9 flex flex-col gap-8">
-          {/* Grid Header */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <p className="font-body text-on-surface-variant text-sm"><span className="font-bold text-on-surface">{total}</span> devices found</p>
-            <div className="flex items-center gap-4">
-              <SearchInput onSearch={handleSearchChange} placeholder="Tìm sản phẩm..." className="w-48 sm:w-64" />
-              <div className="flex items-center gap-2">
-                <span className="font-body text-sm text-on-surface-variant hidden sm:block">Sort by:</span>
-                <select className="bg-surface-container-lowest border-none font-body text-sm font-medium text-on-surface py-2 px-4 rounded-xl ghost-border focus:ring-1 focus:ring-primary-container outline-none cursor-pointer appearance-none pr-8 relative">
-                  <option>Latest Releases</option>
-                  <option>Price: High to Low</option>
-                  <option>Price: Low to High</option>
-                  <option>Highest Rated</option>
-                </select>
-              </div>
-            </div>
-          </div>
+        <section className="min-w-0 flex-1">
+          <ProductSortBar
+            total={totalProducts}
+            sort={sort}
+            onSortChange={handleSortChange}
+            viewMode={viewMode}
+            onViewModeChange={handleViewModeChange}
+            onOpenFilters={() => setMobileFiltersOpen(true)}
+          />
 
-          {/* The Bento Grid */}
-          {isLoading ? (
-            <CardSkeleton count={12} />
-          ) : products.length === 0 ? (
-            <EmptyState title="Không tìm thấy sản phẩm" description="Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm" />
-          ) : (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {products.map((p, index) => (
-                  <ProductCard key={p.id} product={p} isHero={index === 0} />
-                ))}
-              </div>
-              
-              {/* Pagination */}
-              <div className="mt-8 flex justify-center">
-                <Pagination page={page} totalPages={pages} onPageChange={goToPage} />
-              </div>
-            </>
-          )}
+          <ProductGrid
+            products={displayedProducts}
+            isLoading={isLoading}
+            viewMode={viewMode}
+          />
+
+          <div className="mt-8 flex justify-center">
+            <Pagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
+          </div>
         </section>
       </div>
-    </div>
+    </main>
   )
 }

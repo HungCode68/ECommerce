@@ -1,5 +1,5 @@
 import { startTransition, useState } from 'react'
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   User,
   LogOut,
@@ -14,26 +14,6 @@ import { categoryApi } from '@/api/category.api'
 import { queryKeys } from '@/lib/queryKeys'
 import { ROUTES } from '@/utils/constants'
 import { cn } from '@/lib/utils'
-
-// Map category name -> Material Symbol icon
-function getCategoryIcon(name: string): string {
-  const n = name.toLowerCase()
-  if (n.includes('điện thoại') || n.includes('phone') || n.includes('smartphone')) return 'smartphone'
-  if (n.includes('laptop') || n.includes('máy tính') || n.includes('pc') || n.includes('computer')) return 'laptop'
-  if (n.includes('đồng hồ') || n.includes('watch')) return 'watch'
-  if (n.includes('tai nghe') || n.includes('headphone') || n.includes('audio')) return 'headphones'
-  if (n.includes('máy ảnh') || n.includes('camera')) return 'photo_camera'
-  if (n.includes('phụ kiện') || n.includes('accessory')) return 'devices_other'
-  if (n.includes('máy tính bảng') || n.includes('tablet') || n.includes('ipad')) return 'tablet'
-  if (n.includes('tủ lạnh') || n.includes('refrigerator')) return 'kitchen'
-  if (n.includes('máy lạnh') || n.includes('air')) return 'ac_unit'
-  if (n.includes('máy giặt') || n.includes('washer')) return 'local_laundry_service'
-  if (n.includes('màn hình') || n.includes('monitor') || n.includes('display')) return 'monitor'
-  if (n.includes('bàn phím') || n.includes('keyboard')) return 'keyboard'
-  if (n.includes('chuột') || n.includes('mouse')) return 'mouse'
-  if (n.includes('gaming') || n.includes('game')) return 'sports_esports'
-  return 'category'
-}
 
 
 function NavItem({ to, children }: { to: string; children: React.ReactNode }) {
@@ -162,9 +142,12 @@ function MenuItem({
 
 export function ShopLayout() {
   const { totalCount } = useCartStore()
+  const { isAuthenticated } = useAuthStore()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const navigate = useNavigate()
+  const location = useLocation()
+  const isHomePage = location.pathname === ROUTES.HOME
 
   const { data: categories = [] } = useQuery({
     queryKey: queryKeys.categories.all,
@@ -177,106 +160,118 @@ export function ShopLayout() {
     if (searchQuery.trim()) {
       navigate(`${ROUTES.PRODUCTS}?q=${encodeURIComponent(searchQuery.trim())}`)
       setSearchQuery('')
+      setMobileMenuOpen(false)
     }
   }
 
+  const homeCategories = categories.slice(0, 5)
+  const homePrimaryCategory = homeCategories[0]
+
   return (
     <div className="min-h-screen bg-background text-on-surface font-body selection:bg-primary-container selection:text-white flex flex-col">
-      {/* Promotional Top Banner */}
-      <div className="w-full bg-primary py-2 px-4 flex justify-center items-center gap-4 text-white font-label text-[10px] tracking-widest overflow-hidden relative">
-        <span className="opacity-80 text-center">ƯU ĐÃI ĐỘC QUYỀN TRONG THÁNG: GIẢM 20% CHO CÁC DÒNG LAPTOP KC29 TECH CORE</span>
-        <div className="hidden h-1 w-1 rounded-full bg-white sm:block"></div>
-        <Link to={ROUTES.PRODUCTS} className="hidden font-bold underline decoration-primary-container underline-offset-4 sm:inline">
-          MUA NGAY
-        </Link>
-      </div>
-
-      {/* Navigation Header */}
-      <header className="sticky top-0 z-40 w-full px-3 pt-3 md:px-5 md:pt-4 lg:px-6">
-        <nav className="w-full rounded-[26px] border border-white/40 bg-white/92 px-4 py-3 shadow-[0_28px_55px_-22px_rgba(15,23,42,0.18)] backdrop-blur-xl md:px-6 lg:px-8">
-          <div className="mx-auto flex w-full max-w-[1680px] items-center gap-3 lg:gap-6">
-            <div className="flex min-w-0 items-center gap-3 lg:gap-8">
+      <header className="sticky top-0 z-40 border-b border-[#e5e2e1] bg-[#fcf9f8]/95 shadow-sm backdrop-blur">
+        <div className="mx-auto flex w-full max-w-[1200px] flex-col px-4 py-2 md:px-6">
+          <div className="flex items-center justify-between gap-4 py-2">
+            <div className="flex items-center gap-3">
               <button
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 text-on-surface transition hover:border-primary hover:text-primary lg:hidden"
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#ccc3d8] text-[#1c1b1b] lg:hidden"
+                onClick={() => setMobileMenuOpen((value) => !value)}
                 aria-label="Menu"
               >
                 <span className="material-symbols-outlined text-[22px]">
                   {mobileMenuOpen ? 'close' : 'menu'}
                 </span>
               </button>
-
-              <Link to={ROUTES.HOME} className="shrink-0 font-headline text-xl font-bold tracking-tighter text-on-surface sm:text-2xl">
-                KC29 TECH
+              <Link to={ROUTES.HOME} className="text-[24px] font-bold leading-[1.3] text-[#630ed4] md:text-[28px]">
+                KC TECH
               </Link>
             </div>
 
-            <div className="hidden min-w-0 flex-1 items-center justify-center lg:flex">
-              <div className="flex min-w-0 items-center gap-5 xl:gap-7">
-                {categories.slice(0, 6).map((cat) => (
-                  <Link
-                    key={cat.id}
-                    to={`${ROUTES.PRODUCTS}?category_id=${cat.id}`}
-                    className="flex shrink-0 items-center gap-2 font-label text-[11px] font-bold uppercase tracking-widest text-on-surface hover:text-primary transition-colors"
-                  >
-                    <span className="material-symbols-outlined text-lg opacity-70">{getCategoryIcon(cat.name)}</span>
-                    <span className="whitespace-nowrap">{cat.name}</span>
-                  </Link>
-                ))}
-              </div>
-            </div>
+            <form
+              onSubmit={handleSearch}
+              className="hidden max-w-xl flex-1 items-center rounded-xl bg-white px-4 py-2 md:flex"
+            >
+              <input
+                className="w-full border-none bg-transparent text-sm text-[#1c1b1b] placeholder:text-[#7b7487] focus:ring-0"
+                placeholder="Bạn cần tìm sản phẩm gì?"
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <button type="submit" className="text-[#4a4455]" aria-label="Tìm kiếm">
+                <span className="material-symbols-outlined text-[22px]">search</span>
+              </button>
+            </form>
 
-            <div className="ml-auto flex min-w-0 items-center gap-2 sm:gap-3 lg:gap-4">
-              <form
-                onSubmit={handleSearch}
-                className="hidden min-w-0 flex-1 items-center gap-2 rounded-full bg-slate-100/90 px-4 py-2.5 transition-all focus-within:ring-2 focus-within:ring-primary/20 md:flex md:w-[240px] lg:w-[320px] xl:w-[420px]"
-              >
-                <span className="material-symbols-outlined shrink-0 text-outline-variant text-xl">search</span>
-                <input
-                  className="w-full min-w-0 bg-transparent border-none text-sm text-slate-700 placeholder:text-outline-variant focus:ring-0"
-                  placeholder="Tìm kiếm công nghệ..."
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </form>
-
+            <div className="flex items-center gap-4 text-[#630ed4]">
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen(true)}
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-on-surface transition hover:border-primary hover:text-primary md:hidden"
+                className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#ccc3d8] text-[#1c1b1b] md:hidden"
                 aria-label="Mở tìm kiếm"
               >
                 <span className="material-symbols-outlined text-[22px]">search</span>
               </button>
 
-              <Link to={ROUTES.CART} className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-on-surface transition hover:bg-slate-100 hover:text-primary active:scale-95">
-                <span className="material-symbols-outlined text-[24px]">shopping_cart</span>
+              <Link to={ROUTES.CART} className="relative flex items-center gap-1 text-sm font-semibold text-[#1c1b1b] transition-colors hover:text-[#630ed4]">
+                <span className="material-symbols-outlined text-[22px]">shopping_cart</span>
+                <span className="hidden md:inline">Giỏ hàng</span>
                 {totalCount > 0 && (
-                  <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-white shadow-sm ring-2 ring-white">
+                  <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#630ed4] px-1 text-[10px] font-bold text-white">
                     {totalCount > 9 ? '9+' : totalCount}
                   </span>
                 )}
               </Link>
 
-              <div className="shrink-0">
-                <UserMenu />
-              </div>
+              {isAuthenticated ? (
+                <div className="shrink-0">
+                  <UserMenu />
+                </div>
+              ) : (
+                <Link to={ROUTES.LOGIN} className="flex items-center gap-1 text-sm font-semibold text-[#1c1b1b] transition-colors hover:text-[#630ed4]">
+                  <span className="material-symbols-outlined text-[22px]">person</span>
+                  <span className="hidden md:inline">Đăng nhập</span>
+                </Link>
+              )}
             </div>
           </div>
 
-          {/* Mobile menu */}
+          <nav className="hidden items-center gap-6 overflow-x-auto py-2 text-sm lg:flex">
+            <Link to={ROUTES.HOME} className={cn('pb-1 font-medium transition-colors', isHomePage ? 'border-b-2 border-[#630ed4] text-[#630ed4]' : 'text-[#4a4455] hover:text-[#630ed4]')}>
+              Trang chủ
+            </Link>
+            {homeCategories.map((cat) => (
+              <Link
+                key={cat.id}
+                to={`${ROUTES.PRODUCTS}?category_id=${cat.id}`}
+                className="whitespace-nowrap text-[#4a4455] transition-colors hover:text-[#630ed4]"
+              >
+                {cat.name}
+              </Link>
+            ))}
+            {!homePrimaryCategory && (
+              <Link
+                to={ROUTES.PRODUCTS}
+                className="whitespace-nowrap text-[#4a4455] transition-colors hover:text-[#630ed4]"
+              >
+                Sản phẩm
+              </Link>
+            )}
+          </nav>
+
           {mobileMenuOpen && (
-            <div className="mx-auto mt-4 flex w-full max-w-[1680px] flex-col gap-4 rounded-[22px] border border-slate-200 bg-white/95 p-4 shadow-lg lg:hidden">
-              <form onSubmit={handleSearch} className="flex items-center gap-2 rounded-2xl bg-slate-100 px-4 py-3">
-                <span className="material-symbols-outlined text-outline-variant text-xl">search</span>
+            <div className="mt-2 flex flex-col gap-4 border-t border-[#e5e2e1] py-4 lg:hidden">
+              <form onSubmit={handleSearch} className="flex items-center rounded-xl bg-white px-4 py-3">
                 <input
-                  className="w-full bg-transparent border-none text-sm placeholder:text-outline-variant focus:ring-0"
-                  placeholder="Tìm kiếm công nghệ..."
+                  className="w-full border-none bg-transparent text-sm text-[#1c1b1b] placeholder:text-[#7b7487] focus:ring-0"
+                  placeholder="Bạn cần tìm sản phẩm gì?"
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
+                <button type="submit" className="text-[#4a4455]" aria-label="Tìm kiếm">
+                  <span className="material-symbols-outlined text-[22px]">search</span>
+                </button>
               </form>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <NavItem to={ROUTES.HOME}>Trang chủ</NavItem>
@@ -287,60 +282,68 @@ export function ShopLayout() {
               </div>
             </div>
           )}
-        </nav>
+        </div>
       </header>
 
-      <main className="flex-1 pt-4 md:pt-5">
+      <main className={cn('flex-1', isHomePage ? 'pt-0' : 'pt-4 md:pt-5')}>
         <Outlet />
       </main>
 
-      {/* Footer */}
-      <footer className="w-full py-16 px-8 mt-auto bg-surface-container-low border-t border-outline-variant/10">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 max-w-screen-2xl mx-auto">
-          <div className="flex flex-col gap-6">
-            <span className="font-headline text-2xl font-bold text-on-surface tracking-tighter">KC29 TECH</span>
-            <p className="font-body text-sm text-on-surface-variant leading-relaxed">
-              Được thiết kế để dẫn đầu kỷ nguyên công nghệ số tiếp theo. Chúng tôi mang đến sự chính xác, hiệu năng và thẩm mỹ tương lai trong từng sản phẩm.
+      <footer className="mt-auto border-t border-[#e5e2e1] bg-[#f0eded]">
+        <div className="mx-auto grid max-w-[1200px] grid-cols-1 gap-6 px-4 py-8 md:grid-cols-4 md:px-6">
+          <div className="space-y-4">
+            <div className="text-xl font-bold text-[#630ed4]">KC Tech</div>
+            <p className="text-sm leading-6 text-[#4a4455]">
+              KC Tech là hệ thống bán lẻ thiết bị công nghệ chính hãng, uy tín hàng đầu Việt Nam. Cam kết chất lượng và dịch vụ tận tâm.
             </p>
             <div className="flex gap-4">
-              <span className="material-symbols-outlined text-on-surface-variant hover:text-primary cursor-pointer transition-colors">public</span>
-              <span className="material-symbols-outlined text-on-surface-variant hover:text-primary cursor-pointer transition-colors">send</span>
-              <span className="material-symbols-outlined text-on-surface-variant hover:text-primary cursor-pointer transition-colors">share</span>
+              <span className="material-symbols-outlined cursor-pointer text-[#630ed4]">social_leaderboard</span>
+              <span className="material-symbols-outlined cursor-pointer text-[#630ed4]">camera</span>
+              <span className="material-symbols-outlined cursor-pointer text-[#630ed4]">play_circle</span>
             </div>
           </div>
-          <div className="flex flex-col gap-4">
-            <h4 className="font-headline font-bold text-sm uppercase tracking-widest text-on-surface">Khám phá</h4>
-            <Link to={ROUTES.PRODUCTS} className="font-body text-sm text-on-surface-variant hover:text-primary transition-all">Sản phẩm mới</Link>
-            <Link to="#" className="font-body text-sm text-on-surface-variant hover:text-primary transition-all">Giải pháp doanh nghiệp</Link>
-            <Link to="#" className="font-body text-sm text-on-surface-variant hover:text-primary transition-all">KC29 TECH Lab</Link>
-            <Link to="#" className="font-body text-sm text-on-surface-variant hover:text-primary transition-all">Cộng đồng</Link>
+          <div className="space-y-3">
+            <h3 className="text-lg font-semibold text-[#1c1b1b]">Về chúng tôi</h3>
+            <div className="space-y-2 text-sm text-[#4a4455]">
+              <Link to="#" className="block hover:text-[#630ed4]">Giới thiệu</Link>
+              <Link to="#" className="block hover:text-[#630ed4]">Tin tức</Link>
+              <Link to="#" className="block hover:text-[#630ed4]">Tuyển dụng</Link>
+              <Link to="#" className="block hover:text-[#630ed4]">Liên hệ</Link>
+            </div>
           </div>
-          <div className="flex flex-col gap-4">
-            <h4 className="font-headline font-bold text-sm uppercase tracking-widest text-on-surface">Hỗ trợ</h4>
-            <Link to="#" className="font-body text-sm text-on-surface-variant hover:text-primary transition-all">Trung tâm bảo hành</Link>
-            <Link to="#" className="font-body text-sm text-on-surface-variant hover:text-primary transition-all">Chính sách vận chuyển</Link>
-            <Link to="#" className="font-body text-sm text-on-surface-variant hover:text-primary transition-all">Câu hỏi thường gặp</Link>
-            <Link to="#" className="font-body text-sm text-on-surface-variant hover:text-primary transition-all">Liên hệ</Link>
+          <div className="space-y-3">
+            <h3 className="text-lg font-semibold text-[#1c1b1b]">Chính sách</h3>
+            <div className="space-y-2 text-sm text-[#4a4455]">
+              <Link to="#" className="block hover:text-[#630ed4]">Chính sách bảo hành</Link>
+              <Link to="#" className="block hover:text-[#630ed4]">Chính sách đổi trả</Link>
+              <Link to="#" className="block hover:text-[#630ed4]">Chính sách vận chuyển</Link>
+              <Link to="#" className="block hover:text-[#630ed4]">Chính sách bảo mật</Link>
+            </div>
           </div>
-          <div className="flex flex-col gap-6">
-            <h4 className="font-headline font-bold text-sm uppercase tracking-widest text-on-surface">Bản tin công nghệ</h4>
-            <p className="font-body text-sm text-on-surface-variant">Đăng ký để nhận thông tin về các đột phá công nghệ mới nhất.</p>
-            <div className="flex border-b border-outline-variant pb-2 focus-within:border-primary transition-colors">
-              <input
-                className="bg-transparent border-none focus:ring-0 text-sm w-full font-body placeholder:text-outline-variant/50 outline-none"
-                placeholder="Email của bạn"
-                type="email"
-              />
-              <button className="material-symbols-outlined text-primary hover:text-primary-container transition-colors">arrow_forward</button>
+          <div className="space-y-3">
+            <h3 className="text-lg font-semibold text-[#1c1b1b]">Liên hệ</h3>
+            <div className="space-y-2 text-sm text-[#4a4455]">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[#630ed4]">call</span>
+                <span>1900 1234</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[#630ed4]">mail</span>
+                <span>hotro@kctech.vn</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[#630ed4]">schedule</span>
+                <span>08:00 - 22:00</span>
+              </div>
             </div>
           </div>
         </div>
-        <div className="max-w-screen-2xl mx-auto mt-16 pt-8 border-t border-outline-variant/10 flex flex-col md:flex-row justify-between items-center gap-6">
-          <p className="font-body text-[10px] text-on-surface-variant tracking-widest uppercase opacity-60">© 2024 KC29 TECH. ENGINEERED FOR THE NEXT ERA.</p>
-          <div className="flex gap-8">
-            <Link to="#" className="font-body text-[10px] text-on-surface-variant hover:text-primary uppercase tracking-widest transition-colors">Quyền riêng tư</Link>
-            <Link to="#" className="font-body text-[10px] text-on-surface-variant hover:text-primary uppercase tracking-widest transition-colors">Điều khoản sử dụng</Link>
-            <Link to="#" className="font-body text-[10px] text-on-surface-variant hover:text-primary uppercase tracking-widest transition-colors">Bản đồ trang</Link>
+        <div className="mx-auto flex max-w-[1200px] flex-col items-center justify-between gap-4 border-t border-[#e5e2e1] px-4 py-4 text-sm text-[#4a4455] md:flex-row md:px-6">
+          <div>© 2026 KC TECH. All rights reserved.</div>
+          <div className="flex items-center gap-4">
+            <span>Visa</span>
+            <span>Mastercard</span>
+            <span>MoMo</span>
           </div>
         </div>
       </footer>

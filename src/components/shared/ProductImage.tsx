@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
+import { optimizeCloudinaryImage } from '@/lib/images'
 
 type ProductImageProps = {
   src?: string | null
@@ -22,7 +23,7 @@ export function ProductImage({
   if (shouldShowImage) {
     return (
       <img
-        src={src ?? undefined}
+        src={optimizeCloudinaryImage(src, { width: 900, height: 900 }) ?? undefined}
         alt={alt}
         className={cn('h-full w-full object-contain', imgClassName)}
         onError={() => setHasError(true)}

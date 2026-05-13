@@ -1,0 +1,1 @@
+import{j as n,O as a,c as l,H as o}from"./index-CNCeDBK6.js";function x({status:e,className:s}){const t=o[e]||"bg-slate-100 text-slate-800";return n.jsx("span",{className:l("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",t,s),children:a[e]||e})}export{x as S};
