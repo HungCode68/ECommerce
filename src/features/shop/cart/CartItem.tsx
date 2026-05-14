@@ -43,8 +43,8 @@ export function CartItem({
           </div>
 
           <div className="min-w-0 flex-1">
-            <h3 className="line-clamp-2 text-base font-semibold text-[#1c1b1b]">{item.product_name}</h3>
-            <p className="mt-1 text-sm text-[#4a4455]">{item.variant_info || 'Phiên bản tiêu chuẩn'}</p>
+            <h3 className="line-clamp-2 text-base font-semibold text-[#1c1b1b]">{item.variant_name || item.product_name}</h3>
+            <p className="mt-1 text-sm text-[#4a4455]">{item.variant_name ? item.product_name : 'Phiên bản tiêu chuẩn'}</p>
             <p className="mt-2 text-base font-bold text-[#630ed4]">{formatVND(item.price)}</p>
           </div>
         </div>
@@ -64,7 +64,7 @@ export function CartItem({
             <button
               type="button"
               onClick={onIncrease}
-              disabled={disabled || item.quantity >= item.stock}
+              disabled={disabled || item.quantity >= item.stock_quantity}
               className="border-l border-[#ccc3d8] px-3 py-2 text-[#4a4455] transition hover:bg-[#f0eded] disabled:cursor-not-allowed disabled:opacity-50"
               aria-label="Tăng số lượng"
             >

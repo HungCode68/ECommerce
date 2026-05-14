@@ -46,6 +46,13 @@ func calcFinalPrice(minPrice, discountPercent float64) float64 {
 	return minPrice * (1 - discountPercent/100)
 }
 
+func resolvePrice(minPrice float64, discountPercent float64, priceOverride *float64, hasVariantOverride bool) float64 {
+	if !hasVariantOverride && priceOverride != nil && *priceOverride > 0 {
+		return *priceOverride
+	}
+	return calcFinalPrice(minPrice, discountPercent)
+}
+
 func buildPaginationMeta(req *model.SearchProductsRequest, total int) *model.PaginationMeta {
 	page := req.Page
 	limit := req.Limit
@@ -110,18 +117,20 @@ func (prt *productController) getProductVariantStock(productID int64, activeOnly
 	return sumVariantStock(variants, activeOnly)
 }
 
-func (prt *productController) getProductVariantStats(productID int64, activeOnly bool, fallbackPrice float64) (float64, int) {
+func (prt *productController) getProductVariantStats(productID int64, activeOnly bool, fallbackPrice float64) (float64, int, bool) {
 	variants, err := prt.RepoVariants.GetProductVariantByID(productID)
 	if err != nil {
-		return fallbackPrice, 0
+		return fallbackPrice, 0, false
 	}
 
 	minPrice := fallbackPrice
+	hasVariantOverride := false
 	if variantMinPrice, ok := lowestVariantPrice(variants, activeOnly); ok {
 		minPrice = variantMinPrice
+		hasVariantOverride = true
 	}
 
-	return minPrice, sumVariantStock(variants, activeOnly)
+	return minPrice, sumVariantStock(variants, activeOnly), hasVariantOverride
 }
 
 // CreateProductController - Tạo sản phẩm mới kèm danh mục
@@ -180,6 +189,7 @@ func (prt *productController) CreateProductController(product model.CreateProduc
 		IsPublished:      product.IsPublished,
 		PublishedAt:      publishedAt,
 		MinPrice:         product.MinPrice,
+		PriceOverride:    product.PriceOverride,
 		DiscountPercent:  product.DiscountPercent,
 	}
 
@@ -205,8 +215,9 @@ func (prt *productController) CreateProductController(product model.CreateProduc
 		IsPublished:      createdProduct.IsPublished,
 		PublishedAt:      createdProduct.PublishedAt,
 		MinPrice:         createdProduct.MinPrice,
+		PriceOverride:    createdProduct.PriceOverride,
 		DiscountPercent:  createdProduct.DiscountPercent,
-		FinalPrice:       calcFinalPrice(createdProduct.MinPrice, createdProduct.DiscountPercent),
+		FinalPrice:       resolvePrice(createdProduct.MinPrice, createdProduct.DiscountPercent, createdProduct.PriceOverride, false),
 		CreatedAt:        createdProduct.CreatedAt,
 		UpdatedAt:        createdProduct.UpdatedAt,
 		Stock:            0,
@@ -379,8 +390,10 @@ func (prt *productController) AdminGetProductController(reqProduct *model.GetPro
 
 	adminVariants := make([]model.AdminVariantResponse, 0, len(variantsModel))
 	minPrice := pro.MinPrice
+	hasVariantOverride := false
 	if variantMinPrice, ok := lowestVariantPrice(variantsModel, false); ok {
 		minPrice = variantMinPrice
+		hasVariantOverride = true
 	}
 
 	for _, v := range variantsModel {
@@ -417,8 +430,9 @@ func (prt *productController) AdminGetProductController(reqProduct *model.GetPro
 		IsPublished:      pro.IsPublished,
 		PublishedAt:      pro.PublishedAt,
 		MinPrice:         minPrice,
+		PriceOverride:    pro.PriceOverride,
 		DiscountPercent:  pro.DiscountPercent,
-		FinalPrice:       calcFinalPrice(minPrice, pro.DiscountPercent),
+		FinalPrice:       resolvePrice(minPrice, pro.DiscountPercent, pro.PriceOverride, hasVariantOverride),
 		AvgRating:        pro.AvgRating,
 		RatingCount:      pro.RatingCount,
 		CreatedBy:        pro.CreatedBy,
@@ -468,8 +482,10 @@ func (prt *productController) UserGetProductDetailController(reqProduct *model.G
 
 	variantResponses := make([]model.UserVariantResponse, 0)
 	minPrice := pro.MinPrice
+	hasVariantOverride := false
 	if variantMinPrice, ok := lowestVariantPrice(variantsModel, true); ok {
 		minPrice = variantMinPrice
+		hasVariantOverride = true
 	}
 
 	reviewReponse, err := prt.ReviewRepo.GetProductReviewsByProductID(pro.ID)
@@ -507,8 +523,9 @@ func (prt *productController) UserGetProductDetailController(reqProduct *model.G
 		Description:      pro.Description,
 		Brand:            pro.Brand,
 		MinPrice:         minPrice,
+		PriceOverride:    pro.PriceOverride,
 		DiscountPercent:  pro.DiscountPercent,
-		FinalPrice:       calcFinalPrice(minPrice, pro.DiscountPercent),
+		FinalPrice:       resolvePrice(minPrice, pro.DiscountPercent, pro.PriceOverride, hasVariantOverride),
 		AvgRating:        pro.AvgRating,
 		RatingCount:      pro.RatingCount,
 		PublishedAt:      pro.PublishedAt,
@@ -547,6 +564,11 @@ func (prt *productController) UpdateProductController(ctx context.Context, req m
 			return &newVal
 		}
 		return oldVal
+	}
+
+	finalPriceOverride := existingProduct.PriceOverride
+	if req.PriceOverride != nil {
+		finalPriceOverride = req.PriceOverride
 	}
 
 	finalName := existingProduct.Name
@@ -590,6 +612,7 @@ func (prt *productController) UpdateProductController(ctx context.Context, req m
 		IsPublished:      finalIsPublished,
 		PublishedAt:      finalPublishedAt,
 		MinPrice:         finalMinPrice,
+		PriceOverride:    finalPriceOverride,
 		DiscountPercent:  finalDiscountPercent,
 		UpdatedAt:        time.Now(),
 	}
@@ -667,6 +690,13 @@ func (prt *productController) UpdateProductController(ctx context.Context, req m
 			Field:    "min_price",
 			OldValue: existingProduct.MinPrice,
 			NewValue: *req.MinPrice,
+		}
+	}
+	if req.PriceOverride != nil && (existingProduct.PriceOverride == nil || *existingProduct.PriceOverride != *req.PriceOverride) {
+		changes["price_override"] = model.ProductChangeLog{
+			Field:    "price_override",
+			OldValue: existingProduct.PriceOverride,
+			NewValue: *req.PriceOverride,
 		}
 	}
 
@@ -756,8 +786,9 @@ func (prt *productController) UpdateProductController(ctx context.Context, req m
 		IsPublished:      updatedProduct.IsPublished,
 		PublishedAt:      updatedProduct.PublishedAt,
 		MinPrice:         updatedProduct.MinPrice,
+		PriceOverride:    updatedProduct.PriceOverride,
 		DiscountPercent:  updatedProduct.DiscountPercent,
-		FinalPrice:       calcFinalPrice(updatedProduct.MinPrice, updatedProduct.DiscountPercent),
+		FinalPrice:       resolvePrice(updatedProduct.MinPrice, updatedProduct.DiscountPercent, updatedProduct.PriceOverride, false),
 		AvgRating:        updatedProduct.AvgRating,
 		RatingCount:      updatedProduct.RatingCount,
 		CreatedBy:        existingProduct.CreatedBy,
@@ -805,7 +836,7 @@ func (prt *productController) AdminGetAllProductsController(req *model.SearchPro
 	}
 	var responses []model.AdminProductResponse
 	for _, pro := range products {
-		minPrice, stock := prt.getProductVariantStats(pro.ID, false, pro.MinPrice)
+		minPrice, stock, hasVariantOverride := prt.getProductVariantStats(pro.ID, false, pro.MinPrice)
 		responses = append(responses, model.AdminProductResponse{
 			ID:               pro.ID,
 			Name:             pro.Name,
@@ -818,8 +849,9 @@ func (prt *productController) AdminGetAllProductsController(req *model.SearchPro
 			IsPublished:      pro.IsPublished,
 			PublishedAt:      pro.PublishedAt,
 			MinPrice:         minPrice,
+			PriceOverride:    pro.PriceOverride,
 			DiscountPercent:  pro.DiscountPercent,
-			FinalPrice:       calcFinalPrice(minPrice, pro.DiscountPercent),
+			FinalPrice:       resolvePrice(minPrice, pro.DiscountPercent, pro.PriceOverride, hasVariantOverride),
 			AvgRating:        pro.AvgRating,
 			RatingCount:      pro.RatingCount,
 			CreatedBy:        pro.CreatedBy,
@@ -871,7 +903,7 @@ func (prt *productController) UserGetAllProductsController(req *model.SearchProd
 		if !pro.IsPublished {
 			continue
 		}
-		minPrice, stock := prt.getProductVariantStats(pro.ID, true, pro.MinPrice)
+		minPrice, stock, hasVariantOverride := prt.getProductVariantStats(pro.ID, true, pro.MinPrice)
 		responses = append(responses, model.UserProductResponse{
 			ID:               pro.ID,
 			Name:             pro.Name,
@@ -880,7 +912,7 @@ func (prt *productController) UserGetAllProductsController(req *model.SearchProd
 			Brand:            pro.Brand,
 			MinPrice:         minPrice,
 			DiscountPercent:  pro.DiscountPercent,
-			FinalPrice:       calcFinalPrice(minPrice, pro.DiscountPercent),
+			FinalPrice:       resolvePrice(minPrice, pro.DiscountPercent, pro.PriceOverride, hasVariantOverride),
 			Stock:            stock,
 		})
 	}
@@ -902,7 +934,7 @@ func (prt *productController) UserSearchProductByNameController(req *model.Searc
 		if !pro.IsPublished {
 			continue
 		}
-		minPrice, stock := prt.getProductVariantStats(pro.ID, true, pro.MinPrice)
+		minPrice, stock, hasVariantOverride := prt.getProductVariantStats(pro.ID, true, pro.MinPrice)
 		res = append(res, model.UserProductResponse{
 			ID:               pro.ID,
 			Name:             pro.Name,
@@ -911,7 +943,7 @@ func (prt *productController) UserSearchProductByNameController(req *model.Searc
 			Brand:            pro.Brand,
 			MinPrice:         minPrice,
 			DiscountPercent:  pro.DiscountPercent,
-			FinalPrice:       calcFinalPrice(minPrice, pro.DiscountPercent),
+			FinalPrice:       resolvePrice(minPrice, pro.DiscountPercent, pro.PriceOverride, hasVariantOverride),
 			Stock:            stock,
 		})
 	}
@@ -930,7 +962,7 @@ func (prt *productController) AdminSearchProductsController(req *model.SearchPro
 	}
 	var adminProducts []model.AdminProductResponse
 	for _, pro := range products {
-		minPrice, stock := prt.getProductVariantStats(pro.ID, false, pro.MinPrice)
+		minPrice, stock, hasVariantOverride := prt.getProductVariantStats(pro.ID, false, pro.MinPrice)
 		adminProducts = append(adminProducts, model.AdminProductResponse{
 			ID:               pro.ID,
 			Name:             pro.Name,
@@ -943,8 +975,9 @@ func (prt *productController) AdminSearchProductsController(req *model.SearchPro
 			IsPublished:      pro.IsPublished,
 			PublishedAt:      pro.PublishedAt,
 			MinPrice:         minPrice,
+			PriceOverride:    pro.PriceOverride,
 			DiscountPercent:  pro.DiscountPercent,
-			FinalPrice:       calcFinalPrice(minPrice, pro.DiscountPercent),
+			FinalPrice:       resolvePrice(minPrice, pro.DiscountPercent, pro.PriceOverride, hasVariantOverride),
 			AvgRating:        pro.AvgRating,
 			RatingCount:      pro.RatingCount,
 			CreatedBy:        pro.CreatedBy,
@@ -993,7 +1026,7 @@ func (prt *productController) AdminGetManyProductByIDController(ids []int64) ([]
 	}
 	var responses []model.AdminProductResponse
 	for _, pro := range products {
-		minPrice, stock := prt.getProductVariantStats(pro.ID, false, pro.MinPrice)
+		minPrice, stock, hasVariantOverride := prt.getProductVariantStats(pro.ID, false, pro.MinPrice)
 		responses = append(responses, model.AdminProductResponse{
 			ID:               pro.ID,
 			Name:             pro.Name,
@@ -1006,8 +1039,9 @@ func (prt *productController) AdminGetManyProductByIDController(ids []int64) ([]
 			IsPublished:      pro.IsPublished,
 			PublishedAt:      pro.PublishedAt,
 			MinPrice:         minPrice,
+			PriceOverride:    pro.PriceOverride,
 			DiscountPercent:  pro.DiscountPercent,
-			FinalPrice:       calcFinalPrice(minPrice, pro.DiscountPercent),
+			FinalPrice:       resolvePrice(minPrice, pro.DiscountPercent, pro.PriceOverride, hasVariantOverride),
 			AvgRating:        pro.AvgRating,
 			RatingCount:      pro.RatingCount,
 			CreatedBy:        pro.CreatedBy,
@@ -1052,7 +1086,7 @@ func (prt *productController) UserGetProductController(reqProduct *model.GetProd
 	if !pro.IsPublished {
 		return nil, fmt.Errorf("product not available")
 	}
-	minPrice, stock := prt.getProductVariantStats(pro.ID, true, pro.MinPrice)
+	minPrice, stock, hasVariantOverride := prt.getProductVariantStats(pro.ID, true, pro.MinPrice)
 	return &model.UserProductResponse{
 		ID:               pro.ID,
 		Name:             pro.Name,
@@ -1061,7 +1095,7 @@ func (prt *productController) UserGetProductController(reqProduct *model.GetProd
 		Brand:            pro.Brand,
 		MinPrice:         minPrice,
 		DiscountPercent:  pro.DiscountPercent,
-		FinalPrice:       calcFinalPrice(minPrice, pro.DiscountPercent),
+		FinalPrice:       resolvePrice(minPrice, pro.DiscountPercent, pro.PriceOverride, hasVariantOverride),
 		Stock:            stock,
 	}, nil
 }
@@ -1079,7 +1113,7 @@ func (prt *productController) AdminGetAllSoftDeletedProductsController() (*model
 	}
 	var responses []model.AdminProductResponse
 	for _, pro := range products {
-		minPrice, stock := prt.getProductVariantStats(pro.ID, false, pro.MinPrice)
+		minPrice, stock, hasVariantOverride := prt.getProductVariantStats(pro.ID, false, pro.MinPrice)
 		responses = append(responses, model.AdminProductResponse{
 			ID:               pro.ID,
 			Name:             pro.Name,
@@ -1092,8 +1126,9 @@ func (prt *productController) AdminGetAllSoftDeletedProductsController() (*model
 			IsPublished:      pro.IsPublished,
 			PublishedAt:      pro.PublishedAt,
 			MinPrice:         minPrice,
+			PriceOverride:    pro.PriceOverride,
 			DiscountPercent:  pro.DiscountPercent,
-			FinalPrice:       calcFinalPrice(minPrice, pro.DiscountPercent),
+			FinalPrice:       resolvePrice(minPrice, pro.DiscountPercent, pro.PriceOverride, hasVariantOverride),
 			AvgRating:        pro.AvgRating,
 			RatingCount:      pro.RatingCount,
 			CreatedBy:        pro.CreatedBy,

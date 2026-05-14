@@ -87,7 +87,7 @@ function ProductFiltersPanel({
                   type="checkbox"
                   checked={selectedBrands.includes(brand)}
                   onChange={() => onBrandToggle(brand)}
-                  className="h-4 w-4 rounded border-[#ccc3d8] text-[#630ed4] focus:ring-[#630ed4]"
+                  className="h-4 w-4 rounded-full border-[#ccc3d8] text-[#630ed4] focus:ring-[#630ed4]"
                 />
                 {brand}
               </label>

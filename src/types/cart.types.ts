@@ -1,13 +1,15 @@
 export type CartItem = {
-  id: number
+  item_id: number
   product_id: number
   variant_id: number
   quantity: number
   price: number
+  sub_total: number
   product_name: string
-  variant_info: string
+  variant_name: string
   thumbnail_url: string
-  stock: number
+  stock_quantity: number
+  stock_check: boolean
 }
 
 export type Cart = {
@@ -27,6 +29,7 @@ export type UpdateCartItemRequest = {
 
 export type RemoveCartItemsRequest = {
   item_ids: number[]
+  variant_ids?: number[]
 }
 
 export type CheckoutPreviewRequest = {

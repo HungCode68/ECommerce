@@ -9,6 +9,7 @@ import { ProductSortBar } from '@/features/shop/products/ProductSortBar'
 import { Pagination } from '@/components/shared/Pagination'
 import { queryKeys } from '@/lib/queryKeys'
 import { ROUTES } from '@/utils/constants'
+import { getVariantPrice } from '@/utils/productVariant'
 import type { Product } from '@/types/product.types'
 
 type FilterOption = {
@@ -17,6 +18,21 @@ type FilterOption = {
 }
 
 const PAGE_SIZE = 24
+
+function getEffectiveProductPrice(product: Product) {
+  const basePrice = product.final_price ?? product.min_price ?? 0
+
+  const variantPrices = (product.variants ?? [])
+    .filter((v) => v.is_active !== false) // only active variants
+    .map((variant) => getVariantPrice(variant, basePrice))
+    .filter((price): price is number => typeof price === 'number' && price > 0)
+
+  if (variantPrices.length > 0) {
+    return Math.min(...variantPrices)
+  }
+
+  return basePrice > 0 ? basePrice : 0
+}
 
 function getPriceRangeValues(priceRange: string) {
   switch (priceRange) {
@@ -122,9 +138,9 @@ function sortProducts(products: Product[], sort: string) {
 
   switch (sort) {
     case 'price_asc':
-      return next.sort((a, b) => (a.final_price ?? a.min_price) - (b.final_price ?? b.min_price))
+      return next.sort((a, b) => getEffectiveProductPrice(a) - getEffectiveProductPrice(b))
     case 'price_desc':
-      return next.sort((a, b) => (b.final_price ?? b.min_price) - (a.final_price ?? a.min_price))
+      return next.sort((a, b) => getEffectiveProductPrice(b) - getEffectiveProductPrice(a))
     case 'popular':
       return next.sort((a, b) => (b.rating_count || 0) - (a.rating_count || 0) || (b.avg_rating || 0) - (a.avg_rating || 0))
     default:
@@ -201,7 +217,7 @@ export function ProductsPage() {
       category_id: categoryId,
     }),
     queryFn: () =>
-      productApi.searchDetail({
+      productApi.search({
         q: search || undefined,
         page: 1,
         limit: 200,
@@ -231,7 +247,7 @@ export function ProductsPage() {
       const matchesBrand =
         selectedBrands.length === 0 ||
         selectedBrands.includes(product.brand ?? '')
-      const productPrice = product.final_price ?? product.min_price
+      const productPrice = getEffectiveProductPrice(product)
       const matchesPrice =
         (priceValues.min === undefined || productPrice >= priceValues.min) &&
         (priceValues.max === undefined || productPrice <= priceValues.max)
@@ -278,10 +294,11 @@ export function ProductsPage() {
     updateParams((params) => {
       const current = params.getAll('brand')
       params.delete('brand')
-      const next = current.includes(brand)
-        ? current.filter((item) => item !== brand)
-        : [...current, brand]
-      next.forEach((item) => params.append('brand', item))
+      // If the clicked brand is already the only one selected, clicking it again will deselect it (since we just deleted it)
+      // Otherwise, we set it as the only selected brand.
+      if (!(current.length === 1 && current[0] === brand)) {
+        params.set('brand', brand)
+      }
     })
   }
 

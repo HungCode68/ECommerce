@@ -121,7 +121,7 @@ func (r *cartRepository) GetCartItemsWithDetails(ctx context.Context, cartID int
 			COALESCE(pv.price_override, p.min_price) as price,
 			ci.quantity,
 			pv.stock_quantity,
-			COALESCE(pv.thumbnail_url, p.thumbnail_url) as thumbnail_url
+			CASE WHEN pv.thumbnail_url IS NULL OR pv.thumbnail_url = '' THEN p.thumbnail_url ELSE pv.thumbnail_url END as thumbnail_url
 		FROM cart_items ci
 		JOIN products p ON ci.product_id = p.id
 		JOIN product_variants pv ON ci.variant_id = pv.id

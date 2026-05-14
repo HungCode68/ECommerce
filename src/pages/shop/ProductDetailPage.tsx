@@ -33,6 +33,38 @@ function normalizeKey(value?: string | null) {
 
 function parseVariantAttributes(optionValues?: string | null): VariantAttributes {
   if (!optionValues) return {}
+
+  try {
+    const parsed = JSON.parse(optionValues)
+    if (typeof parsed === 'object' && parsed !== null) {
+      const result: VariantAttributes = {}
+
+      if (Array.isArray(parsed)) {
+        // Handle array format: [{"label": "Màu sắc", "value": "Hồng"}, {"label": "RAM", "value": "8GB"}]
+        for (const item of parsed) {
+          if (item && typeof item === 'object') {
+            const key = item.label || item.name || item.key
+            const val = item.value || item.val
+            if (key && val) {
+              result[String(key).trim()] = String(val).trim()
+            }
+          }
+        }
+      } else {
+        // Handle object format: {"Màu sắc": "Hồng", "RAM": "8GB"}
+        for (const [k, v] of Object.entries(parsed)) {
+          if (v !== undefined && v !== null) {
+            result[k.trim()] = String(v).trim()
+          }
+        }
+      }
+
+      if (Object.keys(result).length > 0) return result
+    }
+  } catch (e) {
+    // Fallback to legacy string parsing
+  }
+
   return optionValues
     .split(',')
     .map((part) => part.trim())
@@ -55,31 +87,38 @@ function buildGalleryItems(product?: Product) {
   const gallery: GalleryItem[] = []
   const seenImages = new Set<string>()
   const seenColors = new Set<string>()
+  let unmatchedColorLabel: string | null = null
 
   for (const variant of product?.variants ?? []) {
-    const image = variant.thumbnail_url?.trim()
-    if (!image) continue
-
     const attributes = parseVariantAttributes(variant.option_values)
     const colorValue = getColorValue(attributes, variant).trim()
     const normalizedColor = normalizeKey(colorValue)
+    const image = variant.thumbnail_url?.trim()
 
     if (normalizedColor) {
       if (seenColors.has(normalizedColor)) continue
       seenColors.add(normalizedColor)
-      gallery.push({ image, label: colorValue })
-      seenImages.add(image)
+
+      if (image) {
+        gallery.push({ image, label: colorValue })
+        seenImages.add(image)
+      } else {
+        // Variant has color but no thumbnail — remember it for the product thumbnail
+        if (!unmatchedColorLabel) unmatchedColorLabel = colorValue
+      }
       continue
     }
 
-    if (!seenImages.has(image)) {
+    if (image && !seenImages.has(image)) {
       gallery.push({ image, label: variant.title || product?.name })
       seenImages.add(image)
     }
   }
 
   if (product?.thumbnail_url && !seenImages.has(product.thumbnail_url)) {
-    gallery.unshift({ image: product.thumbnail_url, label: product.name })
+    // If a color variant had no thumbnail, label the product image with that color
+    gallery.unshift({ image: product.thumbnail_url, label: unmatchedColorLabel || product.name })
+    seenImages.add(product.thumbnail_url)
   }
 
   return gallery
@@ -108,10 +147,27 @@ function getMatchingVariant(
   variants: ProductVariant[] | undefined,
   selectedAttributes: VariantAttributes,
 ) {
-  return (variants ?? []).find((variant) => {
+  if (!variants || Object.keys(selectedAttributes).length === 0) return null
+
+  // Find exact match first
+  const exact = variants.find((variant) => {
     const attributes = parseVariantAttributes(variant.option_values)
     return Object.entries(selectedAttributes).every(([label, value]) => attributes[label] === value)
-  }) ?? null
+  })
+  if (exact) return exact
+
+  // Find best partial match (most attributes matched)
+  let bestMatch: ProductVariant | null = null
+  let bestScore = 0
+  for (const variant of variants) {
+    const attributes = parseVariantAttributes(variant.option_values)
+    const score = Object.entries(selectedAttributes).filter(([label, value]) => attributes[label] === value).length
+    if (score > bestScore) {
+      bestScore = score
+      bestMatch = variant
+    }
+  }
+  return bestMatch
 }
 
 function buildSpecs(product?: Product, activeVariant?: ProductVariant | null) {
@@ -167,9 +223,11 @@ export function ProductDetailPage() {
   const galleryItems = useMemo(() => buildGalleryItems(product), [product])
   const variantGroups = useMemo(() => buildVariantGroups(product?.variants), [product?.variants])
   const fallbackVariant = useMemo(
-    () => getCheapestVariant(product?.variants, { onlyInStock: true }) ?? getCheapestVariant(product?.variants) ?? null,
-    [product?.variants],
-  )
+    () => getCheapestVariant(product?.variants, { onlyInStock: true, basePrice: product?.final_price ?? product?.min_price ?? 0 }) ??
+          getCheapestVariant(product?.variants, { basePrice: product?.final_price ?? product?.min_price ?? 0 }) ??
+          null,
+    [product?.variants, product?.final_price, product?.min_price]
+  );
   const selectedVariant = useMemo(
     () => getMatchingVariant(product?.variants, selectedAttributes) ?? fallbackVariant,
     [product?.variants, selectedAttributes, fallbackVariant],
@@ -186,6 +244,47 @@ export function ProductDetailPage() {
   const specs = useMemo(() => buildSpecs(product, selectedVariant), [product, selectedVariant])
   const relatedProducts = (relatedProductsData?.data ?? []).filter((item) => item.id !== productId).slice(0, 4)
 
+  const handleGalleryItemSelect = (item: GalleryItem) => {
+    setSelectedImage(item.image)
+
+    const colorGroup = variantGroups.find((group) => colorAttributeLabels.has(normalizeKey(group.label)))
+    if (!colorGroup || !item.label) return
+
+    const normalizedLabel = normalizeKey(item.label)
+    // Try exact match first, then fuzzy (label contains the color name)
+    const matchedColor =
+      colorGroup.values.find((value) => normalizeKey(value) === normalizedLabel) ??
+      colorGroup.values.find((value) => normalizedLabel.includes(normalizeKey(value)))
+
+    if (!matchedColor) return
+
+    // Preserve non-color attributes (e.g. Dung lượng) when switching colors via gallery
+    setSelectedAttributes((current) => ({
+      ...current,
+      [colorGroup.label]: matchedColor,
+    }))
+  }
+
+  const handleSelectAttribute = (label: string, value: string) => {
+    setSelectedAttributes((current) => ({
+      ...current,
+      [label]: value,
+    }))
+  }
+
+  const isOptionAvailable = (label: string, value: string) => {
+    if (!product?.variants) return true
+
+    // If we select this value, what would the attributes look like?
+    const testAttributes = { ...selectedAttributes, [label]: value }
+
+    // Check if any variant satisfies all the test attributes
+    return product.variants.some((variant) => {
+      const attrs = parseVariantAttributes(variant.option_values)
+      return Object.entries(testAttributes).every(([k, v]) => attrs[k] === v)
+    })
+  }
+
   useEffect(() => {
     setSelectedImage(galleryItems[0]?.image ?? null)
     setSelectedAttributes({})
@@ -199,11 +298,29 @@ export function ProductDetailPage() {
     const selectedColor = selectedAttributes[colorGroup.label]
     if (!selectedColor) return
 
-    const matchedItem = galleryItems.find((item) => normalizeKey(item.label) === normalizeKey(selectedColor))
+    const normalizedColor = normalizeKey(selectedColor)
+    // Try exact match first, then fuzzy (gallery label contains the color name)
+    const matchedItem =
+      galleryItems.find((item) => normalizeKey(item.label) === normalizedColor) ??
+      galleryItems.find((item) => normalizeKey(item.label ?? '').includes(normalizedColor))
+
     if (matchedItem && matchedItem.image !== selectedImage) {
       setSelectedImage(matchedItem.image)
+      return
     }
-  }, [galleryItems, selectedAttributes, selectedImage, variantGroups])
+
+    // Last resort: find a variant with this color and use its thumbnail or the product thumbnail
+    if (!matchedItem && product) {
+      const colorVariant = (product.variants ?? []).find((v) => {
+        const attrs = parseVariantAttributes(v.option_values)
+        return normalizeKey(getColorValue(attrs, v)) === normalizedColor
+      })
+      const fallbackImage = colorVariant?.thumbnail_url?.trim() || product.thumbnail_url
+      if (fallbackImage && fallbackImage !== selectedImage) {
+        setSelectedImage(fallbackImage)
+      }
+    }
+  }, [galleryItems, selectedAttributes, selectedImage, variantGroups, product])
 
   const { mutate: addToCart, isPending: isAdding } = useMutation({
     mutationFn: async (buyNow: boolean) => {
@@ -229,7 +346,8 @@ export function ProductDetailPage() {
       if (buyNow) {
         navigate(ROUTES.CHECKOUT)
       } else {
-        toast.success('Đã thêm vào giỏ hàng!')
+        const addedItemName = selectedVariant?.title?.trim() || fallbackVariant?.title?.trim() || product?.name || 'sản phẩm'
+        toast.success(`Đã thêm ${addedItemName} vào giỏ hàng!`)
       }
     },
     onError: (error) => {
@@ -287,19 +405,23 @@ export function ProductDetailPage() {
           name={product.name}
           items={galleryItems}
           activeImage={selectedImage}
-          onImageChange={setSelectedImage}
+          onImageChange={handleGalleryItemSelect}
         />
 
         <ProductInfoPanel
           product={product}
+          productTitle={selectedVariant?.title?.trim() || product.name}
           rating={reviews?.avg_rating ?? product.avg_rating ?? 0}
           ratingCount={reviews?.rating_count ?? product.rating_count ?? 0}
           price={displayPrice}
           originalPrice={originalPrice}
+          variantStock={selectedVariant ? getVariantStock(selectedVariant) : null}
           selectedAttributes={selectedAttributes}
           variantGroups={variantGroups}
-          onSelectAttribute={(label, value) => setSelectedAttributes((current) => ({ ...current, [label]: value }))}
+          onSelectAttribute={handleSelectAttribute}
+          isOptionAvailable={isOptionAvailable}
           qty={qty}
+          onChangeQty={setQty}
           onDecreaseQty={() => setQty((current) => Math.max(1, current - 1))}
           onIncreaseQty={() => setQty((current) => current + 1)}
           buyNowLabel="Thêm vào giỏ"

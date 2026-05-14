@@ -6,7 +6,7 @@ import { productApi } from '@/api/product.api'
 import { queryKeys } from '@/lib/queryKeys'
 import { formatVND } from '@/utils/formatters/format'
 import { getErrorMessage } from '@/utils/httpError'
-import { getCheapestVariant, getVariantStock } from '@/utils/productVariant'
+import { getCheapestVariant, getVariantStock, getVariantPrice } from '@/utils/productVariant'
 import { ROUTES } from '@/utils/constants'
 import type { Product } from '@/types/product.types'
 import { cn } from '@/lib/utils'
@@ -20,14 +20,17 @@ type ProductCardProps = {
 export function ProductCard({ product, isHero = false }: ProductCardProps) {
   const qc = useQueryClient()
   const stock = typeof product.stock === 'number' ? product.stock : undefined
-  const displayPrice = product.final_price ?? product.min_price ?? 0
+  const basePrice = product.final_price ?? product.min_price ?? 0;
+  const cheapestVariant = getCheapestVariant(product.variants, { basePrice });
+  const displayPrice = cheapestVariant ? getVariantPrice(cheapestVariant, basePrice) : basePrice
 
   const { mutate: addToCart, isPending } = useMutation({
     mutationFn: async () => {
       const detail = await productApi.getDetail(product.id)
+      const basePrice = product.final_price ?? product.min_price ?? 0;
       const variant =
-        getCheapestVariant(detail.variants, { onlyInStock: true }) ??
-        getCheapestVariant(detail.variants) ??
+        getCheapestVariant(detail.variants, { onlyInStock: true, basePrice }) ??
+        getCheapestVariant(detail.variants, { basePrice }) ??
         detail.variants?.[0]
 
       if (!variant?.id) {

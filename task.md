@@ -1,0 +1,5 @@
+- `[x]` Update `internal/model/product_model.go` to add `PriceOverride *float64`
+- `[x]` Update `internal/controller/product/product_controller.go` to implement `resolvePrice`
+- `[x]` Update `internal/repository/product/product_repo.go` to save and query `price_override`
+- `[x]` Run DB migration to add `price_override` column to `products` table
+- `[x]` Test Go server and verify endpoint responses

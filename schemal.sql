@@ -88,6 +88,7 @@ CREATE TABLE products (
   is_published TINYINT NOT NULL DEFAULT 0,
   published_at DATETIME,
   min_price DECIMAL(12,2) NOT NULL,
+  price_override DECIMAL(12,2),
   avg_rating DECIMAL(3,2) DEFAULT 0,
   rating_count INT DEFAULT 0,
   created_by INT,

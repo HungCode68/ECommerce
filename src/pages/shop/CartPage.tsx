@@ -15,13 +15,13 @@ import { CartItem } from '@/features/shop/cart/CartItem'
 import { CartSummary } from '@/features/shop/cart/CartSummary'
 import { EmptyCart } from '@/features/shop/cart/EmptyCart'
 import { RecommendedProducts } from '@/features/shop/cart/RecommendedProducts'
+import type { CartItem as CartItemType } from '@/types/cart.types'
 
 export function CartPage() {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const [couponCode, setCouponCode] = useState('')
   const [discount, setDiscount] = useState(0)
-  const [hasInitializedSelection, setHasInitializedSelection] = useState(false)
   const {
     selectedIds,
     setCart,
@@ -42,7 +42,8 @@ export function CartPage() {
   })
 
   const { mutate: removeOneItem, isPending: removingOne } = useMutation({
-    mutationFn: (itemId: number) => cartApi.removeItems({ item_ids: [itemId] }),
+    mutationFn: (item: CartItemType) =>
+      cartApi.removeItems({ item_ids: [item.item_id], variant_ids: [item.variant_id] }),
     onSuccess: () => {
       toast.success('Đã xóa sản phẩm khỏi giỏ hàng')
       qc.invalidateQueries({ queryKey: queryKeys.cart })
@@ -51,7 +52,11 @@ export function CartPage() {
   })
 
   const { mutate: removeSelectedItems, isPending: removingSelected } = useMutation({
-    mutationFn: (itemIds: number[]) => cartApi.removeItems({ item_ids: itemIds }),
+    mutationFn: (selectedItems: CartItemType[]) =>
+      cartApi.removeItems({
+        item_ids: selectedItems.map((item) => item.item_id),
+        variant_ids: selectedItems.map((item) => item.variant_id),
+      }),
     onSuccess: () => {
       clearSelected()
       toast.success('Đã xóa các sản phẩm đã chọn')
@@ -83,7 +88,7 @@ export function CartPage() {
 
   const items = cart?.items ?? []
   const checkedItems = useMemo(
-    () => items.filter((item) => selectedIds.includes(item.id)),
+    () => items.filter((item) => selectedIds.includes(item.variant_id)),
     [items, selectedIds],
   )
   const subtotal = checkedItems.reduce((acc, item) => acc + item.price * item.quantity, 0)
@@ -99,15 +104,16 @@ export function CartPage() {
   useEffect(() => {
     if (items.length === 0) {
       clearSelected()
-      setHasInitializedSelection(false)
       return
     }
 
-    if (!hasInitializedSelection && selectedIds.length === 0) {
-      toggleSelectAll()
-      setHasInitializedSelection(true)
+    const itemIdSet = new Set(items.map((item) => item.variant_id))
+    const hasInvalidSelection = selectedIds.some((id) => !itemIdSet.has(id))
+
+    if (hasInvalidSelection) {
+      clearSelected()
     }
-  }, [items.length, clearSelected, hasInitializedSelection, selectedIds.length, toggleSelectAll])
+  }, [items, clearSelected, selectedIds])
 
   useEffect(() => {
     setDiscount(0)
@@ -151,8 +157,8 @@ export function CartPage() {
 
                 <button
                   type="button"
-                  onClick={() => removeSelectedItems(selectedIds)}
-                  disabled={selectedIds.length === 0 || removingSelected}
+                  onClick={() => removeSelectedItems(checkedItems)}
+                  disabled={checkedItems.length === 0 || removingSelected}
                   className="inline-flex items-center gap-2 text-sm font-semibold text-[#ba1a1a] transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -163,17 +169,17 @@ export function CartPage() {
               <div className="space-y-2">
                 {items.map((item) => (
                   <CartItem
-                    key={item.id}
+                    key={item.item_id}
                     item={item}
-                    checked={selectedIds.includes(item.id)}
-                    onToggle={() => toggleSelect(item.id)}
+                    checked={selectedIds.includes(item.variant_id)}
+                    onToggle={() => toggleSelect(item.variant_id)}
                     onDecrease={() =>
-                      updateQty({ itemId: item.id, quantity: Math.max(1, item.quantity - 1) })
+                      updateQty({ itemId: item.item_id, quantity: Math.max(1, item.quantity - 1) })
                     }
                     onIncrease={() =>
-                      updateQty({ itemId: item.id, quantity: Math.min(item.stock, item.quantity + 1) })
+                      updateQty({ itemId: item.item_id, quantity: Math.min(item.stock_quantity, item.quantity + 1) })
                     }
-                    onRemove={() => removeOneItem(item.id)}
+                    onRemove={() => removeOneItem(item)}
                     disabled={busy}
                   />
                 ))}

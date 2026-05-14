@@ -15,7 +15,10 @@ export function ProductListingCard({
   product,
   viewMode = 'grid',
 }: ProductListingCardProps) {
-  const displayPrice = product.final_price ?? product.min_price ?? 0
+  const displayPrice =
+    typeof product.final_price === 'number' && product.final_price > 0
+      ? product.final_price
+      : product.min_price ?? 0
   const originalPrice =
     product.discount_percent > 0
       ? Math.round(displayPrice / (1 - product.discount_percent / 100))

@@ -11,16 +11,20 @@ type VariantGroup = {
 
 type ProductInfoPanelProps = {
   product: Product
+  productTitle?: string
   rating: number
   ratingCount: number
   price: number
   originalPrice: number
+  variantStock?: number | null
   selectedAttributes: Record<string, string>
   variantGroups: VariantGroup[]
   onSelectAttribute: (label: string, value: string) => void
+  isOptionAvailable?: (label: string, value: string) => boolean
   qty: number
   onDecreaseQty: () => void
   onIncreaseQty: () => void
+  onChangeQty: (qty: number) => void
   buyNowLabel: string
   onBuyNow: () => void
   onAddToCart: () => void
@@ -91,16 +95,20 @@ function getColorClass(value: string) {
 
 export function ProductInfoPanel({
   product,
+  productTitle,
   rating,
   ratingCount,
   price,
   originalPrice,
+  variantStock,
   selectedAttributes,
   variantGroups,
   onSelectAttribute,
+  isOptionAvailable,
   qty,
   onDecreaseQty,
   onIncreaseQty,
+  onChangeQty,
   buyNowLabel,
   onBuyNow,
   onAddToCart,
@@ -115,14 +123,18 @@ export function ProductInfoPanel({
             {product.brand}
           </span>
         ) : null}
-        <h1 className="text-3xl font-bold leading-tight text-[#1c1b1b] md:text-4xl">{product.name}</h1>
+        <h1 className="text-3xl font-bold leading-tight text-[#1c1b1b] md:text-4xl">
+          {productTitle || product.name}
+        </h1>
         <div className="flex flex-wrap items-center gap-3 text-sm text-[#4a4455]">
           <span className="inline-flex items-center gap-1">
             <Star className="h-4 w-4 fill-current text-amber-400" />
             {rating > 0 ? rating.toFixed(1) : '0.0'}
           </span>
           <span>{ratingCount} đánh giá</span>
-          {typeof product.stock === 'number' ? (
+          {typeof variantStock === 'number' ? (
+            <span>{variantStock > 0 ? `Còn ${variantStock} sản phẩm` : 'Hết hàng'}</span>
+          ) : typeof product.stock === 'number' ? (
             <span>{product.stock > 0 ? `Còn ${product.stock} sản phẩm` : 'Hết hàng'}</span>
           ) : null}
         </div>
@@ -157,19 +169,22 @@ export function ProductInfoPanel({
               <div className="flex flex-wrap gap-2">
                 {group.values.map((value) => {
                   const isSelected = selectedAttributes[group.label] === value
+                  const isAvailable = isOptionAvailable ? isOptionAvailable(group.label, value) : true
                   const colorClass = getColorClass(value)
 
                   return colorLabels.has(normalizeKey(group.label)) ? (
                     <button
                       key={`${group.label}-${value}`}
                       type="button"
+                      disabled={!isAvailable}
                       onClick={() => onSelectAttribute(group.label, value)}
-                      title={value}
+                      title={!isAvailable ? `${value} (Hết hàng hoặc không tồn tại)` : value}
                       className={cn(
                         'h-8 w-8 rounded-full border transition',
                         colorClass,
                         colorClass === 'bg-white' ? 'border-[#b9b1c7]' : 'border-transparent',
                         isSelected ? 'ring-2 ring-[#630ed4] ring-offset-2' : 'hover:ring-1 hover:ring-[#d2bbff]',
+                        !isAvailable && 'opacity-20 cursor-not-allowed',
                       )}
                     >
                       <span className="sr-only">{value}</span>
@@ -178,15 +193,22 @@ export function ProductInfoPanel({
                     <button
                       key={`${group.label}-${value}`}
                       type="button"
+                      disabled={!isAvailable}
                       onClick={() => onSelectAttribute(group.label, value)}
                       className={cn(
-                        'rounded-full border px-3 py-2 text-sm transition',
+                        'relative rounded-full border px-3 py-2 text-sm transition',
                         isSelected
                           ? 'border-[#630ed4] bg-[#630ed4]/5 text-[#630ed4]'
                           : 'border-[#ccc3d8] text-[#4a4455] hover:border-[#630ed4] hover:text-[#630ed4]',
+                        !isAvailable && 'opacity-40 cursor-not-allowed bg-gray-50 text-gray-400 hover:border-[#ccc3d8] hover:text-gray-400',
                       )}
                     >
                       {value}
+                      {!isAvailable && (
+                        <div className="absolute inset-0 w-full h-full pointer-events-none">
+                          <div className="w-[120%] border-t border-gray-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12" />
+                        </div>
+                      )}
                     </button>
                   )
                 })}
@@ -203,11 +225,30 @@ export function ProductInfoPanel({
 
         <div className="mb-5 flex items-center gap-4">
           <div className="flex items-center overflow-hidden rounded-xl border border-[#ccc3d8]">
-            <button type="button" onClick={onDecreaseQty} className="px-3 py-2 text-[#4a4455]">
+            <button type="button" onClick={onDecreaseQty} className="px-3 py-2 text-[#4a4455] transition hover:bg-gray-100">
               <Minus className="h-4 w-4" />
             </button>
-            <span className="min-w-12 px-3 text-center text-sm font-semibold text-[#1c1b1b]">{qty}</span>
-            <button type="button" onClick={onIncreaseQty} className="px-3 py-2 text-[#4a4455]">
+            <input
+              type="number"
+              min="1"
+              value={qty}
+              onChange={(e) => {
+                const val = e.target.value
+                // Allow empty string temporarily while typing
+                if (val === '') {
+                  onChangeQty(0)
+                  return
+                }
+                const num = parseInt(val, 10)
+                if (!isNaN(num)) onChangeQty(num)
+              }}
+              onBlur={() => {
+                // When leaving the input, if it's invalid or < 1, reset to 1
+                if (qty < 1) onChangeQty(1)
+              }}
+              className="w-12 border-none p-0 text-center text-sm font-semibold text-[#1c1b1b] focus:ring-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            />
+            <button type="button" onClick={onIncreaseQty} className="px-3 py-2 text-[#4a4455] transition hover:bg-gray-100">
               <Plus className="h-4 w-4" />
             </button>
           </div>

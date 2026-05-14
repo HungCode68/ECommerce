@@ -1,4 +1,4 @@
-import { ProductVariant } from '@/types/product.types';
+import type { ProductVariant } from '@/types/product.types';
 
 export const getVariantStock = (variant: ProductVariant | null | undefined): number => {
   return variant?.stock_quantity ?? 0;
@@ -13,20 +13,26 @@ export const getVariantPrice = (variant: ProductVariant | null | undefined, base
 
 export const getCheapestVariant = (
   variants: ProductVariant[] | null | undefined,
-  options: { onlyInStock?: boolean } = {}
+  options: { onlyInStock?: boolean; basePrice?: number } = {}
 ): ProductVariant | null => {
   if (!variants || variants.length === 0) return null;
 
   let filtered = variants;
   if (options.onlyInStock) {
-    filtered = variants.filter(v => (getVariantStock(v) > 0));
+    filtered = filtered.filter(v => (getVariantStock(v) > 0));
   }
+
+  // Exclude variants without a valid positive price
+  filtered = filtered.filter(v => {
+    const price = getVariantPrice(v, options.basePrice);
+    return typeof price === 'number' && price > 0;
+  });
 
   if (filtered.length === 0) return null;
 
   return filtered.reduce((prev, curr) => {
-    const prevPrice = getVariantPrice(prev);
-    const currPrice = getVariantPrice(curr);
+    const prevPrice = getVariantPrice(prev, options.basePrice);
+    const currPrice = getVariantPrice(curr, options.basePrice);
     return prevPrice < currPrice ? prev : curr;
   });
 };

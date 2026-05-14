@@ -6,7 +6,7 @@ type ProductGalleryProps = {
   name: string
   items: { image: string; label?: string }[]
   activeImage?: string | null
-  onImageChange: (image: string) => void
+  onImageChange: (item: { image: string; label?: string }) => void
 }
 
 export function ProductGallery({
@@ -18,17 +18,18 @@ export function ProductGallery({
   const images = items.map((item) => item.image)
   const mainImage = activeImage || images[0] || null
   const currentIndex = mainImage ? images.indexOf(mainImage) : -1
+  const activeItem = items.find((item) => item.image === mainImage) ?? items[0] ?? null
 
   const goPrevious = () => {
     if (images.length <= 1 || currentIndex < 0) return
     const nextIndex = currentIndex === 0 ? images.length - 1 : currentIndex - 1
-    onImageChange(images[nextIndex])
+    onImageChange(items[nextIndex])
   }
 
   const goNext = () => {
     if (images.length <= 1 || currentIndex < 0) return
     const nextIndex = currentIndex === images.length - 1 ? 0 : currentIndex + 1
-    onImageChange(images[nextIndex])
+    onImageChange(items[nextIndex])
   }
 
   return (
@@ -71,11 +72,11 @@ export function ProductGallery({
             <button
               key={`${item.image}-${index}`}
               type="button"
-              onClick={() => onImageChange(item.image)}
+              onClick={() => onImageChange(item)}
               title={item.label || `${name} ${index + 1}`}
               className={cn(
                 'w-20 shrink-0 overflow-hidden rounded-xl border bg-white p-2 transition md:w-24',
-                item.image === mainImage
+                item.image === activeItem?.image
                   ? 'border-[#630ed4] shadow-[0_0_0_1px_rgba(99,14,212,0.16)]'
                   : 'border-[#ccc3d8] hover:border-[#630ed4]',
               )}

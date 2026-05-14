@@ -22,8 +22,9 @@ type Product struct {
 
 	PublishedAt *time.Time `db:"published_at"` // Có thể NULL
 
-	MinPrice        float64 `db:"min_price"`
-	DiscountPercent float64 `db:"discount_percent"`
+	MinPrice        float64  `db:"min_price"`
+	PriceOverride   *float64 `db:"price_override"`
+	DiscountPercent float64  `db:"discount_percent"`
 	AvgRating       float64 `db:"avg_rating"`
 	RatingCount     int     `db:"rating_count"`
 	CreatedBy       *int64  `db:"created_by"` // Có thể NULL
@@ -52,8 +53,9 @@ type CreateProductRequest struct {
 	Name             string  `json:"name" validate:"required,min=2,max=255"`
 	Slug             string  `json:"slug" validate:"omitempty,min=2,max=255"`
 	ThumbnailURL     string  `json:"thumbnail_url" validate:"omitempty,max=500"`
-	MinPrice         float64 `json:"min_price" validate:"omitempty,gte=0"`
-	DiscountPercent  float64 `json:"discount_percent" validate:"omitempty,gte=0,lte=100"`
+	MinPrice         float64  `json:"min_price" validate:"omitempty,gte=0"`
+	PriceOverride    *float64 `json:"price_override" validate:"omitempty,gte=0"`
+	DiscountPercent  float64  `json:"discount_percent" validate:"omitempty,gte=0,lte=100"`
 	ShortDescription string  `json:"short_description" validate:"omitempty,max=500"`
 	Description      string  `json:"description" validate:"omitempty"`
 	Brand            string  `json:"brand" validate:"omitempty,max=100"`
@@ -70,6 +72,7 @@ type UpdateProductRequest struct {
 	Slug             string   `json:"slug" validate:"omitempty,min=3,max=255"`
 	ThumbnailURL     string   `json:"thumbnail_url" validate:"omitempty,max=500"`
 	MinPrice         *float64 `json:"min_price" validate:"omitempty,min=0"`
+	PriceOverride    *float64 `json:"price_override" validate:"omitempty,min=0"`
 	DiscountPercent  *float64 `json:"discount_percent" validate:"omitempty,gte=0,lte=100"`
 	ShortDescription string   `json:"short_description" validate:"omitempty,max=500"`
 	Description      string   `json:"description" validate:"omitempty"`
@@ -129,9 +132,10 @@ type UserProductResponse struct {
 	ThumbnailURL     *string `json:"thumbnail_url,omitempty"`
 	ShortDescription *string `json:"short_description,omitempty"`
 	Brand            *string `json:"brand,omitempty"`
-	MinPrice         float64 `json:"min_price"`
-	DiscountPercent  float64 `json:"discount_percent"`
-	FinalPrice       float64 `json:"final_price"`
+	MinPrice         float64  `json:"min_price"`
+	PriceOverride    *float64 `json:"price_override,omitempty"`
+	DiscountPercent  float64  `json:"discount_percent"`
+	FinalPrice       float64  `json:"final_price"`
 	Stock            int     `json:"stock"`
 }
 
@@ -153,6 +157,7 @@ type UserProductDetailResponse struct {
 	Description      *string    `json:"description,omitempty"`
 	Brand            *string    `json:"brand,omitempty"`
 	MinPrice         float64    `json:"min_price"`
+	PriceOverride    *float64   `json:"price_override,omitempty"`
 	DiscountPercent  float64    `json:"discount_percent"`
 	FinalPrice       float64    `json:"final_price"`
 	AvgRating        float64    `json:"avg_rating"`
@@ -182,6 +187,7 @@ type AdminProductResponse struct {
 	IsPublished      bool                   `json:"is_published"`
 	PublishedAt      *time.Time             `json:"published_at,omitempty"`
 	MinPrice         float64                `json:"min_price"`
+	PriceOverride    *float64               `json:"price_override,omitempty"`
 	DiscountPercent  float64                `json:"discount_percent"`
 	FinalPrice       float64                `json:"final_price"`
 	AvgRating        float64                `json:"avg_rating"`

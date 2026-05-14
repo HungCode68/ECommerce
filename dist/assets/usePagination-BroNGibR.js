@@ -1,1 +1,0 @@
-import{r as s,a2 as o,a3 as c}from"./index-CNCeDBK6.js";function l({initialPage:n=o,initialLimit:r=c}={}){const[g,a]=s.useState(n),[e]=s.useState(r);return{page:g,limit:e,totalPages:t=>Math.ceil(t/e),goToPage:t=>{a(t)},reset:()=>{a(o)}}}export{l as u};

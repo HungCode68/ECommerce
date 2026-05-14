@@ -40,7 +40,7 @@ export function CheckoutPage() {
     queryFn: addressApi.getList,
   })
 
-  const checkedItems = (cart?.items ?? []).filter((i) => selectedIds.includes(i.id))
+  const checkedItems = (cart?.items ?? []).filter((i) => selectedIds.includes(i.variant_id))
   const subtotal = checkedItems.reduce((acc, i) => acc + i.price * i.quantity, 0)
   const shippingFee = subtotal >= 500_000 ? 0 : 30_000
   const total = subtotal + shippingFee - discount
@@ -243,13 +243,13 @@ export function CheckoutPage() {
             <div className="space-y-5 px-6 py-6">
               <div className="max-h-[340px] space-y-3 overflow-y-auto pr-1">
                 {checkedItems.map((item) => (
-                  <div key={item.id} className="flex gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                  <div key={item.item_id} className="flex gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
                     <div className="h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-slate-200 bg-white">
                       <ProductImage src={item.thumbnail_url} alt={item.product_name} imgClassName="h-full w-full object-contain p-2" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="line-clamp-2 font-semibold text-slate-900">{item.product_name}</p>
-                      <p className="mt-1 text-xs text-slate-500">{item.variant_info || 'Phiên bản tiêu chuẩn'}</p>
+                      <p className="line-clamp-2 font-semibold text-slate-900">{item.variant_name || item.product_name}</p>
+                      <p className="mt-1 text-xs text-slate-500">{item.variant_name ? item.product_name : 'Phiên bản tiêu chuẩn'}</p>
                       <div className="mt-3 flex items-center justify-between gap-2">
                         <span className="text-xs font-semibold text-slate-500">x{item.quantity}</span>
                         <span className="text-sm font-bold text-slate-900">
