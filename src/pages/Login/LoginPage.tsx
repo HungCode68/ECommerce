@@ -9,6 +9,7 @@ import { Loader2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useMutation } from '@tanstack/react-query'
 
+import kcTechLogo from '@/assets/kc-tech-logo.svg'
 import { useAuthStore } from '@/store/authStore'
 import { authApi } from '@/api/auth.api'
 import { GoogleLoginButton } from '@/features/auth/GoogleLoginButton'
@@ -81,8 +82,8 @@ export function LoginPage() {
     <div className="light bg-background text-on-background min-h-screen overflow-x-hidden font-body">
       {/* TopNavBar */}
       <header className="absolute top-0 w-full z-50 flex justify-between items-center px-8 h-20 max-w-full bg-transparent">
-        <Link to={ROUTES.HOME} className="text-2xl font-black tracking-tighter text-cyan-600 font-headline hover:opacity-80 transition-opacity">
-          KC TECH
+        <Link to={ROUTES.HOME} className="hover:opacity-80 transition-opacity">
+          <img src={kcTechLogo} alt="KC Tech" className="h-10 w-auto" />
         </Link>
         <div className="hidden md:flex gap-6 items-center">
           <button className="text-xs font-medium text-slate-500 uppercase tracking-widest">HƯỚNG DẪN MUA HÀNG</button>

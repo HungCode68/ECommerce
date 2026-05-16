@@ -1,1 +1,0 @@
-import{A as r}from"./index-B2mWxogf.js";const n={getList:async a=>(await r.get("/api/admin/orders",{params:a})).data,getDetail:async a=>(await r.get(`/api/admin/orders/${a}`)).data.data,updateStatus:async(a,t)=>(await r.put(`/api/admin/orders/${a}/status`,t)).data.data,confirmPayment:async(a,t)=>(await r.post(`/api/admin/orders/${a}/confirm-payment`,t)).data.data};export{n as a};

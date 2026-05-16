@@ -1,11 +1,13 @@
 import { Link } from 'react-router-dom'
 import { useQueries, useQuery } from '@tanstack/react-query'
+import { bannerApi } from '@/api/banner.api'
 import { categoryApi, type Category } from '@/api/category.api'
 import { ProductImage } from '@/components/shared/ProductImage'
 import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton'
 import { productApi } from '@/api/product.api'
 import { queryKeys } from '@/lib/queryKeys'
 import { cn } from '@/lib/utils'
+import type { Banner } from '@/types/banner.types'
 import type { Product } from '@/types/product.types'
 import { ROUTES } from '@/utils/constants'
 import { formatVND } from '@/utils/formatters/format'
@@ -180,6 +182,56 @@ function CategorySectionSkeleton() {
   )
 }
 
+function BannerAnchor({
+  banner,
+  className,
+  children,
+}: {
+  banner: Banner
+  className?: string
+  children: React.ReactNode
+}) {
+  const href = banner.link_url?.trim()
+
+  if (!href) {
+    return <div className={className}>{children}</div>
+  }
+
+  if (href.startsWith('http://') || href.startsWith('https://')) {
+    return (
+      <a href={href} target="_blank" rel="noreferrer" className={className}>
+        {children}
+      </a>
+    )
+  }
+
+  return (
+    <Link to={href} className={className}>
+      {children}
+    </Link>
+  )
+}
+
+function HomeEdgeBanner({ banner, side }: { banner: Banner; side: 'left' | 'right' }) {
+  return (
+    <BannerAnchor
+      banner={banner}
+      className={cn(
+        'group block h-[490px] w-[168px] overflow-hidden rounded-[22px] border border-[#e5e2e1] bg-white shadow-[0_18px_40px_rgba(30,27,75,0.12)] transition-transform duration-300 hover:-translate-y-1',
+        side === 'left' ? 'origin-right' : 'origin-left',
+      )}
+    >
+      <div className="relative h-full w-full overflow-hidden">
+        <img
+          src={banner.image_url}
+          alt={banner.title}
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+        />
+      </div>
+    </BannerAnchor>
+  )
+}
+
 export function HomePage() {
   const { data: categories = [], isLoading: isCategoriesLoading } = useQuery({
     queryKey: queryKeys.categories.all,
@@ -190,6 +242,16 @@ export function HomePage() {
   const { data: featuredProductsData, isLoading: isFeaturedProductsLoading } = useQuery({
     queryKey: queryKeys.products.list({ limit: 12 }),
     queryFn: () => productApi.search({ limit: 12 }),
+  })
+  const { data: homeLeftEdgeBannersData } = useQuery({
+    queryKey: queryKeys.banners.list('home_edge_left'),
+    queryFn: () => bannerApi.getActive('home_edge_left'),
+    staleTime: 5 * 60 * 1000,
+  })
+  const { data: homeRightEdgeBannersData } = useQuery({
+    queryKey: queryKeys.banners.list('home_edge_right'),
+    queryFn: () => bannerApi.getActive('home_edge_right'),
+    staleTime: 5 * 60 * 1000,
   })
 
   const featuredProducts = featuredProductsData?.data ?? []
@@ -221,10 +283,30 @@ export function HomePage() {
   ).slice(0, 2)
   const accessoryProduct = prioritizeProducts(accessoryProductsQuery.data?.data ?? [])[0]
   const featuredFallbackProducts = prioritizedFeaturedProducts.slice(0, 5)
+  const homeLeftEdgeBanners = Array.isArray(homeLeftEdgeBannersData) ? homeLeftEdgeBannersData : []
+  const homeRightEdgeBanners = Array.isArray(homeRightEdgeBannersData) ? homeRightEdgeBannersData : []
+  const leftEdgeBanner = homeLeftEdgeBanners[0]
+  const rightEdgeBanner = homeRightEdgeBanners[0]
 
   return (
     <div className="bg-[#fcf9f8] pb-16 text-[#1c1b1b]">
-      <main className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 px-4 py-6 md:px-6">
+      <div className="relative mx-auto w-full max-w-[1200px]">
+        {leftEdgeBanner && (
+          <div className="absolute bottom-0 right-[calc(100%+16px)] top-0 z-10 hidden min-[1520px]:block">
+            <div className="sticky top-[230px]">
+              <HomeEdgeBanner banner={leftEdgeBanner} side="left" />
+            </div>
+          </div>
+        )}
+        {rightEdgeBanner && (
+          <div className="absolute bottom-0 left-[calc(100%+16px)] top-0 z-10 hidden min-[1520px]:block">
+            <div className="sticky top-[230px]">
+              <HomeEdgeBanner banner={rightEdgeBanner} side="right" />
+            </div>
+          </div>
+        )}
+
+        <main className="flex w-full flex-col gap-6 px-4 py-6 md:px-6">
         <section className="grid grid-cols-12 gap-4">
           <div className="col-span-12 md:col-span-5">
             {heroProduct ? (
@@ -498,7 +580,8 @@ export function HomePage() {
             </div>
           </div>
         </section>
-      </main>
+        </main>
+      </div>
     </div>
   )
 }
