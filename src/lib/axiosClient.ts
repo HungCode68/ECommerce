@@ -47,15 +47,28 @@ axiosClient.interceptors.response.use(
     const originalRequest = error.config as InternalAxiosRequestConfig & {
       _retry?: boolean
     }
+    const url = originalRequest?.url ?? ''
 
     // Chỉ xử lý 401 và chưa retry
     if (error.response?.status !== 401 || originalRequest._retry) {
       return Promise.reject(error)
     }
 
-    // Bỏ qua nếu đang gọi endpoint refresh/login
-    const url = originalRequest.url ?? ''
-    if (url.includes('/auth/refresh') || url.includes('/auth/login')) {
+    console.warn('[AUTH_DEBUG] 401 intercepted', {
+      url,
+      method: originalRequest?.method,
+      responseData: error.response?.data,
+    })
+
+    // Không logout khi request đăng nhập / đăng nhập Google bị 401.
+    // Các màn hình auth sẽ tự xử lý lỗi và hiển thị message phù hợp.
+    if (url.includes('/auth/login') || url.includes('/auth/google')) {
+      console.warn('[AUTH_DEBUG] auth endpoint 401, skip logout', { url })
+      return Promise.reject(error)
+    }
+
+    if (url.includes('/auth/refresh')) {
+      console.warn('[AUTH_DEBUG] logout due to refresh endpoint 401', { url })
       useAuthStore.getState().logout()
       return Promise.reject(error)
     }
@@ -78,6 +91,7 @@ axiosClient.interceptors.response.use(
 
     const refreshToken = localStorage.getItem('refresh_token')
     if (!refreshToken) {
+      console.warn('[AUTH_DEBUG] logout due to missing refresh token', { url })
       useAuthStore.getState().logout()
       processQueue(error, null)
       isRefreshing = false
@@ -85,6 +99,7 @@ axiosClient.interceptors.response.use(
     }
 
     try {
+      console.log('[AUTH_DEBUG] attempting refresh token', { url })
       const { data } = await axios.post(`${(API_BASE_URL as string) === '/' ? '' : API_BASE_URL}/api/auth/refresh`, {
         refresh_token: refreshToken,
       })
@@ -98,6 +113,7 @@ axiosClient.interceptors.response.use(
       originalRequest.headers.Authorization = `Bearer ${newAccessToken}`
       return axiosClient(originalRequest)
     } catch (refreshError) {
+      console.warn('[AUTH_DEBUG] refresh failed, logout', { url, refreshError })
       processQueue(refreshError, null)
       useAuthStore.getState().logout()
       return Promise.reject(refreshError)

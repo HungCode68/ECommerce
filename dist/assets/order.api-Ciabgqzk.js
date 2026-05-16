@@ -1,0 +1,1 @@
+import{A as r}from"./index-B2mWxogf.js";const o={create:async a=>(await r.post("/api/orders",a)).data.data,getList:async a=>(await r.get("/api/orders",{params:a})).data,getDetail:async a=>(await r.get(`/api/orders/${a}`)).data.data,cancel:async(a,t)=>(await r.post(`/api/orders/${a}/cancel`,t)).data.data};export{o};

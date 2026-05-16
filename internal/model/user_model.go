@@ -8,6 +8,7 @@ type User struct {
 	ID                 int64      `db:"id"`
 	Username           string     `db:"username"`
 	Email              string     `db:"email"`
+	BirthDate          *time.Time `db:"birth_date"`
 	PasswordHash       *string    `db:"password_hash"`
 	AuthProvider       string     `db:"auth_provider"`
 	ProviderUserID     *string    `db:"provider_user_id"`
@@ -24,9 +25,10 @@ type User struct {
 }
 
 type RegisterRequest struct {
-	Username string `json:"username" validate:"required,min=3,max=100,alphanum"`
-	Email    string `json:"email"    validate:"required,email"`
-	Password string `json:"password" validate:"required,min=6,max=30"`
+	Username  string `json:"username"   validate:"required,min=3,max=100,alphanum"`
+	Email     string `json:"email"      validate:"required,email"`
+	Password  string `json:"password"   validate:"required,min=6,max=30"`
+	BirthDate string `json:"birth_date" validate:"omitempty,datetime=2006-01-02"`
 }
 
 // LoginRequest: Dùng khi đăng nhập
@@ -52,9 +54,10 @@ type UserFilter struct {
 
 // UserUpdateProfileRequest: Dùng khi user tự cập nhật thông tin cá nhân
 type UserUpdateProfileRequest struct {
-	Username *string `json:"username,omitempty" validate:"omitempty,min=3,max=100,alphanum"`
-	Email    *string `json:"email,omitempty"    validate:"omitempty,email"`
-	Password *string `json:"password,omitempty" validate:"omitempty,min=6,max=30"`
+	Username  *string `json:"username,omitempty"   validate:"omitempty,min=3,max=100,alphanum"`
+	Email     *string `json:"email,omitempty"      validate:"omitempty,email"`
+	BirthDate *string `json:"birth_date,omitempty" validate:"omitempty,datetime=2006-01-02"`
+	Password  *string `json:"password,omitempty"   validate:"omitempty,min=6,max=30"`
 }
 
 type SendEmailVerificationOTPRequest struct {
@@ -94,6 +97,7 @@ type UserProfileResponse struct {
 	ID            int64      `json:"id"`
 	Username      string     `json:"username"`
 	Email         string     `json:"email"`
+	BirthDate     *string    `json:"birth_date,omitempty"`
 	EmailVerified bool       `json:"email_verified"`
 	Role          string     `json:"role"`
 	IsActive      bool       `json:"is_active"`

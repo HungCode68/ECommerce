@@ -3,8 +3,9 @@ package productreview
 import (
 	"bytes"
 	"crypto/sha1"
-	"encoding/json"
 	"encoding/hex"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"golang/internal/controller/productreviews"
 	"golang/internal/logger"
@@ -204,7 +205,7 @@ func uploadReviewImageToCloudinary(file multipart.File, filename string) (string
 
 	if resp.StatusCode >= 400 {
 		if cloudinaryResp.Error != nil && cloudinaryResp.Error.Message != "" {
-			return "", fmt.Errorf(cloudinaryResp.Error.Message)
+			return "", errors.New(cloudinaryResp.Error.Message)
 		}
 		return "", fmt.Errorf("cloudinary upload failed with status %d", resp.StatusCode)
 	}

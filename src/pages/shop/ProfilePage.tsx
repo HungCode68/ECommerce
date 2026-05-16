@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -8,9 +9,54 @@ import { authApi } from '@/api/auth.api'
 import { useAuthStore } from '@/store/authStore'
 import { cn } from '@/lib/utils'
 
+const getBirthDateError = (birthDate: string) => {
+  const parsedDate = new Date(`${birthDate}T00:00:00`)
+  if (Number.isNaN(parsedDate.getTime())) {
+    return 'Ngày sinh không hợp lệ'
+  }
+
+  const today = new Date()
+  if (parsedDate.getFullYear() > today.getFullYear()) {
+    return 'Năm sinh không hợp lệ'
+  }
+
+  if (parsedDate > today) {
+    return 'Ngày sinh không hợp lệ'
+  }
+
+  const maxEligibleDate = new Date(
+    today.getFullYear() - 100,
+    today.getMonth(),
+    today.getDate(),
+  )
+  const minEligibleDate = new Date(
+    today.getFullYear() - 16,
+    today.getMonth(),
+    today.getDate(),
+  )
+
+  if (parsedDate < maxEligibleDate) {
+    return 'Độ tuổi hợp lệ phải từ 16 đến 100 tuổi'
+  }
+
+  if (parsedDate > minEligibleDate) {
+    return 'Bạn phải từ 16 tuổi trở lên'
+  }
+
+  return null
+}
+
 const profileSchema = z.object({
   username: z.string().min(2, 'Tên tối thiểu 2 ký tự'),
   email: z.string().email('Email không hợp lệ'),
+  birthDate: z.string()
+    .min(1, 'Vui lòng chọn ngày sinh')
+    .superRefine((value, ctx) => {
+      const error = getBirthDateError(value)
+      if (error) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: error })
+      }
+    }),
 })
 
 const otpSchema = z.object({
@@ -38,11 +84,24 @@ export function ProfilePage() {
   const {
     register: regProfile,
     handleSubmit: submitProfile,
+    reset: resetProfile,
     formState: { errors: profileErrors },
   } = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
-    defaultValues: { username: user?.username ?? '', email: user?.email ?? '' },
+    defaultValues: {
+      username: user?.username ?? '',
+      email: user?.email ?? '',
+      birthDate: user?.birth_date ?? '',
+    },
   })
+
+  useEffect(() => {
+    resetProfile({
+      username: user?.username ?? '',
+      email: user?.email ?? '',
+      birthDate: user?.birth_date ?? '',
+    })
+  }, [resetProfile, user])
 
   const {
     register: regPass,
@@ -59,7 +118,11 @@ export function ProfilePage() {
   } = useForm<OTPFormData>({ resolver: zodResolver(otpSchema) })
 
   const { mutate: updateProfile, isPending: updatingProfile } = useMutation({
-    mutationFn: (data: ProfileFormData) => authApi.updateProfile(data),
+    mutationFn: (data: ProfileFormData) => authApi.updateProfile({
+      username: data.username,
+      email: data.email,
+      birth_date: data.birthDate,
+    }),
     onSuccess: (updatedUser) => {
       setUser(updatedUser)
       toast.success('Cập nhật thành công!')
@@ -149,6 +212,11 @@ export function ProfilePage() {
                 {user?.email_verified ? 'Email đã xác minh' : 'Email chưa xác minh'}
               </span>
             </div>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">Ngày sinh</label>
+            <input {...regProfile('birthDate')} type="date" className={inputClass(!!profileErrors.birthDate)} />
+            {profileErrors.birthDate && <p className="mt-1 text-xs text-red-500">{profileErrors.birthDate.message}</p>}
           </div>
           <div className="flex justify-end">
             <button type="submit" disabled={updatingProfile} className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-60">

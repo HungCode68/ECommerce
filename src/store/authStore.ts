@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { User } from '@/types/auth.types'
+import { ROUTES } from '@/utils/constants'
 
 type AuthState = {
   user: User | null
@@ -24,6 +25,12 @@ export const useAuthStore = create<AuthState>()(
 
       setAuth: (user, accessToken, refreshToken) => {
         localStorage.setItem('refresh_token', refreshToken)
+        console.log('[AUTH_DEBUG] setAuth', {
+          username: user?.username,
+          role: user?.role,
+          hasAccessToken: Boolean(accessToken),
+          hasRefreshToken: Boolean(refreshToken),
+        })
         set({ user, accessToken, isAuthenticated: true })
       },
 
@@ -32,6 +39,7 @@ export const useAuthStore = create<AuthState>()(
       },
 
       setAccessToken: (token) => {
+        console.log('[AUTH_DEBUG] setAccessToken', { hasToken: Boolean(token) })
         set({ accessToken: token, isAuthenticated: true })
       },
 
@@ -40,10 +48,10 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
+        console.log('[AUTH_DEBUG] logout called')
         localStorage.removeItem('refresh_token')
         set({ user: null, accessToken: null, isAuthenticated: false })
-        // Redirect về trang login
-        window.location.href = '/dang-nhap'
+        window.location.href = ROUTES.HOME
       },
     }),
     {

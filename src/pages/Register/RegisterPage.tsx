@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import axios from 'axios'
 import { toast } from 'sonner'
-import { Loader2 } from 'lucide-react'
+import { Loader2, ShieldCheck, Sparkles } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useMutation } from '@tanstack/react-query'
 
@@ -13,12 +13,57 @@ import { useAuthStore } from '@/store/authStore'
 import { authApi } from '@/api/auth.api'
 import { ROUTES } from '@/utils/constants'
 
+const getBirthDateError = (birthDate: string) => {
+  const parsedDate = new Date(`${birthDate}T00:00:00`)
+  if (Number.isNaN(parsedDate.getTime())) {
+    return 'Ngày sinh không hợp lệ'
+  }
+
+  const today = new Date()
+  if (parsedDate.getFullYear() > today.getFullYear()) {
+    return 'Năm sinh không hợp lệ'
+  }
+
+  if (parsedDate > today) {
+    return 'Ngày sinh không hợp lệ'
+  }
+
+  const maxEligibleDate = new Date(
+    today.getFullYear() - 100,
+    today.getMonth(),
+    today.getDate(),
+  )
+  const minEligibleDate = new Date(
+    today.getFullYear() - 16,
+    today.getMonth(),
+    today.getDate(),
+  )
+
+  if (parsedDate < maxEligibleDate) {
+    return 'Năm sinh không hợp lệ'
+  }
+
+  if (parsedDate > minEligibleDate) {
+    return 'Bạn phải từ 16 tuổi trở lên để đăng ký'
+  }
+
+  return null
+}
+
 const registerSchema = z.object({
   name: z.string()
     .min(3, 'Tên đăng nhập tối thiểu 3 ký tự')
     .max(50, 'Tên đăng nhập tối đa 50 ký tự')
     .regex(/^[a-zA-Z0-9]+$/, 'Tên đăng nhập chỉ được chứa chữ cái và số (không khoảng cách)'),
   email: z.string().min(1, 'Vui lòng nhập email').email('Email không hợp lệ'),
+  birthDate: z.string()
+    .min(1, 'Vui lòng chọn ngày sinh')
+    .superRefine((value, ctx) => {
+      const error = getBirthDateError(value)
+      if (error) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: error })
+      }
+    }),
   password: z.string().min(6, 'Mật khẩu tối thiểu 6 ký tự'),
   confirmPassword: z.string().min(1, 'Vui lòng xác nhận mật khẩu'),
 }).refine(
@@ -44,12 +89,17 @@ export function RegisterPage() {
 
   const registerForm = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { name: '', email: '', password: '', confirmPassword: '' }
+    defaultValues: { name: '', email: '', birthDate: '', password: '', confirmPassword: '' }
   })
 
 
   const { mutate: registerAccount, isPending: isRegisterSubmitting } = useMutation({
-    mutationFn: (data: RegisterFormData) => authApi.register({ username: data.name, email: data.email, password: data.password }),
+    mutationFn: (data: RegisterFormData) => authApi.register({
+      username: data.name,
+      email: data.email,
+      password: data.password,
+      birth_date: data.birthDate,
+    }),
     onSuccess: () => {
       toast.success('Tạo tài khoản thành công! Vui lòng đăng nhập.')
       navigate(ROUTES.LOGIN)
@@ -67,6 +117,8 @@ export function RegisterPage() {
               registerForm.setError('name', { message: msg as string })
             } else if (fieldLower === 'email') {
               registerForm.setError('email', { message: msg as string })
+            } else if (fieldLower === 'birth_date') {
+              registerForm.setError('birthDate', { message: msg as string })
             } else if (fieldLower === 'password') {
               registerForm.setError('password', { message: msg as string })
             }
@@ -105,45 +157,46 @@ export function RegisterPage() {
 
       <main className="flex min-h-screen pt-20 md:pt-0">
         {/* Left Side: Product Showcase (60%) */}
-        <section className="hidden md:flex md:w-3/5 bg-slate-950 relative overflow-hidden flex-col justify-between py-12 px-12 lg:px-24">
-          {/* Background Decorative */}
-          <div className="absolute inset-0 kinetic-gradient-glow pointer-events-none z-0"></div>
-          <div className="absolute top-1/4 left-0 w-full h-[1px] circuit-line opacity-20 pointer-events-none z-0"></div>
-          <div className="absolute top-3/4 left-0 w-full h-[1px] circuit-line opacity-20 pointer-events-none z-0"></div>
-          <div className="absolute top-1/4 left-1/4 w-[1px] h-1/2 bg-primary-container/20 pointer-events-none z-0"></div>
+        <section className="hidden md:flex md:w-3/5 relative overflow-hidden px-12 py-12 lg:px-20 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.16),transparent_26%),radial-gradient(circle_at_78%_18%,rgba(168,85,247,0.24),transparent_28%),linear-gradient(135deg,#070b1f_0%,#15153a_42%,#2f1450_100%)] text-white">
+          <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(124,58,237,0.78)_0%,rgba(30,27,75,0.9)_52%,rgba(9,11,27,0.96)_100%)]" />
+          <div className="absolute inset-0 opacity-20 [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:72px_72px]" />
+          <div className="absolute left-14 top-24 h-56 w-56 rounded-full bg-cyan-400/10 blur-3xl" />
+          <div className="absolute bottom-16 right-10 h-72 w-72 rounded-full bg-violet-400/15 blur-3xl" />
+          <div className="absolute right-16 top-20 h-32 w-32 rounded-full border border-white/10" />
+          <div className="absolute bottom-24 left-10 h-px w-48 bg-gradient-to-r from-transparent via-white/35 to-transparent" />
 
-          {/* Main Content: Flexible Space */}
-          <div className="flex-1 flex flex-col justify-center items-center w-full min-h-0 relative z-10 my-8">
-            {/* Image wraps in shrinkable flex container */}
-            <div className="relative group w-full flex justify-center flex-1 min-h-0 items-center">
-              <img
-                alt="Premium tech interface"
-                className="w-auto h-full max-h-[50vh] object-contain drop-shadow-[0_0_50px_rgba(6,182,212,0.3)] transform transition-transform duration-700 group-hover:scale-105"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuC0MFktjj7l_oOAbis29Uw3TpzQZkUB2sJrCATJ9OvOwqnuO3wv6XHtfIjmNusEwrtijU_aUHXgJoTUtDCTbuccYDr55eDCqtVxhmYhxsGdUe5Xp8lOGp6-INS_l-YsqqgoUCrrlcJK5csf4l8XMGiGy1nki6EUZiqeTkN6PG9qQM5Gov4W3_Ys6CZJAzoDbtJesmq72jVCnTeptmw-2XOAjmXNz4x1C-UzEooHlxW2GBFo88zRwuE5_gra096OEPTmiyRIG28h9EBC"
-              />
+          <div className="relative z-10 flex h-full w-full flex-col justify-between">
+            <div className="max-w-xl">
+              <div className="space-y-6 pt-8 lg:pt-14">
+                <div className="inline-flex items-center gap-2 rounded-full border border-violet-200/15 bg-violet-200/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-violet-100">
+                  <Sparkles className="h-4 w-4" />
+                  Đỉnh Cao Công Nghệ
+                </div>
+
+                <div className="space-y-4">
+                  <h2 className="max-w-lg text-4xl font-black leading-tight tracking-tight lg:text-6xl">
+                    Công nghệ đỉnh cao, giá cả hợp lý.
+                  </h2>
+                  <p className="max-w-md text-base leading-8 text-violet-100/85 lg:text-lg">
+                    Mua sắm thiết bị công nghệ trong một không gian tinh gọn, hiện đại và an toàn, được tối ưu cho trải nghiệm khách hàng tại Việt Nam.
+                  </p>
+                </div>
+
+                <div className="inline-flex items-center gap-3 rounded-2xl border border-white/15 bg-white/10 px-5 py-4 shadow-lg shadow-violet-950/20 backdrop-blur-md">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15 text-violet-100">
+                    <ShieldCheck className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold uppercase tracking-[0.18em] text-white">100% Chính hãng & Bảo mật</p>
+                    <p className="text-sm text-violet-100/75">Cam kết xác thực sản phẩm và bảo vệ dữ liệu đăng ký.</p>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="mt-8 text-center shrink-0">
-              <h2 className="font-headline text-3xl lg:text-5xl xl:text-7xl font-bold text-white tracking-tighter leading-none mb-4">
-                KC29 <span className="text-primary-container">TECHNOLOGY</span><br />
-              </h2>
-              <p className="text-slate-400 font-body max-w-sm lg:max-w-md mx-auto text-sm lg:text-base">
-                Công nghệ đỉnh cao, giá cả hợp lý.
-              </p>
-            </div>
-          </div>
-
-          {/* Footer Area: Placed naturally at the bottom, not absolute */}
-          <div className="w-full shrink-0 flex flex-row items-end justify-between relative z-10">
-            <div className="flex items-center gap-4">
-
-              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest hidden lg:inline-block">Được hơn 4.000 khách hàng sử dụng</span>
-            </div>
-
-            <div className="flex flex-col items-end gap-2 opacity-30">
-              <div className="h-1 w-20 bg-primary-container/50"></div>
-              <div className="h-1 w-12 bg-primary-container/30"></div>
-              <span className="text-[8px] font-black font-headline text-white uppercase tracking-[0.5em]">Uy Tín Tạo Thương Hiệu</span>
+            <div className="flex items-end justify-between border-t border-white/15 pt-5 text-sm text-violet-100/75">
+              <span>© 2026 KC Tech</span>
+              <span className="hidden lg:inline">Vietnam Modern Commerce Experience</span>
             </div>
           </div>
         </section>
@@ -195,6 +248,20 @@ export function RegisterPage() {
                     <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0 h-[2px] bg-primary-container transition-all duration-300 group-focus-within:w-full"></div>
                   </div>
                   {registerForm.formState.errors.email && <p className="text-xs text-error mt-1 ml-1">{registerForm.formState.errors.email.message}</p>}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider block ml-1">Ngày sinh</label>
+                  <div className="relative group">
+                    <input
+                      {...registerForm.register('birthDate')}
+                      disabled={isRegisterSubmitting}
+                      className="w-full bg-surface-container-low border-none rounded-xl py-3.5 px-5 text-on-surface placeholder:text-outline focus:ring-2 focus:ring-primary-container transition-all"
+                      type="date"
+                    />
+                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0 h-[2px] bg-primary-container transition-all duration-300 group-focus-within:w-full"></div>
+                  </div>
+                  {registerForm.formState.errors.birthDate && <p className="text-xs text-error mt-1 ml-1">{registerForm.formState.errors.birthDate.message}</p>}
                 </div>
 
                 <div className="space-y-1">

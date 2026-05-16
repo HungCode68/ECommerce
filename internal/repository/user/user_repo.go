@@ -21,6 +21,7 @@ func scanFullUser(scanner rowScanner) (model.User, error) {
 		&user.PasswordHash,
 		&user.AuthProvider,
 		&user.ProviderUserID,
+		&user.BirthDate,
 		&user.EmailVerified,
 		&user.AvatarURL,
 		&user.Role,
@@ -53,7 +54,7 @@ func (u *UserDb) GetUserByIdentifier(identifier string) (model.User, error) {
 	logger.DebugLogger.Printf("Starting GetUserByIdentifier for: %s", identifier)
 
 	query := `SELECT id, username, email, password_hash, auth_provider, provider_user_id,
-		email_verified, avatar_url, role, is_active, refresh_token, refresh_token_expiry,
+		birth_date, email_verified, avatar_url, role, is_active, refresh_token, refresh_token_expiry,
 		last_active_at, created_at, updated_at, deleted_at
 		FROM users WHERE (username = ? OR email = ?)`
 
@@ -75,7 +76,7 @@ func (u *UserDb) GetUserByIdentifier(identifier string) (model.User, error) {
 
 func (u *UserDb) GetUserByProviderID(provider string, providerUserID string) (model.User, error) {
 	query := `SELECT id, username, email, password_hash, auth_provider, provider_user_id,
-		email_verified, avatar_url, role, is_active, refresh_token, refresh_token_expiry,
+		birth_date, email_verified, avatar_url, role, is_active, refresh_token, refresh_token_expiry,
 		last_active_at, created_at, updated_at, deleted_at
 		FROM users WHERE auth_provider = ? AND provider_user_id = ?`
 
@@ -116,7 +117,7 @@ func (u *UserDb) GetAllUsers() ([]model.User, error) {
 func (u *UserDb) GetUserByID(id int64) (model.User, error) {
 	logger.DebugLogger.Printf("Starting GetUserByID for ID: %d\n", id)
 	query := `SELECT id, username, email, password_hash, auth_provider, provider_user_id,
-		email_verified, avatar_url, role, is_active, refresh_token, refresh_token_expiry,
+		birth_date, email_verified, avatar_url, role, is_active, refresh_token, refresh_token_expiry,
 		last_active_at, created_at, updated_at, deleted_at
 		FROM users WHERE id = ?`
 
@@ -214,14 +215,15 @@ func (u *UserDb) CreateUser(user model.User) (model.User, error) {
 	now := time.Now()
 
 	query := `INSERT INTO users (
-		username, email, password_hash, auth_provider, provider_user_id,
+		username, email, birth_date, password_hash, auth_provider, provider_user_id,
 		email_verified, avatar_url, role, is_active, created_at, updated_at
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	result, err := u.db.Exec(
 		query,
 		user.Username,
 		user.Email,
+		user.BirthDate,
 		user.PasswordHash,
 		user.AuthProvider,
 		user.ProviderUserID,
@@ -249,6 +251,7 @@ func (u *UserDb) CreateUser(user model.User) (model.User, error) {
 		ID:             newId,
 		Username:       user.Username,
 		Email:          user.Email,
+		BirthDate:      user.BirthDate,
 		PasswordHash:   user.PasswordHash,
 		AuthProvider:   user.AuthProvider,
 		ProviderUserID: user.ProviderUserID,
@@ -299,6 +302,7 @@ func (u *UserDb) UpdateUserProfile(id int64, req model.UserUpdateProfileRequest)
 	queryUpdate := `UPDATE users 
 					SET username = COALESCE(?, username), 
 						email = COALESCE(?, email), 
+						birth_date = COALESCE(?, birth_date),
 						email_verified = CASE WHEN ? IS NULL THEN email_verified ELSE 0 END,
 						password_hash = COALESCE(?, password_hash),
 						updated_at = ? 
@@ -307,6 +311,7 @@ func (u *UserDb) UpdateUserProfile(id int64, req model.UserUpdateProfileRequest)
 	_, err := u.db.Exec(queryUpdate,
 		req.Username,
 		req.Email,
+		req.BirthDate,
 		req.Email,
 		req.Password,
 		now,

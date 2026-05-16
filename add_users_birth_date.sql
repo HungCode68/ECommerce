@@ -1,0 +1,2 @@
+ALTER TABLE users
+ADD COLUMN birth_date DATE DEFAULT NULL AFTER email;

@@ -42,6 +42,8 @@ type googleTokenInfoResponse struct {
 const (
 	emailVerificationOTPExpiry   = 5 * time.Minute
 	emailVerificationOTPCooldown = 60 * time.Second
+	minRegistrationAgeYears      = 16
+	maxRegistrationAgeYears      = 100
 )
 
 func NewUserController(userRepo user.UserRepo) UserController {
@@ -50,11 +52,21 @@ func NewUserController(userRepo user.UserRepo) UserController {
 	}
 }
 
+func formatBirthDate(birthDate *time.Time) *string {
+	if birthDate == nil {
+		return nil
+	}
+
+	formatted := birthDate.Format("2006-01-02")
+	return &formatted
+}
+
 func toUserProfileResponse(user model.User) model.UserProfileResponse {
 	return model.UserProfileResponse{
 		ID:            user.ID,
 		Username:      user.Username,
 		Email:         user.Email,
+		BirthDate:     formatBirthDate(user.BirthDate),
 		EmailVerified: user.EmailVerified,
 		Role:          user.Role,
 		IsActive:      user.IsActive,
@@ -79,9 +91,49 @@ func toAdminUserResponse(user model.User) model.AdminUserResponse {
 	}
 }
 
+func parseEligibleBirthDate(raw string) (*time.Time, error) {
+	if strings.TrimSpace(raw) == "" {
+		return nil, errors.New("ngày sinh là bắt buộc")
+	}
+
+	birthDate, err := time.Parse("2006-01-02", raw)
+	if err != nil {
+		return nil, errors.New("ngày sinh không hợp lệ")
+	}
+
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	if birthDate.Year() > today.Year() {
+		return nil, errors.New("năm sinh không hợp lệ")
+	}
+
+	birthDateDateOnly := time.Date(birthDate.Year(), birthDate.Month(), birthDate.Day(), 0, 0, 0, 0, today.Location())
+	if birthDateDateOnly.After(today) {
+		return nil, errors.New("ngày sinh không hợp lệ")
+	}
+
+	maxEligibleDate := today.AddDate(-maxRegistrationAgeYears, 0, 0)
+	eligibleDate := today.AddDate(-minRegistrationAgeYears, 0, 0)
+
+	if birthDateDateOnly.Before(maxEligibleDate) {
+		return nil, errors.New("độ tuổi hợp lệ phải từ 16 đến 100 tuổi")
+	}
+
+	if birthDateDateOnly.After(eligibleDate) {
+		return nil, errors.New("bạn phải từ 16 tuổi trở lên để đăng ký")
+	}
+
+	return &birthDateDateOnly, nil
+}
+
 // Hàm Register để đăng ký user mới
 func (c *userController) Register(req model.RegisterRequest) (model.UserProfileResponse, error) {
 	logger.InfoLogger.Printf("Bắt đầu đăng ký user mới: %s", req.Username)
+
+	birthDate, err := parseEligibleBirthDate(req.BirthDate)
+	if err != nil {
+		return model.UserProfileResponse{}, err
+	}
 
 	// Kiểm tra User đã tồn tại chưa (Check Username hoặc Email)
 	existingUser, _ := c.UserRepo.GetUserByIdentifier(req.Username)
@@ -104,6 +156,7 @@ func (c *userController) Register(req model.RegisterRequest) (model.UserProfileR
 	newUser := model.User{
 		Username:     req.Username,
 		Email:        req.Email,
+		BirthDate:    birthDate,
 		PasswordHash: stringPtr(string(hashedPassword)),
 		AuthProvider: "local",
 		Role:         "user",
@@ -445,6 +498,15 @@ func (c *userController) UpdateUserProfile(id int64, req model.UserUpdateProfile
 		if existingEmail.ID != 0 && existingEmail.ID != id {
 			return model.UserProfileResponse{}, errors.New("email đã được sử dụng")
 		}
+	}
+
+	if req.BirthDate != nil {
+		normalizedBirthDate, err := parseEligibleBirthDate(*req.BirthDate)
+		if err != nil {
+			return model.UserProfileResponse{}, err
+		}
+		formattedBirthDate := normalizedBirthDate.Format("2006-01-02")
+		req.BirthDate = &formattedBirthDate
 	}
 
 	//Hash Password (Nếu có yêu cầu đổi pass)

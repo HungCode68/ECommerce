@@ -5,6 +5,7 @@ export type User = {
   username: string
   name?: string
   email: string
+  birth_date?: string
   email_verified?: boolean
   phone?: string
   role: UserRole
@@ -21,6 +22,7 @@ export type RegisterRequest = {
   username: string
   email: string
   password: string
+  birth_date: string
 }
 
 export type GoogleLoginRequest = {
@@ -51,5 +53,6 @@ export type RefreshRequest = {
 
 export type UpdateProfileRequest = {
   username: string
-  phone?: string
+  email: string
+  birth_date: string
 }

@@ -82,7 +82,7 @@ export function LoginPage() {
       {/* TopNavBar */}
       <header className="absolute top-0 w-full z-50 flex justify-between items-center px-8 h-20 max-w-full bg-transparent">
         <Link to={ROUTES.HOME} className="text-2xl font-black tracking-tighter text-cyan-600 font-headline hover:opacity-80 transition-opacity">
-          KC29 TECH
+          KC TECH
         </Link>
         <div className="hidden md:flex gap-6 items-center">
           <button className="text-xs font-medium text-slate-500 uppercase tracking-widest">HƯỚNG DẪN MUA HÀNG</button>
@@ -93,45 +93,33 @@ export function LoginPage() {
 
       <main className="flex min-h-screen pt-20 md:pt-0">
         {/* Left Side: Product Showcase (60%) */}
-        <section className="hidden md:flex md:w-3/5 bg-slate-950 relative overflow-hidden flex-col justify-between py-12 px-12 lg:px-24">
-          {/* Background Decorative */}
-          <div className="absolute inset-0 kinetic-gradient-glow pointer-events-none z-0"></div>
-          <div className="absolute top-1/4 left-0 w-full h-[1px] circuit-line opacity-20 pointer-events-none z-0"></div>
-          <div className="absolute top-3/4 left-0 w-full h-[1px] circuit-line opacity-20 pointer-events-none z-0"></div>
-          <div className="absolute top-1/4 left-1/4 w-[1px] h-1/2 bg-primary-container/20 pointer-events-none z-0"></div>
+        <section className="hidden md:flex md:w-3/5 relative overflow-hidden items-center justify-center px-12 py-12 lg:px-20 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.18),transparent_28%),radial-gradient(circle_at_80%_20%,rgba(168,85,247,0.22),transparent_30%),linear-gradient(135deg,#070b1f_0%,#141b3b_45%,#24124a_100%)] text-white">
+          <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(124,58,237,0.82)_0%,rgba(30,27,75,0.92)_100%)]" />
+          <div className="absolute -left-24 top-16 h-64 w-64 rounded-full bg-cyan-400/10 blur-3xl" />
+          <div className="absolute bottom-10 right-10 h-72 w-72 rounded-full bg-violet-400/10 blur-3xl" />
 
-          {/* Main Content: Flexible Space */}
-          <div className="flex-1 flex flex-col justify-center items-center w-full min-h-0 relative z-10 my-8">
-            {/* Image wraps in shrinkable flex container */}
-            <div className="relative group w-full flex justify-center flex-1 min-h-0 items-center">
-              <img
-                alt="Premium tech interface"
-                className="w-auto h-full max-h-[50vh] object-contain drop-shadow-[0_0_50px_rgba(6,182,212,0.3)] transform transition-transform duration-700 group-hover:scale-105"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuC0MFktjj7l_oOAbis29Uw3TpzQZkUB2sJrCATJ9OvOwqnuO3wv6XHtfIjmNusEwrtijU_aUHXgJoTUtDCTbuccYDr55eDCqtVxhmYhxsGdUe5Xp8lOGp6-INS_l-YsqqgoUCrrlcJK5csf4l8XMGiGy1nki6EUZiqeTkN6PG9qQM5Gov4W3_Ys6CZJAzoDbtJesmq72jVCnTeptmw-2XOAjmXNz4x1C-UzEooHlxW2GBFo88zRwuE5_gra096OEPTmiyRIG28h9EBC"
-              />
+          <div className="relative z-10 flex h-full w-full max-w-2xl flex-col justify-between">
+            <div className="flex-1 flex flex-col justify-center">
+              <div className="mb-10">
+                <h1 className="flex items-center gap-3 text-4xl font-black tracking-tight lg:text-5xl">
+                  <span className="rounded-2xl bg-white px-3 py-2 text-violet-700 shadow-lg shadow-black/10">KC</span>
+                  KC Tech
+                </h1>
+              </div>
+
+              <div className="max-w-xl">
+                <h2 className="mb-4 text-3xl font-bold leading-tight lg:text-5xl">
+                  Công nghệ đỉnh cao, giá cả hợp lý.
+                </h2>
+                <p className="text-base leading-8 text-violet-100 lg:text-lg">
+                  Khám phá hệ sinh thái sản phẩm công nghệ tiên tiến với trải nghiệm mua sắm hiện đại, nhanh và tinh tế cho khách hàng tại Việt Nam.
+                </p>
+              </div>
             </div>
 
-            <div className="mt-8 text-center shrink-0">
-              <h2 className="font-headline text-3xl lg:text-5xl xl:text-7xl font-bold text-white tracking-tighter leading-none mb-4">
-                KC29 <span className="text-primary-container">TECH</span><br />
-              </h2>
-              <p className="text-slate-400 font-body max-w-sm lg:max-w-md mx-auto text-sm lg:text-base">
-                Công nghệ đỉnh cao, giá cả hợp lý.
-              </p>
-            </div>
-          </div>
-
-          {/* Footer Area: Placed naturally at the bottom, not absolute */}
-          <div className="w-full shrink-0 flex flex-row items-end justify-between relative z-10">
-            <div className="flex items-center gap-4">
-
-              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest hidden lg:inline-block">Được hơn 4.000 khách hàng sử dụng</span>
-            </div>
-
-            <div className="flex flex-col items-end gap-2 opacity-30">
-              <div className="h-1 w-20 bg-primary-container/50"></div>
-              <div className="h-1 w-12 bg-primary-container/30"></div>
-              <span className="text-[8px] font-black font-headline text-white uppercase tracking-[0.5em]">Uy Tín Tạo Thương Hiệu</span>
+            <div className="flex items-center justify-between border-t border-white/20 pt-5 text-sm text-violet-100/80">
+              <span>© 2026 KC Technology</span>
+              <span className="hidden lg:inline">Vietnam Modern Commerce Experience</span>
             </div>
           </div>
         </section>
@@ -238,7 +226,7 @@ export function LoginPage() {
                     <><Loader2 className="animate-spin w-5 h-5" /> Đang xử lý...</>
                   ) : (
                     <>
-                      Đăng nhập vào KC29 Tech
+                      Đăng nhập vào KC Tech
                       <span className="material-symbols-outlined transition-transform group-hover:translate-x-1">arrow_forward</span>
                     </>
                   )}
@@ -246,7 +234,7 @@ export function LoginPage() {
 
                 <p className="text-[11px] text-on-surface-variant text-center mt-4 px-2 leading-relaxed">
                   Bằng việc đăng nhập, bạn đồng ý với <button type="button" onClick={() => { }} className="text-[#f97316] font-bold hover:underline">Điều khoản dịch vụ</button> &
-                  <button type="button" onClick={() => { }} className="text-[#f97316] font-bold hover:underline">Chính sách bảo mật</button> của KC29 Tech
+                  <button type="button" onClick={() => { }} className="text-[#f97316] font-bold hover:underline">Chính sách bảo mật</button> của KC Tech
                 </p>
 
                 <div className="mt-8 text-center">
@@ -269,9 +257,9 @@ export function LoginPage() {
       {/* Simple Mobile Footer */}
       <footer className="md:hidden w-full py-12 px-8 flex flex-col items-center gap-4 border-t border-slate-200/10">
         <Link to={ROUTES.HOME} className="text-lg font-bold text-slate-900 font-headline hover:opacity-80 transition-opacity">
-          KC29 TECH
+          KC TECH
         </Link>
-        <p className="text-[10px] font-medium text-slate-500 uppercase tracking-widest text-center">SINCE 2021 KC29 TECHNOLOGY . BEYOND TECHNOLOGY.</p>
+        <p className="text-[10px] font-medium text-slate-500 uppercase tracking-widest text-center">SINCE 2021 KC TECHNOLOGY . BEYOND TECHNOLOGY.</p>
         <div className="flex gap-6 mt-4">
           <a className="text-[10px] font-bold text-slate-500 hover:text-cyan-400" href="#">Privacy Policy</a>
           <a className="text-[10px] font-bold text-slate-500 hover:text-cyan-400" href="#">Terms of Service</a>
