@@ -186,15 +186,15 @@ func (c *userController) Login(req model.LoginRequest) (model.LoginResponse, err
 		return model.LoginResponse{}, errors.New("tài khoản hoặc mật khẩu không đúng")
 	}
 
+	//  Check khóa
+	if !user.IsActive {
+		return model.LoginResponse{}, errors.New("tài khoản này đã bị khóa")
+	}
+
 	//  Check nếu user bị xóa
 	if user.DeletedAt != nil {
 		logger.WarnLogger.Printf("Login thất bại (User deleted) cho user: %s", user.Username)
 		return model.LoginResponse{}, errors.New("tài khoản này đã bị xóa")
-	}
-
-	//  Check khóa
-	if !user.IsActive {
-		return model.LoginResponse{}, errors.New("tài khoản này đã bị khóa")
 	}
 
 	if user.PasswordHash == nil {
@@ -649,11 +649,11 @@ func (c *userController) resolveGoogleUser(tokenInfo googleTokenInfoResponse) (m
 	userData, err := c.UserRepo.GetUserByProviderID("google", tokenInfo.Sub)
 	switch {
 	case err == nil:
-		if userData.DeletedAt != nil {
-			return model.User{}, errors.New("tài khoản này đã bị xóa")
-		}
 		if !userData.IsActive {
 			return model.User{}, errors.New("tài khoản này đã bị khóa")
+		}
+		if userData.DeletedAt != nil {
+			return model.User{}, errors.New("tài khoản này đã bị xóa")
 		}
 		return userData, nil
 	case !errors.Is(err, sql.ErrNoRows):
@@ -663,11 +663,11 @@ func (c *userController) resolveGoogleUser(tokenInfo googleTokenInfoResponse) (m
 	existingUser, err := c.UserRepo.GetUserByIdentifier(tokenInfo.Email)
 	switch {
 	case err == nil:
-		if existingUser.DeletedAt != nil {
-			return model.User{}, errors.New("tài khoản này đã bị xóa")
-		}
 		if !existingUser.IsActive {
 			return model.User{}, errors.New("tài khoản này đã bị khóa")
+		}
+		if existingUser.DeletedAt != nil {
+			return model.User{}, errors.New("tài khoản này đã bị xóa")
 		}
 		return c.UserRepo.LinkGoogleAccount(existingUser.ID, tokenInfo.Sub, optionalString(tokenInfo.Picture), true)
 	case !errors.Is(err, sql.ErrNoRows):

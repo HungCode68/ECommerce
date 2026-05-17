@@ -1,6 +1,9 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
+import { toast } from 'sonner'
 import { API_BASE_URL } from '@/utils/constants'
 import { useAuthStore } from '@/store/authStore'
+import { getBlockedAccountMessage, isBlockedAccountError } from '@/utils/authErrors'
+import { storeAuthNotice } from '@/utils/authNotice'
 
 const axiosClient = axios.create({
   baseURL: API_BASE_URL,
@@ -114,6 +117,10 @@ axiosClient.interceptors.response.use(
       return axiosClient(originalRequest)
     } catch (refreshError) {
       console.warn('[AUTH_DEBUG] refresh failed, logout', { url, refreshError })
+      if (isBlockedAccountError(refreshError)) {
+        storeAuthNotice(getBlockedAccountMessage())
+        toast.error(getBlockedAccountMessage())
+      }
       processQueue(refreshError, null)
       useAuthStore.getState().logout()
       return Promise.reject(refreshError)

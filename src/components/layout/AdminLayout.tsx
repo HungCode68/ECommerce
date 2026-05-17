@@ -4,6 +4,7 @@ import { useAuthStore } from '@/store/authStore'
 import { ROUTES } from '@/utils/constants'
 import { cn } from '@/lib/utils'
 import { getInitials } from '@/app/lib/api'
+import kcTechLogo from '@/assets/kc-tech-logo.svg'
 
 type NavItem = {
   to: string
@@ -13,11 +14,11 @@ type NavItem = {
 }
 
 const SIDEBAR_NAV: NavItem[] = [
-  { to: ROUTES.ADMIN_DASHBOARD, label: 'Dashboard', icon: 'dashboard', end: true },
+  { to: ROUTES.ADMIN_DASHBOARD, label: 'Bảng tổng quan', icon: 'dashboard', end: true },
   { to: ROUTES.ADMIN_PRODUCTS, label: 'Sản phẩm', icon: 'inventory_2' },
   { to: ROUTES.ADMIN_CATEGORIES, label: 'Danh mục', icon: 'category' },
   { to: ROUTES.ADMIN_ORDERS, label: 'Đơn hàng', icon: 'receipt_long' },
-  { to: ROUTES.ADMIN_COUPONS, label: 'Coupon', icon: 'local_offer' },
+  { to: ROUTES.ADMIN_COUPONS, label: 'Mã giảm giá', icon: 'local_offer' },
   { to: ROUTES.ADMIN_USERS, label: 'Khách hàng', icon: 'group' },
   { to: ROUTES.ADMIN_REVIEWS, label: 'Đánh giá', icon: 'star' },
   { to: ROUTES.ADMIN_BANNER_SETTINGS, label: 'Thiết lập banner', icon: 'photo_library' },
@@ -45,9 +46,7 @@ export function AdminLayout() {
       <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-slate-200/15 bg-slate-50 py-6 pr-4">
         <div className="mb-10 px-8">
           <div className="space-y-1">
-            <h1 className="font-headline text-lg font-bold text-slate-900">
-              KC29 TECH Admin
-            </h1>
+            <img src={kcTechLogo} alt="KC Tech" className="h-9 w-auto" />
             <p className="text-[10px] uppercase tracking-[0.35em] text-slate-500">
               Quản lý hệ thống
             </p>
@@ -180,9 +179,7 @@ export function AdminLayout() {
 
           <footer className="grid grid-cols-1 gap-12 bg-slate-100 px-12 py-16 md:grid-cols-4">
             <div className="space-y-3">
-              <div className="font-headline text-2xl font-black text-slate-900">
-                KC29 TECH
-              </div>
+              <img src={kcTechLogo} alt="KC Tech" className="h-10 w-auto" />
               <p className="max-w-xs text-sm leading-6 text-slate-600">
                 Hệ thống quản trị cho vận hành, dữ liệu và thương mại điện tử theo thời gian thực.
               </p>

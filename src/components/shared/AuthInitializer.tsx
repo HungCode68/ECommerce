@@ -1,8 +1,11 @@
 import axios from 'axios'
 import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import type { ApiResponse } from '@/types/api.types'
 import { useAuthStore } from '@/store/authStore'
 import { API_BASE_URL } from '@/utils/constants'
+import { getBlockedAccountMessage, isBlockedAccountError } from '@/utils/authErrors'
+import { consumeAuthNotice, storeAuthNotice } from '@/utils/authNotice'
 
 type RefreshSessionData = {
   access_token: string
@@ -15,6 +18,13 @@ let authBootstrapCompleted = false
 export const AuthInitializer = ({ children }: { children: React.ReactNode }) => {
   const [isInitializing, setIsInitializing] = useState(true)
   const { accessToken, hasHydrated, setAccessToken, logout } = useAuthStore()
+
+  useEffect(() => {
+    const notice = consumeAuthNotice()
+    if (notice) {
+      toast.error(notice)
+    }
+  }, [])
 
   useEffect(() => {
     if (!hasHydrated) {
@@ -55,6 +65,9 @@ export const AuthInitializer = ({ children }: { children: React.ReactNode }) => 
       (authBootstrapPromise = restoreSession()
         .catch((error) => {
           console.error('Failed to initialize auth session:', error)
+          if (isBlockedAccountError(error)) {
+            storeAuthNotice(getBlockedAccountMessage())
+          }
           logout()
         })
         .finally(() => {

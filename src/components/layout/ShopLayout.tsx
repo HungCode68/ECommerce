@@ -14,6 +14,7 @@ import { categoryApi } from '@/api/category.api'
 import { queryKeys } from '@/lib/queryKeys'
 import { ROUTES } from '@/utils/constants'
 import { cn } from '@/lib/utils'
+import kcTechLogo from '@/assets/kc-tech-logo.svg'
 
 
 function NavItem({ to, children }: { to: string; children: React.ReactNode }) {
@@ -182,8 +183,8 @@ export function ShopLayout() {
                   {mobileMenuOpen ? 'close' : 'menu'}
                 </span>
               </button>
-              <Link to={ROUTES.HOME} className="text-[24px] font-bold leading-[1.3] text-[#630ed4] md:text-[28px]">
-                KC TECH
+              <Link to={ROUTES.HOME} className="flex items-center">
+                <img src={kcTechLogo} alt="KC Tech" className="h-9 w-auto md:h-10" />
               </Link>
             </div>
 
@@ -292,14 +293,14 @@ export function ShopLayout() {
       <footer className="mt-auto border-t border-[#e5e2e1] bg-[#f0eded]">
         <div className="mx-auto grid max-w-[1200px] grid-cols-1 gap-6 px-4 py-8 md:grid-cols-4 md:px-6">
           <div className="space-y-4">
-            <div className="text-xl font-bold text-[#630ed4]">KC Tech</div>
+            <img src={kcTechLogo} alt="KC Tech" className="h-9 w-auto" />
             <p className="text-sm leading-6 text-[#4a4455]">
               KC Tech là hệ thống bán lẻ thiết bị công nghệ chính hãng, uy tín hàng đầu Việt Nam. Cam kết chất lượng và dịch vụ tận tâm.
             </p>
-            <div className="flex gap-4">
-              <span className="material-symbols-outlined cursor-pointer text-[#630ed4]">social_leaderboard</span>
-              <span className="material-symbols-outlined cursor-pointer text-[#630ed4]">camera</span>
-              <span className="material-symbols-outlined cursor-pointer text-[#630ed4]">play_circle</span>
+            <div className="flex items-center gap-4">
+              <img src="/socialNetwork/facebook.png" alt="Facebook" className="h-8 w-8 cursor-pointer object-contain" />
+              <img src="/socialNetwork/insta.png" alt="Instagram" className="h-8 w-8 cursor-pointer object-contain" />
+              <img src="/socialNetwork/youtube.png" alt="YouTube" className="h-8 w-8 cursor-pointer object-contain" />
             </div>
           </div>
           <div className="space-y-3">
@@ -339,11 +340,11 @@ export function ShopLayout() {
           </div>
         </div>
         <div className="mx-auto flex max-w-[1200px] flex-col items-center justify-between gap-4 border-t border-[#e5e2e1] px-4 py-4 text-sm text-[#4a4455] md:flex-row md:px-6">
-          <div>© 2026 KC TECH. All rights reserved.</div>
+          <div>© 2026 KC TECH. Mọi bản quyền liên quan đến chúng tôi đã được đăng ký.</div>
           <div className="flex items-center gap-4">
-            <span>Visa</span>
-            <span>Mastercard</span>
-            <span>MoMo</span>
+            <img src="/payment/visa.png" alt="Visa" className="h-7 w-auto object-contain md:h-8" />
+            <img src="/payment/atm.png" alt="ATM" className="h-7 w-auto object-contain md:h-8" />
+            <img src="/payment/momo.png" alt="MoMo" className="h-7 w-auto object-contain md:h-8" />
           </div>
         </div>
       </footer>

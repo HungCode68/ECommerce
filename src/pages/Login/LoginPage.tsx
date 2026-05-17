@@ -14,6 +14,7 @@ import { useAuthStore } from '@/store/authStore'
 import { authApi } from '@/api/auth.api'
 import { GoogleLoginButton } from '@/features/auth/GoogleLoginButton'
 import { ROUTES } from '@/utils/constants'
+import { getBlockedAccountMessage, isBlockedAccountError } from '@/utils/authErrors'
 
 const loginSchema = z.object({
   username: z.string().min(3, 'Tên đăng nhập tối thiểu 3 ký tự'),
@@ -53,10 +54,17 @@ export function LoginPage() {
       // Redirect happens in useEffect
     },
     onError: (error) => {
+      if (isBlockedAccountError(error)) {
+        toast.error(getBlockedAccountMessage())
+        return
+      }
+
       if (axios.isAxiosError(error)) {
         const status = error.response?.status
         const apiErrors = error.response?.data?.errors
-        if ((status === 401 || status === 400) && apiErrors) {
+        if (status === 403) {
+          toast.error(getBlockedAccountMessage())
+        } else if ((status === 401 || status === 400) && apiErrors) {
           Object.entries(apiErrors).forEach(([field, msg]) => {
             const fieldLower = field.toLowerCase()
             if (fieldLower === 'identifier' || fieldLower === 'username') {
@@ -83,12 +91,16 @@ export function LoginPage() {
       {/* TopNavBar */}
       <header className="absolute top-0 w-full z-50 flex justify-between items-center px-8 h-20 max-w-full bg-transparent">
         <Link to={ROUTES.HOME} className="hover:opacity-80 transition-opacity">
-          <img src={kcTechLogo} alt="KC Tech" className="h-10 w-auto" />
+          <img
+            src={kcTechLogo}
+            alt="KC Tech"
+            className="h-10 w-auto saturate-150 contrast-125 brightness-110 drop-shadow-[0_2px_10px_rgba(124,58,237,0.28)]"
+          />
         </Link>
         <div className="hidden md:flex gap-6 items-center">
           <button className="text-xs font-medium text-slate-500 uppercase tracking-widest">HƯỚNG DẪN MUA HÀNG</button>
           <div className="h-4 w-[1px] bg-outline-variant/30"></div>
-          <button className="text-sm font-bold text-primary px-4 py-2 rounded-full hover:bg-primary-container/10 transition-all">Support</button>
+          <button className="text-sm font-bold text-primary px-4 py-2 rounded-full hover:bg-primary-container/10 transition-all">Hỗ Trợ Khách Hàng</button>
         </div>
       </header>
 
@@ -234,8 +246,7 @@ export function LoginPage() {
                 </button>
 
                 <p className="text-[11px] text-on-surface-variant text-center mt-4 px-2 leading-relaxed">
-                  Bằng việc đăng nhập, bạn đồng ý với <button type="button" onClick={() => { }} className="text-[#f97316] font-bold hover:underline">Điều khoản dịch vụ</button> &
-                  <button type="button" onClick={() => { }} className="text-[#f97316] font-bold hover:underline">Chính sách bảo mật</button> của KC Tech
+                  Bằng việc đăng nhập, bạn đồng ý với <button type="button" onClick={() => { }} className="text-[#f97316] font-bold hover:underline">Điều khoản dịch vụ</button> & <button type="button" onClick={() => { }} className="text-[#f97316] font-bold hover:underline">Chính sách bảo mật</button> của KC Tech
                 </p>
 
                 <div className="mt-8 text-center">
