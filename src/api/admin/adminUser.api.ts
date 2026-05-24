@@ -2,7 +2,7 @@ import axiosClient from '@/lib/axiosClient'
 import type { ApiResponse } from '@/types/api.types'
 
 type UserRole = 'user' | 'admin'
-export type AdminUserStatus = 'active' | 'offline' | 'inactive' | 'blocked'
+export type AdminUserStatus = 'active' | 'offline' | 'blocked'
 
 export type AdminUser = {
   id: number
@@ -12,6 +12,7 @@ export type AdminUser = {
   status: AdminUserStatus
   is_active: boolean
   last_active_at: string | null
+  blocked_reason: string | null
   created_at: string
   updated_at: string
   deleted_at: string | null
@@ -24,6 +25,7 @@ type AdminUserApiItem = {
   role: UserRole
   is_active: boolean
   last_active_at?: string | null
+  blocked_reason?: string | null
   created_at: string
   updated_at: string
   deleted_at?: string | null
@@ -37,8 +39,9 @@ type CreateUserRequest = {
 }
 
 type UpdateUserRequest = {
-  name?: string
-  status?: string
+  role?: UserRole
+  is_active?: boolean
+  blocked_reason?: string | null
 }
 
 type SearchUsersResponse = {
@@ -60,8 +63,6 @@ export type AdminUserListResult = {
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000
-const INACTIVE_AFTER_MS = 5 * DAY_MS
-
 function parseDate(value: string | null | undefined): number {
   if (!value) {
     return Number.NaN
@@ -75,20 +76,15 @@ function getStatusFromTimestamps(user: AdminUserApiItem): AdminUserStatus {
     return 'blocked'
   }
 
-  // created_at chỉ là thời điểm tạo tài khoản, không phải thời điểm hoạt động.
-  const lastActivity = parseDate(user.last_active_at)
-  if (!Number.isFinite(lastActivity)) {
-    return 'inactive'
-  }
+  const activityReference = Number.isFinite(parseDate(user.last_active_at))
+    ? parseDate(user.last_active_at)
+    : parseDate(user.created_at)
 
-  const elapsed = Date.now() - lastActivity
+  const elapsed = Date.now() - activityReference
   if (elapsed <= DAY_MS) {
     return 'active'
   }
-  if (elapsed <= INACTIVE_AFTER_MS) {
-    return 'offline'
-  }
-  return 'inactive'
+  return 'offline'
 }
 
 function mapUser(user: AdminUserApiItem): AdminUser {
@@ -100,14 +96,15 @@ function mapUser(user: AdminUserApiItem): AdminUser {
     status: getStatusFromTimestamps(user),
     is_active: user.is_active,
     last_active_at: user.last_active_at ?? null,
+    blocked_reason: user.blocked_reason ?? null,
     created_at: user.created_at,
     updated_at: user.updated_at,
     deleted_at: user.deleted_at ?? null,
   }
 }
 
-function softBlockUsers(ids: number[]) {
-  return axiosClient.delete('/api/admin/users', { data: { ids } })
+function softBlockUsers(ids: number[], reason: string) {
+  return axiosClient.delete('/api/admin/users', { data: { ids, reason } })
 }
 
 function softRestoreUsers(ids: number[]) {
@@ -162,12 +159,12 @@ export const adminUserApi = {
     return mapUser(res.data.data)
   },
 
-  blockMany: async (ids: number[]) => {
-    await softBlockUsers(ids)
+  blockMany: async (ids: number[], reason: string) => {
+    await softBlockUsers(ids, reason)
   },
 
-  deleteMany: async (ids: number[]) => {
-    await softBlockUsers(ids)
+  deleteMany: async (ids: number[], reason = 'Không có lý do') => {
+    await softBlockUsers(ids, reason)
   },
 
   restoreMany: async (ids: number[]) => {

@@ -20,6 +20,7 @@ CREATE TABLE users (
   avatar_url VARCHAR(512) DEFAULT NULL,
   role VARCHAR(10) NOT NULL DEFAULT 'user',
   is_active TINYINT NOT NULL DEFAULT 1,
+  blocked_reason VARCHAR(255) DEFAULT NULL,
   refresh_token LONGTEXT DEFAULT NULL,
   refresh_token_expiry DATETIME DEFAULT NULL,
   last_active_at DATETIME DEFAULT NULL,

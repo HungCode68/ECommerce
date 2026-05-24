@@ -16,6 +16,7 @@ type User struct {
 	AvatarURL          *string    `db:"avatar_url"`
 	Role               string     `db:"role"`
 	IsActive           bool       `db:"is_active"`
+	BlockedReason      *string    `db:"blocked_reason"`
 	RefreshToken       *string    `db:"refresh_token"`
 	RefreshTokenExpiry *time.Time `db:"refresh_token_expiry"`
 	LastActiveAt       *time.Time `db:"last_active_at"`
@@ -71,14 +72,16 @@ type VerifyEmailVerificationOTPRequest struct {
 
 // AdminUpdateUserRequest: Dùng khi admin cập nhật thông tin user
 type AdminUpdateUserRequest struct {
-	Role      *string   `json:"role,omitempty"     validate:"omitempty,oneof=user admin"`
-	IsActive  *bool     `json:"is_active,omitempty"`
-	UpdatedAt time.Time `db:"updated_at,omitempty"`
+	Role          *string   `json:"role,omitempty" validate:"omitempty,oneof=user admin"`
+	IsActive      *bool     `json:"is_active,omitempty"`
+	BlockedReason *string   `json:"blocked_reason,omitempty"`
+	UpdatedAt     time.Time `db:"updated_at,omitempty"`
 }
 
 // AdminDeleteManyUsersRequest: Dùng để xóa nhiều user cùng lúc
 type AdminDeleteManyUsersRequest struct {
-	IDs []int64 `json:"ids" validate:"required,min=1"`
+	IDs    []int64 `json:"ids" validate:"required,min=1"`
+	Reason string  `json:"reason,omitempty"`
 }
 
 // RefreshTokenRequest: Gửi lên Refresh Token cũ để xin cấp mới
@@ -118,6 +121,7 @@ type AdminUserResponse struct {
 	UpdatedAt     time.Time  `json:"updated_at"`
 	LastActiveAt  *time.Time `json:"last_active_at,omitempty"`
 	DeletedAt     *time.Time `json:"deleted_at"`
+	BlockedReason *string    `json:"blocked_reason,omitempty"`
 }
 
 // LoginResponse: Trả về UserProfileResponse

@@ -88,6 +88,7 @@ func toAdminUserResponse(user model.User) model.AdminUserResponse {
 		UpdatedAt:     user.UpdatedAt,
 		LastActiveAt:  user.LastActiveAt,
 		DeletedAt:     user.DeletedAt,
+		BlockedReason: user.BlockedReason,
 	}
 }
 
@@ -533,7 +534,7 @@ func (c *userController) UpdateUserProfile(id int64, req model.UserUpdateProfile
 func (c *userController) DeleteMyAccount(id int64) error {
 	logger.WarnLogger.Printf("User ID %d yêu cầu tự xóa tài khoản", id)
 
-	err := c.UserRepo.DeleteSoftUsers([]int64{id})
+	err := c.UserRepo.DeleteSoftUsers([]int64{id}, "Người dùng tự xóa tài khoản")
 	if err != nil {
 		return err
 	}
@@ -558,7 +559,11 @@ func (c *userController) DeleteMyAccount(id int64) error {
 func (c *userController) DeleteSoftUsers(req model.AdminDeleteManyUsersRequest) error {
 	// Gọi Repo
 	logger.WarnLogger.Printf("Admin yêu cầu xóa %d users", len(req.IDs))
-	return c.UserRepo.DeleteSoftUsers(req.IDs)
+	reason := strings.TrimSpace(req.Reason)
+	if reason == "" {
+		return errors.New("lý do bị chặn là bắt buộc")
+	}
+	return c.UserRepo.DeleteSoftUsers(req.IDs, reason)
 }
 
 // Hàm bỏ chặn nhiều user cùng lúc

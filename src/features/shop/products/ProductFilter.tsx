@@ -45,13 +45,13 @@ export function ProductFilter({
   return (
     <aside className="hidden lg:flex lg:col-span-3 flex-col gap-8 sticky top-32">
       <div className="flex items-center justify-between pb-4 border-b border-surface-variant">
-        <h2 className="font-headline font-bold text-xl text-on-surface">Filters</h2>
+        <h2 className="font-headline font-bold text-xl text-on-surface">Bộ lọc</h2>
         <button onClick={handleReset} className="text-primary font-body text-sm font-medium hover:text-primary-container transition-colors">Reset</button>
       </div>
 
       {/* Brand Filter */}
       <div className="flex flex-col gap-4">
-        <h3 className="font-headline font-semibold text-lg text-on-surface">Brand</h3>
+        <h3 className="font-headline font-semibold text-lg text-on-surface">Thương hiệu</h3>
         <div className="flex flex-col gap-3 font-body text-body-md text-on-surface-variant">
           {/* Tất cả */}
           <label className="flex items-center gap-3 cursor-pointer group">

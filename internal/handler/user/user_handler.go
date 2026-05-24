@@ -415,7 +415,7 @@ func (h *userHandler) DeleteSoftUsers(w http.ResponseWriter, r *http.Request) {
 
 	err := h.UserController.DeleteSoftUsers(req)
 	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Lỗi xóa danh sách user", err.Error())
+		utils.WriteError(w, http.StatusBadRequest, "Lỗi xóa danh sách user", err.Error())
 		return
 	}
 

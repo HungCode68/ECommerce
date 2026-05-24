@@ -74,6 +74,8 @@ export function VariantForm({ productId, productName, variant, onClose }: Varian
   const isEdit = !!variant
   const [isBulkMode, setIsBulkMode] = useState(false)
   const [bulkSelections, setBulkSelections] = useState<VariantSelectionMap>({})
+  const [optionGroups, setOptionGroups] = useState<VariantOptionGroup[]>(QUICK_OPTIONS)
+  const [draftOptionValues, setDraftOptionValues] = useState<Record<string, string>>({})
 
   const parseOptionEntries = (options: string) =>
     options
@@ -197,7 +199,7 @@ export function VariantForm({ productId, productName, variant, onClose }: Varian
   const currentOptionValues = watch('option_values')
 
   const buildBulkCombinations = (selections: VariantSelectionMap) => {
-    const activeGroups = QUICK_OPTIONS
+    const activeGroups = optionGroups
       .map((group) => ({
         label: group.label,
         values: selections[group.label] ?? [],
@@ -252,6 +254,67 @@ export function VariantForm({ productId, productName, variant, onClose }: Varian
 
     const pair = `${label}: ${value}`
     return currentOptionValues?.includes(pair)
+  }
+
+  const isCustomQuickOption = (label: string, value: string) =>
+    !QUICK_OPTIONS.some(
+      (group) => group.label === label && group.values.includes(value),
+    )
+
+  const addQuickOptionValue = (label: string) => {
+    const nextValue = draftOptionValues[label]?.trim()
+    if (!nextValue) {
+      return
+    }
+
+    const group = optionGroups.find((item) => item.label === label)
+    if (!group) {
+      return
+    }
+
+    if (group.values.some((value) => value.toLowerCase() === nextValue.toLowerCase())) {
+      toast.error('Giá trị này đã tồn tại')
+      return
+    }
+
+    setOptionGroups((current) =>
+      current.map((item) =>
+        item.label === label
+          ? { ...item, values: [...item.values, nextValue] }
+          : item,
+      ),
+    )
+    setDraftOptionValues((current) => ({ ...current, [label]: '' }))
+  }
+
+  const removeQuickOptionValue = (label: string, value: string) => {
+    if (!isCustomQuickOption(label, value)) {
+      return
+    }
+
+    setOptionGroups((current) =>
+      current.map((item) =>
+        item.label === label
+          ? { ...item, values: item.values.filter((entry) => entry !== value) }
+          : item,
+      ),
+    )
+
+    setBulkSelections((current) => ({
+      ...current,
+      [label]: (current[label] ?? []).filter((entry) => entry !== value),
+    }))
+
+    const pair = `${label}: ${value}`
+    const nextOptions = (currentOptionValues ?? '')
+      .split(',')
+      .map((part) => part.trim())
+      .filter((part) => part && part !== pair)
+      .join(', ')
+
+    if (nextOptions !== currentOptionValues) {
+      setValue('option_values', nextOptions)
+    }
   }
 
   const toggleBulkOption = (label: string, value: string) => {
@@ -479,29 +542,74 @@ export function VariantForm({ productId, productName, variant, onClose }: Varian
 
           <Field label="Phân loại *" error={errors.option_values?.message} className="md:col-span-2">
             <div className="mb-3 flex flex-col gap-3">
-              {QUICK_OPTIONS.map((group) => (
-                <div key={group.label} className="flex flex-wrap items-center gap-1.5">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1 w-20">
-                    {group.label}:
-                  </span>
-                  {group.values.map((val) => {
-                    const active = isOptionSelected(group.label, val)
-                    return (
-                      <button
-                        key={val}
-                        type="button"
-                        onClick={() => appendOption(group.label, val)}
-                        className={cn(
-                          'rounded-full border px-2.5 py-1 text-[11px] font-medium transition-all active:scale-95',
-                          active
-                            ? 'border-cyan-500 bg-cyan-500 text-white shadow-sm shadow-cyan-100'
-                            : 'border-slate-200 bg-white text-slate-600 hover:border-cyan-400 hover:text-cyan-600',
-                        )}
-                      >
-                        {val}
-                      </button>
-                    )
-                  })}
+              {optionGroups.map((group) => (
+                <div key={group.label} className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="mr-1 w-20 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      {group.label}:
+                    </span>
+                    {group.values.map((val) => {
+                      const active = isOptionSelected(group.label, val)
+                      const custom = isCustomQuickOption(group.label, val)
+                      return (
+                        <div key={`${group.label}-${val}`} className="group relative inline-flex">
+                          <button
+                            type="button"
+                            onClick={() => appendOption(group.label, val)}
+                            className={cn(
+                              'rounded-full border px-2.5 py-1 pr-7 text-[11px] font-medium transition-all active:scale-95',
+                              active
+                                ? 'border-cyan-500 bg-cyan-500 text-white shadow-sm shadow-cyan-100'
+                                : 'border-slate-200 bg-white text-slate-600 hover:border-cyan-400 hover:text-cyan-600',
+                              !custom && 'pr-2.5',
+                            )}
+                          >
+                            {val}
+                          </button>
+                          {custom && (
+                            <button
+                              type="button"
+                              onClick={() => removeQuickOptionValue(group.label, val)}
+                              className={cn(
+                                'absolute right-2 top-1/2 -translate-y-1/2 text-[10px] transition-colors',
+                                active ? 'text-white/80 hover:text-white' : 'text-slate-400 hover:text-red-500',
+                              )}
+                              aria-label={`Xóa ${val}`}
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <div className="flex items-center gap-2 pl-[5.25rem]">
+                    <input
+                      type="text"
+                      value={draftOptionValues[group.label] ?? ''}
+                      onChange={(event) =>
+                        setDraftOptionValues((current) => ({
+                          ...current,
+                          [group.label]: event.target.value,
+                        }))
+                      }
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault()
+                          addQuickOptionValue(group.label)
+                        }
+                      }}
+                      placeholder={`Thêm ${group.label.toLowerCase()}`}
+                      className="h-8 w-full max-w-[220px] rounded-full border border-slate-200 bg-white px-3 text-[11px] text-slate-600 outline-none transition focus:border-cyan-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => addQuickOptionValue(group.label)}
+                      className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-[11px] font-semibold text-cyan-700 transition hover:bg-cyan-100"
+                    >
+                      Thêm
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

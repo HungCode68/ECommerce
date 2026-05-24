@@ -1,16 +1,26 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Ban, RotateCcw } from 'lucide-react'
+import { Ban, Pencil, RotateCcw } from 'lucide-react'
 import { toast } from 'sonner'
 import { adminUserApi, type AdminUser, type AdminUserStatus } from '@/api/admin/adminUser.api'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { Pagination } from '@/components/shared/Pagination'
 import { SearchInput } from '@/components/shared/SearchInput'
 import { TableSkeleton } from '@/components/shared/LoadingSkeleton'
 import { usePagination } from '@/hooks/usePagination'
 import { queryKeys } from '@/lib/queryKeys'
-import { formatDate } from '@/utils/formatters/format'
+import { formatDate, formatDateTime } from '@/utils/formatters/format'
 
 type UserStatusFilter = AdminUserStatus | 'all'
 
@@ -21,7 +31,6 @@ const USER_STATUS_FILTER_OPTIONS: Array<{
   { value: 'all', label: 'Tất cả trạng thái' },
   { value: 'active', label: 'Đang hoạt động' },
   { value: 'offline', label: 'Đã offline' },
-  { value: 'inactive', label: 'Chưa hoạt động' },
   { value: 'blocked', label: 'Đã chặn' },
 ]
 
@@ -37,10 +46,6 @@ const USER_STATUS_META: Record<
     label: 'Đã offline',
     className: 'bg-cyan-100 text-cyan-700',
   },
-  inactive: {
-    label: 'Chưa hoạt động',
-    className: 'bg-amber-100 text-amber-700',
-  },
   blocked: {
     label: 'Đã chặn',
     className: 'bg-red-100 text-red-700',
@@ -55,6 +60,10 @@ export function UsersPage() {
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [blockOpen, setBlockOpen] = useState(false)
   const [restoreOpen, setRestoreOpen] = useState(false)
+  const [blockReason, setBlockReason] = useState('')
+  const [editReasonOpen, setEditReasonOpen] = useState(false)
+  const [editingUser, setEditingUser] = useState<AdminUser | null>(null)
+  const [editingReason, setEditingReason] = useState('')
 
   const { data: listData, isLoading: listLoading } = useQuery({
     queryKey: queryKeys.admin.users.list({ page, limit }),
@@ -69,14 +78,17 @@ export function UsersPage() {
   })
 
   const { mutate: blockMany, isPending: blocking } = useMutation({
-    mutationFn: (ids: number[]) => adminUserApi.blockMany(ids),
-    onSuccess: (_data, ids) => {
-      toast.success(`Đã chặn ${ids.length} người dùng`)
+    mutationFn: ({ ids, reason }: { ids: number[]; reason: string }) =>
+      adminUserApi.blockMany(ids, reason),
+    onSuccess: (_data, variables) => {
+      toast.success(`Đã chặn ${variables.ids.length} người dùng`)
       setSelectedIds([])
       setBlockOpen(false)
+      setBlockReason('')
       qc.invalidateQueries({ queryKey: queryKeys.admin.users.all })
     },
-    onError: () => toast.error('Chặn thất bại'),
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : 'Chặn thất bại'),
   })
 
   const { mutate: restoreOne, isPending: restoring } = useMutation({
@@ -97,6 +109,20 @@ export function UsersPage() {
       qc.invalidateQueries({ queryKey: queryKeys.admin.users.all })
     },
     onError: () => toast.error('Bỏ chặn thất bại'),
+  })
+
+  const { mutate: updateBlockedReason, isPending: updatingBlockedReason } = useMutation({
+    mutationFn: ({ id, reason }: { id: number; reason: string }) =>
+      adminUserApi.update(id, { blocked_reason: reason }),
+    onSuccess: () => {
+      toast.success('Đã cập nhật lý do bị chặn')
+      setEditReasonOpen(false)
+      setEditingUser(null)
+      setEditingReason('')
+      qc.invalidateQueries({ queryKey: queryKeys.admin.users.all })
+    },
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : 'Cập nhật lý do thất bại'),
   })
 
   const baseUsers: AdminUser[] = search ? (searchResults ?? []) : (listData?.data ?? [])
@@ -140,6 +166,12 @@ export function UsersPage() {
       visibleIds.forEach((id) => merged.add(id))
       return Array.from(merged)
     })
+  }
+
+  const openEditReasonDialog = (user: AdminUser) => {
+    setEditingUser(user)
+    setEditingReason(user.blocked_reason ?? '')
+    setEditReasonOpen(true)
   }
 
   return (
@@ -228,6 +260,12 @@ export function UsersPage() {
                 <th className="px-4 py-3 text-left font-medium text-slate-600">Vai trò</th>
                 <th className="px-4 py-3 text-left font-medium text-slate-600">Trạng thái</th>
                 <th className="px-4 py-3 text-left font-medium text-slate-600">
+                  Đăng nhập cuối
+                </th>
+                <th className="px-4 py-3 text-left font-medium text-slate-600">
+                  Lý do bị chặn
+                </th>
+                <th className="px-4 py-3 text-left font-medium text-slate-600">
                   Ngày tham gia
                 </th>
                 <th className="px-4 py-3 text-left font-medium text-slate-600">Hành động</th>
@@ -278,18 +316,34 @@ export function UsersPage() {
                         {statusMeta.label}
                       </span>
                     </td>
+                    <td className="px-4 py-3 text-slate-500">
+                      {formatDateTime(user.last_active_at ?? undefined)}
+                    </td>
+                    <td className="px-4 py-3 text-slate-500">
+                      {user.status === 'blocked' ? user.blocked_reason || 'Không có lý do' : '—'}
+                    </td>
                     <td className="px-4 py-3 text-slate-400">{formatDate(user.created_at)}</td>
                     <td className="px-4 py-3">
                       {user.status === 'blocked' && !selectedIds.includes(user.id) ? (
-                        <button
-                          type="button"
-                          onClick={() => restoreOne(user.id)}
-                          disabled={restoring}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          <RotateCcw className="h-3.5 w-3.5" />
-                          Bỏ chặn
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openEditReasonDialog(user)}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                            Sửa lý do
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => restoreOne(user.id)}
+                            disabled={restoring}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            <RotateCcw className="h-3.5 w-3.5" />
+                            Bỏ chặn
+                          </button>
+                        </div>
                       ) : (
                         <span className="text-xs text-slate-300">—</span>
                       )}
@@ -307,15 +361,108 @@ export function UsersPage() {
         </div>
       )}
 
-      <ConfirmDialog
+      <AlertDialog
         open={blockOpen}
-        onOpenChange={setBlockOpen}
-        title="Chặn người dùng"
-        description={`Chặn ${selectedActiveIds.length} người dùng đã chọn? Người dùng bị chặn sẽ không đăng nhập được.`}
-        onConfirm={() => blockMany(selectedActiveIds)}
-        confirmLabel="Chặn"
-        loading={blocking}
-      />
+        onOpenChange={(open) => {
+          setBlockOpen(open)
+          if (!open) {
+            setBlockReason('')
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Chặn người dùng</AlertDialogTitle>
+            <AlertDialogDescription>
+              {`Chặn ${selectedActiveIds.length} người dùng đã chọn? Người dùng bị chặn sẽ không đăng nhập được.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-700" htmlFor="block-reason">
+              Lý do bị chặn
+            </label>
+            <textarea
+              id="block-reason"
+              value={blockReason}
+              onChange={(event) => setBlockReason(event.target.value)}
+              placeholder="Nhập lý do bị chặn"
+              className="min-h-24 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-slate-300"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={blocking}>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                const reason = blockReason.trim()
+                if (!reason) {
+                  event.preventDefault()
+                  toast.error('Vui lòng nhập lý do bị chặn')
+                  return
+                }
+                blockMany({ ids: selectedActiveIds, reason })
+              }}
+              disabled={blocking}
+            >
+              {blocking ? 'Đang xử lý...' : 'Chặn'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={editReasonOpen}
+        onOpenChange={(open) => {
+          setEditReasonOpen(open)
+          if (!open) {
+            setEditingUser(null)
+            setEditingReason('')
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sửa lý do bị chặn</AlertDialogTitle>
+            <AlertDialogDescription>
+              {editingUser
+                ? `Cập nhật lý do bị chặn cho tài khoản ${editingUser.username}.`
+                : 'Cập nhật lý do bị chặn cho tài khoản.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-700" htmlFor="edit-block-reason">
+              Lý do bị chặn
+            </label>
+            <textarea
+              id="edit-block-reason"
+              value={editingReason}
+              onChange={(event) => setEditingReason(event.target.value)}
+              placeholder="Nhập lý do bị chặn"
+              className="min-h-24 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-slate-300"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={updatingBlockedReason}>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                const reason = editingReason.trim()
+                if (!editingUser) {
+                  event.preventDefault()
+                  return
+                }
+                if (!reason) {
+                  event.preventDefault()
+                  toast.error('Vui lòng nhập lý do bị chặn')
+                  return
+                }
+                updateBlockedReason({ id: editingUser.id, reason })
+              }}
+              disabled={updatingBlockedReason}
+            >
+              {updatingBlockedReason ? 'Đang xử lý...' : 'Lưu'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <ConfirmDialog
         open={restoreOpen}

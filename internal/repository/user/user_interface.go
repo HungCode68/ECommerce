@@ -29,7 +29,7 @@ type UserRepo interface {
 	MarkEmailVerified(userID int64) error
 
 	// Delete Methods
-	DeleteSoftUsers(ids []int64) error
+	DeleteSoftUsers(ids []int64, reason string) error
 	RestoreSoftUsers(ids []int64) error
 	RevokeRefreshToken(userID int64) error
 }
