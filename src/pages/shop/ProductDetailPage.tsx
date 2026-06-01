@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { formatProductName } from '@/utils/formatters/format'
 import { productApi } from '@/api/product.api'
 import { reviewApi } from '@/api/review.api'
 import { cartApi } from '@/api/cart.api'
@@ -15,6 +16,7 @@ import { getErrorMessage } from '@/utils/httpError'
 import { getCheapestVariant, getVariantPrice, getVariantStock } from '@/utils/productVariant'
 import { ROUTES } from '@/utils/constants'
 import type { CreateReviewRequest, Product, ProductVariant } from '@/types/product.types'
+import { useCartStore } from '@/store/cartStore'
 
 type VariantAttributes = Record<string, string>
 type ProductSpec = { label: string; value: string }
@@ -193,6 +195,7 @@ export function ProductDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const qc = useQueryClient()
+  const { setCart, setBuyNow } = useCartStore()
   const productId = Number(id)
 
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
@@ -322,8 +325,32 @@ export function ProductDetailPage() {
     }
   }, [galleryItems, selectedAttributes, selectedImage, variantGroups, product])
 
+  const handleBuyNow = () => {
+    const variant = selectedVariant ?? fallbackVariant
+    if (!variant?.id) {
+      toast.error('Sản phẩm chưa có biến thể để mua')
+      return
+    }
+    if ((getVariantStock(variant) ?? 0) <= 0) {
+      toast.error('Sản phẩm đã hết hàng')
+      return
+    }
+
+    setBuyNow({
+      product_id: productId,
+      variant_id: variant.id,
+      quantity: qty,
+      price: displayPrice,
+      product_name: product?.name ?? '',
+      variant_name: variant.title?.trim() ?? '',
+      thumbnail_url: variant.thumbnail_url ?? product?.thumbnail_url ?? '',
+      stock_quantity: getVariantStock(variant) ?? 0,
+    })
+    navigate(ROUTES.CHECKOUT)
+  }
+
   const { mutate: addToCart, isPending: isAdding } = useMutation({
-    mutationFn: async (buyNow: boolean) => {
+    mutationFn: async () => {
       const variant = selectedVariant ?? fallbackVariant
       if (!variant?.id) {
         throw new Error('Sản phẩm chưa có biến thể để mua')
@@ -339,16 +366,14 @@ export function ProductDetailPage() {
         quantity: qty,
       })
 
-      return buyNow
+      const cart = await cartApi.getCart()
+      return cart
     },
-    onSuccess: (buyNow) => {
+    onSuccess: (cart) => {
+      setCart(cart?.items ?? [])
       qc.invalidateQueries({ queryKey: queryKeys.cart })
-      if (buyNow) {
-        navigate(ROUTES.CHECKOUT)
-      } else {
-        const addedItemName = selectedVariant?.title?.trim() || fallbackVariant?.title?.trim() || product?.name || 'sản phẩm'
-        toast.success(`Đã thêm ${addedItemName} vào giỏ hàng!`)
-      }
+      const addedItemName = selectedVariant?.title?.trim() || fallbackVariant?.title?.trim() || product?.name || 'sản phẩm'
+      toast.success(`Đã thêm ${addedItemName} vào giỏ hàng!`)
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, 'Vui lòng đăng nhập để mua hàng'))
@@ -386,7 +411,8 @@ export function ProductDetailPage() {
     return <div className="mx-auto max-w-[1200px] px-4 py-20 text-center text-[#4a4455]">Không tìm thấy sản phẩm.</div>
   }
 
-  const disableActions = isAdding || (selectedVariant ? getVariantStock(selectedVariant) <= 0 : false)
+  const currentVariant = selectedVariant ?? fallbackVariant;
+  const disableActions = isAdding || (currentVariant ? getVariantStock(currentVariant) <= 0 : true);
 
   return (
     <main className="mx-auto max-w-[1200px] space-y-10 px-4 py-6 md:px-6">
@@ -397,12 +423,12 @@ export function ProductDetailPage() {
           {primaryCategoryName}
         </Link>
         <span>&gt;</span>
-        <span className="text-[#1c1b1b]">{product.name}</span>
+        <span className="text-[#1c1b1b]">{formatProductName(product.name)}</span>
       </nav>
 
       <section className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-start">
         <ProductGallery
-          name={product.name}
+          name={formatProductName(product.name)}
           items={galleryItems}
           activeImage={selectedImage}
           onImageChange={handleGalleryItemSelect}
@@ -410,7 +436,7 @@ export function ProductDetailPage() {
 
         <ProductInfoPanel
           product={product}
-          productTitle={selectedVariant?.title?.trim() || product.name}
+          productTitle={formatProductName(product.name)}
           rating={reviews?.avg_rating ?? product.avg_rating ?? 0}
           ratingCount={reviews?.rating_count ?? product.rating_count ?? 0}
           price={displayPrice}
@@ -424,9 +450,8 @@ export function ProductDetailPage() {
           onChangeQty={setQty}
           onDecreaseQty={() => setQty((current) => Math.max(1, current - 1))}
           onIncreaseQty={() => setQty((current) => current + 1)}
-          buyNowLabel="Thêm vào giỏ"
-          onBuyNow={() => addToCart(true)}
-          onAddToCart={() => addToCart(false)}
+          onBuyNow={handleBuyNow}
+          onAddToCart={() => addToCart()}
           disableBuyNow={disableActions}
           disableAddToCart={disableActions}
         />

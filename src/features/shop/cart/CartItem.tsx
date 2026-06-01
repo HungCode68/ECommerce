@@ -1,6 +1,6 @@
 import { Minus, Plus, Trash2 } from 'lucide-react'
 import { ProductImage } from '@/components/shared/ProductImage'
-import { formatVND } from '@/utils/formatters/format'
+import { formatProductName, formatVND } from '@/utils/formatters/format'
 import type { CartItem as CartItemType } from '@/types/cart.types'
 
 type CartItemProps = {
@@ -36,15 +36,15 @@ export function CartItem({
           <div className="h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-[#f6f3f2]">
             <ProductImage
               src={item.thumbnail_url}
-              alt={item.product_name}
+              alt={formatProductName(item.product_name)}
               className="h-full w-full"
               imgClassName="h-full w-full object-contain p-2"
             />
           </div>
 
           <div className="min-w-0 flex-1">
-            <h3 className="line-clamp-2 text-base font-semibold text-[#1c1b1b]">{item.variant_name || item.product_name}</h3>
-            <p className="mt-1 text-sm text-[#4a4455]">{item.variant_name ? item.product_name : 'Phiên bản tiêu chuẩn'}</p>
+            <h3 className="line-clamp-2 text-base font-semibold text-[#1c1b1b]">{item.variant_name || formatProductName(item.product_name)}</h3>
+            <p className="mt-1 text-sm text-[#4a4455]">{item.variant_name ? formatProductName(item.product_name) : 'Phiên bản tiêu chuẩn'}</p>
             <p className="mt-2 text-base font-bold text-[#630ed4]">{formatVND(item.price)}</p>
           </div>
         </div>

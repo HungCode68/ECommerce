@@ -17,6 +17,8 @@ import { EmptyCart } from '@/features/shop/cart/EmptyCart'
 import { RecommendedProducts } from '@/features/shop/cart/RecommendedProducts'
 import type { CartItem as CartItemType } from '@/types/cart.types'
 
+const EMPTY_ARRAY: CartItemType[] = []
+
 export function CartPage() {
   const navigate = useNavigate()
   const qc = useQueryClient()
@@ -28,6 +30,7 @@ export function CartPage() {
     toggleSelect,
     toggleSelectAll,
     clearSelected,
+    clearBuyNow,
   } = useCartStore()
 
   const { data: cart, isLoading } = useQuery({
@@ -86,9 +89,9 @@ export function CartPage() {
     },
   })
 
-  const items = cart?.items ?? []
+  const items = cart?.items ?? EMPTY_ARRAY
   const checkedItems = useMemo(
-    () => items.filter((item) => selectedIds.includes(item.variant_id)),
+    () => items.filter((item) => selectedIds.includes(item.item_id)),
     [items, selectedIds],
   )
   const subtotal = checkedItems.reduce((acc, item) => acc + item.price * item.quantity, 0)
@@ -98,8 +101,9 @@ export function CartPage() {
   const busy = removingOne || removingSelected || updatingQty
 
   useEffect(() => {
+    clearBuyNow()
     setCart(items)
-  }, [items, setCart])
+  }, [items, setCart, clearBuyNow])
 
   useEffect(() => {
     if (items.length === 0) {
@@ -107,8 +111,8 @@ export function CartPage() {
       return
     }
 
-    const itemIdSet = new Set(items.map((item) => item.variant_id))
-    const hasInvalidSelection = selectedIds.some((id) => !itemIdSet.has(id))
+    const validIdSet = new Set(items.map((item) => item.item_id))
+    const hasInvalidSelection = selectedIds.some((id) => !validIdSet.has(id))
 
     if (hasInvalidSelection) {
       clearSelected()
@@ -171,8 +175,8 @@ export function CartPage() {
                   <CartItem
                     key={item.item_id}
                     item={item}
-                    checked={selectedIds.includes(item.variant_id)}
-                    onToggle={() => toggleSelect(item.variant_id)}
+                    checked={selectedIds.includes(item.item_id)}
+                    onToggle={() => toggleSelect(item.item_id)}
                     onDecrease={() =>
                       updateQty({ itemId: item.item_id, quantity: Math.max(1, item.quantity - 1) })
                     }

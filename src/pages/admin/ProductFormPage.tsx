@@ -859,6 +859,7 @@ function VariantModal({
             <VariantForm
               productId={product.id}
               productName={product.name}
+              categoryName={categoryNames[0]}
               variant={variant ?? undefined}
               onClose={onClose}
             />

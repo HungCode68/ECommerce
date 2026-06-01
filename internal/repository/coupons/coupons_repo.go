@@ -48,13 +48,13 @@ func (r *CouponsRepo) CreateCoupon(ctx context.Context, req model.CreateCouponRe
 func (r *CouponsRepo) UpdateCoupon(ctx context.Context, id int64, req model.UpdateCouponRequest) (*model.Coupons, error) {
 	now := time.Now()
 	query := `UPDATE coupons SET 
-		code = ?, description = ?, discount_type = ?, 
+		code = ?, description = ?, discount_type = ?, discount_value = ?,
 		min_order_value = ?, max_discount_amount = ?, usage_limit = ?, 
 		user_usage_limit = ?, use_usage_limit = ?, is_active = ?, start_date = ?, end_date = ?, updated_at = ?
 		WHERE id = ?`
 
 	_, err := r.DB.ExecContext(ctx, query,
-		req.Code, req.Description, req.DiscountType,
+		req.Code, req.Description, req.DiscountType, req.DiscountValue,
 		req.MinOrderValue, req.MaxDiscountAmount, req.UsageLimit,
 		req.UserUsageLimit, req.UseUsageLimit, req.IsActive, req.StartDate, req.EndDate, now, id,
 	)

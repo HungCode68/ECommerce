@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { categoryApi } from '@/api/category.api'
 import { productApi } from '@/api/product.api'
@@ -149,12 +149,14 @@ function sortProducts(products: Product[], sort: string) {
 }
 
 export function ProductsPage() {
+  const navigate = useNavigate()
+  const { categorySlug: pathCategorySlug } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
 
   const page = Number(searchParams.get('page') || '1')
   const search = searchParams.get('q') || ''
-  const categoryId = searchParams.get('category_id') ? Number(searchParams.get('category_id')) : undefined
+  const categorySlug = pathCategorySlug || searchParams.get('category') || undefined
   const selectedBrands = searchParams.getAll('brand').filter(Boolean)
   const priceRange = searchParams.get('price_range') || ''
   const selectedRam = searchParams.getAll('ram').filter(Boolean)
@@ -171,6 +173,18 @@ export function ProductsPage() {
     queryFn: categoryApi.getAll,
     staleTime: 5 * 60 * 1000,
   })
+
+  const categoryId = useMemo(() => {
+    if (categorySlug) {
+      const found = categories.find((cat) => cat.slug === categorySlug)
+      if (found) return found.id
+      const num = Number(categorySlug)
+      if (!isNaN(num)) return num
+    }
+    const legacyId = searchParams.get('category_id')
+    if (legacyId) return Number(legacyId)
+    return undefined
+  }, [categorySlug, categories, searchParams])
 
   const currentCategory = categories.find((category) => category.id === categoryId)
 
@@ -276,6 +290,43 @@ export function ProductsPage() {
     }
   }, [page, totalPages, searchParams, setSearchParams])
 
+  // Redirect to pretty SEO URL path if category is provided via legacy query parameters
+  useEffect(() => {
+    if (categories.length > 0) {
+      const legacyId = searchParams.get('category_id')
+      const legacySlug = searchParams.get('category')
+      
+      let targetSlug: string | undefined
+      
+      if (legacySlug) {
+        const found = categories.find((cat) => cat.slug === legacySlug)
+        if (found) {
+          targetSlug = found.slug
+        } else {
+          const num = Number(legacySlug)
+          if (!isNaN(num)) {
+            const foundById = categories.find((cat) => cat.id === num)
+            if (foundById) targetSlug = foundById.slug
+          }
+        }
+      } else if (legacyId) {
+        const num = Number(legacyId)
+        const foundById = categories.find((cat) => cat.id === num)
+        if (foundById) targetSlug = foundById.slug
+      }
+      
+      if (targetSlug && !pathCategorySlug) {
+        const nextParams = new URLSearchParams(searchParams)
+        nextParams.delete('category')
+        nextParams.delete('category_id')
+        const queryString = nextParams.toString()
+        const searchSuffix = queryString ? `?${queryString}` : ''
+        
+        navigate(`/${targetSlug}${searchSuffix}`, { replace: true })
+      }
+    }
+  }, [categories, searchParams, pathCategorySlug, navigate])
+
   const updateParams = (updater: (params: URLSearchParams) => void) => {
     const nextParams = new URLSearchParams(searchParams)
     updater(nextParams)
@@ -284,10 +335,20 @@ export function ProductsPage() {
   }
 
   const handleCategoryChange = (id?: number) => {
-    updateParams((params) => {
-      if (id) params.set('category_id', String(id))
-      else params.delete('category_id')
-    })
+    const currentParams = new URLSearchParams(searchParams)
+    currentParams.delete('category')
+    currentParams.delete('category_id')
+    currentParams.set('page', '1')
+    const queryString = currentParams.toString()
+    const searchSuffix = queryString ? `?${queryString}` : ''
+
+    if (id) {
+      const cat = categories.find((c) => c.id === id)
+      const slug = cat?.slug || String(id)
+      navigate(`/${slug}${searchSuffix}`)
+    } else {
+      navigate(`/san-pham${searchSuffix}`)
+    }
   }
 
   const handleBrandToggle = (brand: string) => {
@@ -332,8 +393,12 @@ export function ProductsPage() {
   }
 
   const handleReset = () => {
-    const nextParams = new URLSearchParams()
-    if (search) nextParams.set('q', search)
+    const nextParams = new URLSearchParams(searchParams)
+    nextParams.delete('brand')
+    nextParams.delete('price_range')
+    nextParams.delete('ram')
+    nextParams.delete('color')
+    nextParams.set('page', '1')
     setSearchParams(nextParams)
   }
 

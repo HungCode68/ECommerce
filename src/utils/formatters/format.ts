@@ -78,3 +78,20 @@ export function formatPercent(value: number): string {
 export function calculateShippingFee(subtotal: number): number {
   return subtotal >= 500_000 ? 0 : 30_000
 }
+
+/**
+ * Tự động thêm dấu cách cho tên sản phẩm bị dính liền (CamelCase/PascalCase)
+ * Ví dụ: "AppleMacBookAirM2" -> "Apple MacBook Air M2"
+ *        "iPhone14ProMax" -> "iPhone 14 Pro Max"
+ */
+export function formatProductName(name?: string): string {
+  if (!name) return ''
+  
+  let formatted = name.replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+  formatted = formatted.replace(/([a-z\d])([A-Z])/g, '$1 $2')
+  
+  formatted = formatted.replace(/([a-zA-Z]{2,})(\d)/g, '$1 $2')
+  formatted = formatted.replace(/(\d)([a-zA-Z]{2,})/g, '$1 $2')
+  
+  return formatted.replace(/\s+/g, ' ').trim()
+}

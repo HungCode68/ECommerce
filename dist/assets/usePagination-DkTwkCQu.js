@@ -1,0 +1,1 @@
+import{r as s,a5 as o,a6 as c}from"./index-CjaK6ijQ.js";function l({initialPage:n=o,initialLimit:r=c}={}){const[g,a]=s.useState(n),[e]=s.useState(r);return{page:g,limit:e,totalPages:t=>Math.ceil(t/e),goToPage:t=>{a(t)},reset:()=>{a(o)}}}export{l as u};

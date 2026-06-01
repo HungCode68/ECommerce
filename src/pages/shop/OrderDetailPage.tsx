@@ -5,7 +5,7 @@ import { orderApi } from '@/api/order.api'
 import { queryKeys } from '@/lib/queryKeys'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton'
-import { formatVND, formatDateTime } from '@/utils/formatters/format'
+import { formatVND, formatDateTime, formatProductName } from '@/utils/formatters/format'
 import { ROUTES } from '@/utils/constants'
 
 export function OrderDetailPage() {
@@ -52,7 +52,7 @@ export function OrderDetailPage() {
           {items.map((item, i) => (
             <div key={i} className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-800">{item.product_name ?? item.title ?? `Sản phẩm #${item.product_id}`}</p>
+                <p className="text-sm font-medium text-slate-800">{formatProductName(item.product_name ?? item.title ?? `Sản phẩm #${item.product_id}`)}</p>
                 <p className="text-xs text-slate-400">x{item.quantity}</p>
               </div>
               <p className="font-mono text-sm font-semibold">{formatVND((item.unit_price ?? item.price ?? 0) * item.quantity)}</p>

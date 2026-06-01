@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -27,14 +27,17 @@ type LoginFormData = z.infer<typeof loginSchema>
 
 export function LoginPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { user, isAuthenticated, setAuth } = useAuthStore()
   const [showPassword, setShowPassword] = useState(false)
 
+  const from = location.state?.from || ROUTES.HOME
+
   useEffect(() => {
     if (isAuthenticated && user) {
-      navigate(ROUTES.HOME, { replace: true })
+      navigate(from, { replace: true })
     }
-  }, [isAuthenticated, user, navigate])
+  }, [isAuthenticated, user, navigate, from])
 
   const loginForm = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),

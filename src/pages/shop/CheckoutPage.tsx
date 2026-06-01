@@ -13,7 +13,8 @@ import { addressApi } from '@/api/address.api'
 import { couponApi } from '@/api/coupon.api'
 import { queryKeys } from '@/lib/queryKeys'
 import { useCartStore } from '@/store/cartStore'
-import { formatVND } from '@/utils/formatters/format'
+import { useAuthStore } from '@/store/authStore'
+import { formatProductName, formatVND } from '@/utils/formatters/format'
 import { ROUTES } from '@/utils/constants'
 import { cn } from '@/lib/utils'
 import { ProductImage } from '@/components/shared/ProductImage'
@@ -28,23 +29,46 @@ type CheckoutFormData = z.infer<typeof checkoutSchema>
 
 export function CheckoutPage() {
   const navigate = useNavigate()
-  const { selectedIds } = useCartStore()
+  const { isAuthenticated } = useAuthStore()
+  const { selectedIds, buyNowItem, clearBuyNow } = useCartStore()
   const qc = useQueryClient()
   const [couponCode, setCouponCode] = useState('')
   const [discount, setDiscount] = useState(0)
   const [couponLoading, setCouponLoading] = useState(false)
+  const [appliedCode, setAppliedCode] = useState('')
 
-  const { data: cart } = useQuery({ queryKey: queryKeys.cart, queryFn: cartApi.getCart })
+  const { data: cart } = useQuery({ queryKey: queryKeys.cart, queryFn: cartApi.getCart, enabled: isAuthenticated })
   const { data: addresses } = useQuery({
     queryKey: queryKeys.addressKeys.all,
     queryFn: addressApi.getList,
+    enabled: isAuthenticated,
   })
 
-  const checkedItems = (cart?.items ?? []).filter((i) => selectedIds.includes(i.variant_id))
+  // Buy Now flow: use the stored item directly (not from cart)
+  // Cart checkout flow: filter cart items by selectedIds
+  const checkedItems: Array<{
+    product_id: number
+    variant_id: number
+    quantity: number
+    price: number
+    product_name: string
+    variant_name: string
+    thumbnail_url: string
+    item_id?: number
+  }> = buyNowItem
+    ? [buyNowItem]
+    : (cart?.items ?? []).filter((i) => selectedIds.includes(i.item_id))
+
   const subtotal = checkedItems.reduce((acc, i) => acc + i.price * i.quantity, 0)
   const shippingFee = subtotal >= 500_000 ? 0 : 30_000
   const total = subtotal + shippingFee - discount
   const totalQuantity = checkedItems.reduce((acc, item) => acc + item.quantity, 0)
+
+  const { data: availableCoupons } = useQuery({
+    queryKey: ['available-coupons', subtotal],
+    queryFn: () => couponApi.getAvailable({ order_amount: subtotal }),
+    enabled: subtotal > 0,
+  })
 
   const { register, handleSubmit, watch, formState: { errors } } = useForm<CheckoutFormData>({
     resolver: zodResolver(checkoutSchema),
@@ -62,10 +86,11 @@ export function CheckoutPage() {
           variant_id: i.variant_id,
           quantity: i.quantity,
         })),
-        order_coupon_code: couponCode || undefined,
+        order_coupon_code: appliedCode || undefined,
       }),
     onSuccess: (order) => {
       toast.success('Đặt hàng thành công!')
+      clearBuyNow()
       qc.invalidateQueries({ queryKey: queryKeys.cart })
       navigate(ROUTES.ORDER_DETAIL(order.id))
     },
@@ -78,19 +103,39 @@ export function CheckoutPage() {
       toast.error('Đặt hàng thất bại, vui lòng thử lại')
     },
   })
-
-  const applyCoupon = async () => {
-    if (!couponCode.trim()) return
+  const handlePreSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (!isAuthenticated) {
+      toast.error('Bạn cần đăng nhập trước khi thanh toán!')
+      setTimeout(() => {
+        navigate(ROUTES.LOGIN, { state: { from: ROUTES.CHECKOUT } })
+      }, 1500)
+      return
+    }
+    handleSubmit((d) => placeOrder(d))(e)
+  }
+  const applyCoupon = async (codeToApply?: string) => {
+    const code = (codeToApply || couponCode).trim()
+    if (!code) return
     setCouponLoading(true)
     try {
-      const result = await couponApi.apply({ code: couponCode, order_amount: subtotal })
+      const result = await couponApi.apply({ code, order_amount: subtotal })
       setDiscount(result.discount)
+      setAppliedCode(code)
+      setCouponCode(code)
       toast.success(`Áp dụng mã thành công! Giảm ${formatVND(result.discount)}`)
     } catch {
-      toast.error('Mã giảm giá không hợp lệ')
+      toast.error('Mã giảm giá không hợp lệ hoặc không đủ điều kiện')
     } finally {
       setCouponLoading(false)
     }
+  }
+
+  const removeCoupon = () => {
+    setDiscount(0)
+    setAppliedCode('')
+    setCouponCode('')
+    toast.info('Đã huỷ áp dụng mã giảm giá')
   }
 
   return (
@@ -123,7 +168,7 @@ export function CheckoutPage() {
       </div>
 
       <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_400px]">
-        <form onSubmit={handleSubmit((d) => placeOrder(d))} className="space-y-5">
+        <form onSubmit={handlePreSubmit} className="space-y-5">
           {/* Address */}
           <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
             <div className="mb-5 flex items-center gap-3">
@@ -245,11 +290,11 @@ export function CheckoutPage() {
                 {checkedItems.map((item) => (
                   <div key={item.item_id} className="flex gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
                     <div className="h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                      <ProductImage src={item.thumbnail_url} alt={item.product_name} imgClassName="h-full w-full object-contain p-2" />
+                      <ProductImage src={item.thumbnail_url} alt={formatProductName(item.product_name)} imgClassName="h-full w-full object-contain p-2" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="line-clamp-2 font-semibold text-slate-900">{item.variant_name || item.product_name}</p>
-                      <p className="mt-1 text-xs text-slate-500">{item.variant_name ? item.product_name : 'Phiên bản tiêu chuẩn'}</p>
+                      <p className="line-clamp-2 font-semibold text-slate-900">{item.variant_name || formatProductName(item.product_name)}</p>
+                      <p className="mt-1 text-xs text-slate-500">{item.variant_name ? formatProductName(item.product_name) : 'Phiên bản tiêu chuẩn'}</p>
                       <div className="mt-3 flex items-center justify-between gap-2">
                         <span className="text-xs font-semibold text-slate-500">x{item.quantity}</span>
                         <span className="text-sm font-bold text-slate-900">
@@ -261,27 +306,102 @@ export function CheckoutPage() {
                 ))}
               </div>
 
-              <div className="space-y-3 rounded-2xl bg-slate-50 p-4">
+              <div className="space-y-4 rounded-2xl bg-slate-50 p-4 border border-slate-200/50">
                 <div className="flex gap-2">
                   <input
                     value={couponCode}
                     onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                    placeholder="Mã giảm giá"
-                    className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    placeholder="Nhập mã giảm giá"
+                    disabled={couponLoading || !!appliedCode}
+                    className={cn(
+                      "flex-1 rounded-xl border px-3 py-2.5 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-primary/20",
+                      appliedCode 
+                        ? "border-emerald-200 bg-emerald-50/50 text-emerald-800" 
+                        : "border-slate-200 bg-white text-slate-800 focus:border-slate-400"
+                    )}
                   />
-                  <button
-                    type="button"
-                    onClick={applyCoupon}
-                    disabled={couponLoading}
-                    className="flex items-center gap-1 rounded-xl bg-slate-900 px-3 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
-                  >
-                    {couponLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Tag className="h-3.5 w-3.5" />}
-                    Áp dụng
-                  </button>
+                  {appliedCode ? (
+                    <button
+                      type="button"
+                      onClick={removeCoupon}
+                      className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-bold text-red-600 transition hover:bg-red-100 hover:text-red-700"
+                    >
+                      Huỷ
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => applyCoupon()}
+                      disabled={couponLoading || !couponCode.trim()}
+                      className="flex items-center gap-1 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white hover:bg-slate-800 disabled:opacity-50 transition"
+                    >
+                      {couponLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Tag className="h-3.5 w-3.5" />}
+                      Áp dụng
+                    </button>
+                  )}
                 </div>
-                <p className="text-xs text-slate-500">
-                  Có thể áp dụng coupon trước khi xác nhận đặt hàng.
-                </p>
+
+                {appliedCode && (
+                  <div className="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-100 p-3 text-xs text-emerald-800 font-semibold">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-[10px] text-white">✓</span>
+                    <div>
+                      <p className="font-bold">Đã áp dụng mã: {appliedCode}</p>
+                      <p className="text-[11px] text-emerald-600 font-normal">Giảm {formatVND(discount)} trực tiếp vào đơn hàng.</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Available Coupons list */}
+                {availableCoupons && availableCoupons.length > 0 && (
+                  <div className="space-y-2 pt-2 border-t border-slate-200">
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Mã giảm giá khả dụng</p>
+                    <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
+                      {availableCoupons.map((coupon) => {
+                        const isApplied = appliedCode === coupon.code
+                        return (
+                          <div 
+                            key={coupon.id} 
+                            className={cn(
+                              "relative flex items-center justify-between gap-3 rounded-xl border p-3 bg-white transition shadow-sm overflow-hidden",
+                              isApplied 
+                                ? "border-emerald-500 bg-emerald-50/10 ring-1 ring-emerald-500" 
+                                : "border-slate-200 hover:border-slate-300"
+                            )}
+                          >
+                            {/* Decorative Left Ticket Edge */}
+                            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-3 bg-slate-50 rounded-r-full border-y border-r border-slate-200" />
+                            
+                            <div className="pl-2">
+                              <span className="font-mono text-xs font-black bg-slate-100 text-slate-800 px-2 py-0.5 rounded border border-slate-200">
+                                {coupon.code}
+                              </span>
+                              <p className="mt-1.5 text-xs font-bold text-slate-800">
+                                Giảm {coupon.type === 'percent' ? `${coupon.value}%` : formatVND(coupon.value)}
+                              </p>
+                              <p className="mt-0.5 text-[10px] text-slate-500">
+                                Đơn tối thiểu {formatVND(coupon.min_order_amount)}
+                              </p>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => isApplied ? removeCoupon() : applyCoupon(coupon.code)}
+                              disabled={couponLoading}
+                              className={cn(
+                                "rounded-lg px-2.5 py-1 text-xs font-bold transition",
+                                isApplied
+                                  ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
+                                  : "bg-slate-900 text-white hover:bg-slate-800"
+                              )}
+                            >
+                              {isApplied ? 'Bỏ' : 'Dùng'}
+                            </button>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2 text-sm">

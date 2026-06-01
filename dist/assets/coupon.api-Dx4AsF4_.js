@@ -1,0 +1,1 @@
+import{x as t}from"./index-CjaK6ijQ.js";const p={getAvailable:async a=>(await t.post("/api/coupons/available",a)).data.data,validate:async a=>(await t.post("/api/coupons/validate",a)).data.data,apply:async a=>(await t.post("/api/coupons/apply",a)).data.data};export{p as c};

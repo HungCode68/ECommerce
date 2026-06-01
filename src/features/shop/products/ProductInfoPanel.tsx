@@ -25,7 +25,6 @@ type ProductInfoPanelProps = {
   onDecreaseQty: () => void
   onIncreaseQty: () => void
   onChangeQty: (qty: number) => void
-  buyNowLabel: string
   onBuyNow: () => void
   onAddToCart: () => void
   disableBuyNow?: boolean
@@ -109,7 +108,6 @@ export function ProductInfoPanel({
   onDecreaseQty,
   onIncreaseQty,
   onChangeQty,
-  buyNowLabel,
   onBuyNow,
   onAddToCart,
   disableBuyNow,
@@ -269,7 +267,7 @@ export function ProductInfoPanel({
             disabled={disableAddToCart}
             className="rounded-xl border border-[#630ed4] bg-white px-4 py-3 text-sm font-semibold text-[#630ed4] transition hover:bg-[#630ed4]/5 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {buyNowLabel}
+            Thêm vào giỏ hàng
           </button>
         </div>
       </div>

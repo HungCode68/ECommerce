@@ -17,14 +17,29 @@ function areCartItemsEqual(currentItems: CartItem[], nextItems: CartItem[]) {
   })
 }
 
+export type BuyNowItem = {
+  product_id: number
+  variant_id: number
+  quantity: number
+  price: number
+  product_name: string
+  variant_name: string
+  thumbnail_url: string
+  stock_quantity: number
+}
+
 type CartState = {
   items: CartItem[]
   selectedIds: number[]
+  buyNowItem: BuyNowItem | null
   totalCount: number
   setCart: (items: CartItem[]) => void
+  selectOnly: (id: number) => void
+  setBuyNow: (item: BuyNowItem) => void
   toggleSelect: (id: number) => void
   toggleSelectAll: () => void
   clearSelected: () => void
+  clearBuyNow: () => void
   reset: () => void
 }
 
@@ -33,6 +48,7 @@ export const useCartStore = create<CartState>()(
     (set, get) => ({
       items: [],
       selectedIds: [],
+      buyNowItem: null,
       totalCount: 0,
 
       setCart: (items) => {
@@ -46,6 +62,14 @@ export const useCartStore = create<CartState>()(
         set({ items, totalCount })
       },
 
+      selectOnly: (id) => {
+        set({ selectedIds: [id] })
+      },
+
+      setBuyNow: (item) => {
+        set({ buyNowItem: item })
+      },
+
       toggleSelect: (id) => {
         const { selectedIds } = get()
         if (selectedIds.includes(id)) {
@@ -57,7 +81,7 @@ export const useCartStore = create<CartState>()(
 
       toggleSelectAll: () => {
         const { items, selectedIds } = get()
-        const allIds = items.map((item) => item.variant_id)
+        const allIds = items.map((item) => item.item_id)
         const allSelected = allIds.every((id) => selectedIds.includes(id))
         set({ selectedIds: allSelected ? [] : allIds })
       },
@@ -68,8 +92,12 @@ export const useCartStore = create<CartState>()(
         set({ selectedIds: [] })
       },
 
+      clearBuyNow: () => {
+        set({ buyNowItem: null })
+      },
+
       reset: () => {
-        set({ items: [], selectedIds: [], totalCount: 0 })
+        set({ items: [], selectedIds: [], buyNowItem: null, totalCount: 0 })
       },
     }),
     {

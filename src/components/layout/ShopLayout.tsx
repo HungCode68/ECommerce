@@ -244,7 +244,7 @@ export function ShopLayout() {
             {homeCategories.map((cat) => (
               <Link
                 key={cat.id}
-                to={`${ROUTES.PRODUCTS}?category_id=${cat.id}`}
+                to={`/${cat.slug}`}
                 className="whitespace-nowrap text-[#4a4455] transition-colors hover:text-[#630ed4]"
               >
                 {cat.name}
@@ -278,7 +278,7 @@ export function ShopLayout() {
                 <NavItem to={ROUTES.HOME}>Trang chủ</NavItem>
                 <NavItem to={ROUTES.PRODUCTS}>Tất cả sản phẩm</NavItem>
                 {categories.map((cat) => (
-                  <NavItem key={cat.id} to={`${ROUTES.PRODUCTS}?category_id=${cat.id}`}>{cat.name}</NavItem>
+                  <NavItem key={cat.id} to={`/${cat.slug}`}>{cat.name}</NavItem>
                 ))}
               </div>
             </div>

@@ -181,17 +181,32 @@ func (r *cartRepository) GetCartItemsWithDetails(ctx context.Context, cartID int
 func (r *cartRepository) UpsertCartItem(ctx context.Context, cartID int64, req model.AddToCartRequest) error {
 	logger.DebugLogger.Printf("Repo: Upserting item for CartID: %d, VariantID: %d", cartID, req.VariantID)
 
-	query := `
-		INSERT INTO cart_items (cart_id, product_id, variant_id, quantity, created_at, updated_at)
-		VALUES (?, ?, ?, ?, NOW(), NOW())
-		ON DUPLICATE KEY UPDATE 
-			quantity = quantity + VALUES(quantity),
-			updated_at = NOW()
-	`
+	// Kiểm tra xem sản phẩm đã có trong giỏ hàng chưa
+	var existingQuantity int
+	checkQuery := `SELECT quantity FROM cart_items WHERE cart_id = ? AND variant_id = ? LIMIT 1`
+	err := r.db.QueryRowContext(ctx, checkQuery, cartID, req.VariantID).Scan(&existingQuantity)
 
-	_, err := r.db.ExecContext(ctx, query, cartID, req.ProductID, req.VariantID, req.Quantity)
-	if err != nil {
-		logger.ErrorLogger.Printf("Repo: Failed to upsert cart item: %v", err)
+	if err == nil {
+		// Đã tồn tại -> Cập nhật số lượng
+		updateQuery := `UPDATE cart_items SET quantity = quantity + ?, updated_at = NOW() WHERE cart_id = ? AND variant_id = ?`
+		_, err = r.db.ExecContext(ctx, updateQuery, req.Quantity, cartID, req.VariantID)
+		if err != nil {
+			logger.ErrorLogger.Printf("Repo: Failed to update existing cart item: %v", err)
+			return err
+		}
+	} else if err == sql.ErrNoRows {
+		// Chưa tồn tại -> Thêm mới
+		insertQuery := `
+			INSERT INTO cart_items (cart_id, product_id, variant_id, quantity, created_at, updated_at)
+			VALUES (?, ?, ?, ?, NOW(), NOW())
+		`
+		_, err = r.db.ExecContext(ctx, insertQuery, cartID, req.ProductID, req.VariantID, req.Quantity)
+		if err != nil {
+			logger.ErrorLogger.Printf("Repo: Failed to insert new cart item: %v", err)
+			return err
+		}
+	} else {
+		logger.ErrorLogger.Printf("Repo: Error checking existing cart item: %v", err)
 		return err
 	}
 

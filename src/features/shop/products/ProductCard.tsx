@@ -4,7 +4,7 @@ import { toast } from 'sonner'
 import { cartApi } from '@/api/cart.api'
 import { productApi } from '@/api/product.api'
 import { queryKeys } from '@/lib/queryKeys'
-import { formatVND } from '@/utils/formatters/format'
+import { formatProductName, formatVND } from '@/utils/formatters/format'
 import { getErrorMessage } from '@/utils/httpError'
 import { getCheapestVariant, getVariantStock, getVariantPrice } from '@/utils/productVariant'
 import { ROUTES } from '@/utils/constants'
@@ -62,7 +62,7 @@ export function ProductCard({ product, isHero = false }: ProductCardProps) {
           <div className="absolute inset-0 bg-gradient-to-br from-primary-container/5 to-transparent"></div>
           <ProductImage
             src={product.thumbnail_url}
-            alt={product.name}
+            alt={formatProductName(product.name)}
             imgClassName="z-10 h-auto transition-transform duration-700 group-hover:scale-105"
           />
           <span className="absolute top-4 left-4 px-3 py-1 bg-surface-container-lowest/80 backdrop-blur-md rounded-full text-xs font-bold text-primary tracking-wide">
@@ -77,7 +77,7 @@ export function ProductCard({ product, isHero = false }: ProductCardProps) {
         <div className="w-full md:w-1/2 flex flex-col justify-center gap-4 py-4">
           <Link to={ROUTES.PRODUCT_DETAIL(product.id)}>
             <h3 className="font-headline text-2xl font-bold tracking-tight text-on-surface group-hover:text-primary transition-colors line-clamp-2">
-              {product.name}
+              {formatProductName(product.name)}
             </h3>
           </Link>
           <p className="font-body text-sm text-on-surface-variant line-clamp-2">
@@ -111,7 +111,7 @@ export function ProductCard({ product, isHero = false }: ProductCardProps) {
       <Link to={ROUTES.PRODUCT_DETAIL(product.id)} className="w-full aspect-[4/5] relative bg-surface rounded-2xl p-6 flex items-center justify-center overflow-hidden">
         <ProductImage
           src={product.thumbnail_url}
-          alt={product.name}
+          alt={formatProductName(product.name)}
           imgClassName="z-10 h-auto transition-transform duration-700 group-hover:scale-110"
         />
         {stock === 0 && (
@@ -123,7 +123,7 @@ export function ProductCard({ product, isHero = false }: ProductCardProps) {
       <div className="flex flex-col flex-grow gap-2">
         <Link to={ROUTES.PRODUCT_DETAIL(product.id)}>
           <h3 className="font-headline text-lg font-bold tracking-tight text-on-surface group-hover:text-primary transition-colors line-clamp-2">
-            {product.name}
+            {formatProductName(product.name)}
           </h3>
         </Link>
         <p className="font-body text-xs text-on-surface-variant line-clamp-2">

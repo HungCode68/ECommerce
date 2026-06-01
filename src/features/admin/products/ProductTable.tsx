@@ -42,6 +42,14 @@ export function ProductTable() {
         : adminProductApi.getAllPaged({ page, limit }),
   })
 
+  const { data: brandSource } = useQuery({
+    queryKey: ['admin', 'products', 'brands', { category_id: selectedCategoryId }],
+    queryFn: () =>
+      selectedCategoryId
+        ? adminProductApi.search({ page: 1, limit: 100, category_id: selectedCategoryId })
+        : adminProductApi.getAllPaged({ page: 1, limit: 100 }),
+  })
+
   const { mutate: softDelete, isPending: deleting } = useMutation({
     mutationFn: () => adminProductApi.softDelete(selectedIds),
     onSuccess: () => {
@@ -54,6 +62,9 @@ export function ProductTable() {
   })
 
   const products = data?.data ?? []
+  const brandOptions = Array.from(
+    new Set((brandSource?.data ?? []).map((product) => product.brand).filter(Boolean)),
+  ).sort()
   const total = data?.pagination?.total ?? 0
   const pages = totalPages(total)
 
@@ -106,8 +117,7 @@ export function ProductTable() {
           className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 outline-none focus:border-blue-500 transition-colors"
         >
           <option value="">Tất cả thương hiệu</option>
-          {/* Extract unique brands from the current data if available, or just show the selected one */}
-          {Array.from(new Set(products.map(p => p.brand).filter(Boolean))).sort().map(brand => (
+          {brandOptions.map(brand => (
             <option key={brand} value={brand!}>{brand}</option>
           ))}
         </select>

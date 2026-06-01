@@ -47,6 +47,7 @@ type UpdateCouponRequest struct {
 	Code         string  `json:"code" validate:"required,min=3,max=50"`
 	Description  *string `json:"description" validate:"required,max=255"`
 	DiscountType *string `json:"discount_type" validate:"required,oneof=percentage fixed_amount shipping_percentage shipping_fixed"`
+	DiscountValue *float64 `json:"discount_value" validate:"required,gt=0"`
 
 	MinOrderValue     *float64 `json:"min_order_value" validate:"omitempty,gt=0"`
 	MaxDiscountAmount *float64 `json:"max_discount_amount" validate:"omitempty,gt=0"`

@@ -291,11 +291,9 @@ export function AppRoutes() {
           <Route
             path="thanh-toan"
             element={
-              <ProtectedRoute>
-                <SuspensePage>
-                  <CheckoutPage />
-                </SuspensePage>
-              </ProtectedRoute>
+              <SuspensePage>
+                <CheckoutPage />
+              </SuspensePage>
             }
           />
           <Route
@@ -336,6 +334,14 @@ export function AppRoutes() {
                   <ProfilePage />
                 </SuspensePage>
               </ProtectedRoute>
+            }
+          />
+          <Route
+            path=":categorySlug"
+            element={
+              <SuspensePage>
+                <ProductsPage />
+              </SuspensePage>
             }
           />
         </Route>

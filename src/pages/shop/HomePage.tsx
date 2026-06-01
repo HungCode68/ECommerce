@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 import type { Banner } from '@/types/banner.types'
 import type { Product } from '@/types/product.types'
 import { ROUTES } from '@/utils/constants'
-import { formatVND } from '@/utils/formatters/format'
+import { formatProductName, formatVND } from '@/utils/formatters/format'
 
 function getCategoryIcon(name: string) {
   const normalized = name.toLowerCase()
@@ -148,7 +148,7 @@ function HomeProductCard({
       <div className="mb-3 aspect-square overflow-hidden rounded-lg bg-[#f6f3f2]">
         <ProductImage
           src={product.thumbnail_url}
-          alt={product.name}
+          alt={formatProductName(product.name)}
           className="h-full w-full"
           imgClassName="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
           iconClassName="text-4xl"
@@ -156,7 +156,7 @@ function HomeProductCard({
       </div>
 
       <h3 className="mb-2 line-clamp-2 min-h-[42px] text-sm font-medium text-[#1c1b1b]">
-        {product.name}
+        {formatProductName(product.name)}
       </h3>
 
       <div className="mt-auto">
@@ -368,7 +368,7 @@ export function HomePage() {
                 >
                   <div className="min-w-0 flex-1">
                     <h3 className="line-clamp-2 text-lg font-semibold leading-[1.4] text-[#1c1b1b]">
-                      {product.name}
+                      {formatProductName(product.name)}
                     </h3>
                     <p className="mt-1 text-lg font-bold text-[#630ed4]">
                       {product.discount_percent > 0 ? `Giảm ${product.discount_percent}%` : formatVND(product.final_price)}
@@ -378,7 +378,7 @@ export function HomePage() {
                     </span>
                   </div>
                   <div className="h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-white p-2">
-                    <ProductImage src={product.thumbnail_url} alt={product.name} imgClassName="h-full w-full object-contain" />
+                    <ProductImage src={product.thumbnail_url} alt={formatProductName(product.name)} imgClassName="h-full w-full object-contain" />
                   </div>
                 </Link>
               ))
@@ -446,7 +446,7 @@ export function HomePage() {
                   ) : (
                     <Link
                       key={category.id}
-                      to={`${ROUTES.PRODUCTS}?category_id=${category.id}`}
+                      to={`/${category.slug}`}
                       className="group flex min-w-[100px] flex-col items-center gap-2"
                     >
                       <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#eae7e7] transition-colors group-hover:bg-[#7c3aed]">
@@ -476,7 +476,7 @@ export function HomePage() {
                   {getSectionTitle(category.name)}
                 </h2>
                 <Link
-                  to={`${ROUTES.PRODUCTS}?category_id=${category.id}`}
+                  to={`/${category.slug}`}
                   className="text-sm font-semibold text-[#630ed4] hover:underline"
                 >
                   {getViewAllLabel(category.name)} &gt;
@@ -550,7 +550,7 @@ export function HomePage() {
               <Link
                 to={
                   accessoryCategory
-                    ? `${ROUTES.PRODUCTS}?category_id=${accessoryCategory.id}`
+                    ? `/${accessoryCategory.slug}`
                     : ROUTES.PRODUCTS
                 }
                 className="inline-flex rounded-xl bg-[#630ed4] px-8 py-3 text-sm font-semibold text-white transition hover:opacity-90"

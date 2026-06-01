@@ -4,7 +4,7 @@ import { ProductImage } from '@/components/shared/ProductImage'
 import { cn } from '@/lib/utils'
 import type { Product } from '@/types/product.types'
 import { ROUTES } from '@/utils/constants'
-import { formatVND } from '@/utils/formatters/format'
+import { formatProductName, formatVND } from '@/utils/formatters/format'
 
 type ProductListingCardProps = {
   product: Product
@@ -47,7 +47,7 @@ export function ProductListingCard({
         <div className={cn('flex h-full w-full items-center justify-center rounded-lg bg-[#f6f3f2]')}>
           <ProductImage
             src={product.thumbnail_url}
-            alt={product.name}
+            alt={formatProductName(product.name)}
             imgClassName="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
           />
         </div>
@@ -60,7 +60,7 @@ export function ProductListingCard({
         )}
       >
         <h3 className="line-clamp-2 min-h-[42px] text-sm font-medium text-[#1c1b1b] transition-colors group-hover:text-[#630ed4]">
-          {product.name}
+          {formatProductName(product.name)}
         </h3>
 
         <div className="flex items-center gap-2 text-xs text-[#7b7487]">

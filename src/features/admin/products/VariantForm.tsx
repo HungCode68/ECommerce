@@ -47,7 +47,7 @@ type VariantOptionGroup = {
 
 type VariantSelectionMap = Record<string, string[]>
 
-const QUICK_OPTIONS = [
+const DEFAULT_QUICK_OPTIONS = [
   {
     label: 'Màu sắc',
     values: ['Đen', 'Trắng', 'Xanh', 'Đỏ', 'Vàng', 'Xám', 'Bạc', 'Hồng', 'Tím', 'Vàng Đồng'],
@@ -62,20 +62,41 @@ const QUICK_OPTIONS = [
   },
 ] satisfies VariantOptionGroup[]
 
+const ACCESSORY_QUICK_OPTIONS = [
+  {
+    label: 'Phiên bản',
+    values: ['Tiêu chuẩn', 'Pro'],
+  },
+] satisfies VariantOptionGroup[]
+
 type VariantFormProps = {
   productId: number
   productName: string
+  categoryName?: string
   variant?: ProductVariant
   onClose: () => void
 }
 
-export function VariantForm({ productId, productName, variant, onClose }: VariantFormProps) {
+export function VariantForm({ productId, productName, categoryName, variant, onClose }: VariantFormProps) {
   const qc = useQueryClient()
   const isEdit = !!variant
   const [isBulkMode, setIsBulkMode] = useState(false)
   const [bulkSelections, setBulkSelections] = useState<VariantSelectionMap>({})
-  const [optionGroups, setOptionGroups] = useState<VariantOptionGroup[]>(QUICK_OPTIONS)
+  const normalizedCategoryName = (categoryName ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase()
+  const isAccessoryCategory = normalizedCategoryName.includes('phu kien')
+  const quickOptions = isAccessoryCategory ? ACCESSORY_QUICK_OPTIONS : DEFAULT_QUICK_OPTIONS
+  const [optionGroups, setOptionGroups] = useState<VariantOptionGroup[]>(quickOptions)
   const [draftOptionValues, setDraftOptionValues] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    setOptionGroups(quickOptions)
+    setBulkSelections({})
+    setDraftOptionValues({})
+  }, [isAccessoryCategory])
 
   const parseOptionEntries = (options: string) =>
     options
@@ -257,7 +278,7 @@ export function VariantForm({ productId, productName, variant, onClose }: Varian
   }
 
   const isCustomQuickOption = (label: string, value: string) =>
-    !QUICK_OPTIONS.some(
+    !quickOptions.some(
       (group) => group.label === label && group.values.includes(value),
     )
 
@@ -469,7 +490,9 @@ export function VariantForm({ productId, productName, variant, onClose }: Varian
               <div>
                 <p className="text-sm font-semibold text-slate-800">Tạo hàng loạt theo tổ hợp</p>
                 <p className="text-xs leading-5 text-slate-500">
-                  Chọn nhiều màu, dung lượng hoặc RAM để hệ thống tự sinh toàn bộ biến thể.
+                  {isAccessoryCategory
+                    ? 'Chọn nhiều phiên bản để hệ thống tự sinh toàn bộ biến thể.'
+                    : 'Chọn nhiều màu, dung lượng hoặc RAM để hệ thống tự sinh toàn bộ biến thể.'}
                 </p>
               </div>
               <button
@@ -616,7 +639,7 @@ export function VariantForm({ productId, productName, variant, onClose }: Varian
             <textarea
               {...register('option_values')}
               rows={2}
-              placeholder="Màu: Đen, Dung lượng: 128GB"
+              placeholder={isAccessoryCategory ? 'Phiên bản: Pro' : 'Màu: Đen, Dung lượng: 128GB'}
               className={cn(inputClass(!!errors.option_values), 'resize-none')}
               readOnly={isBulkMode && !isEdit}
             />
