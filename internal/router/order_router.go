@@ -22,6 +22,9 @@ func NewOrderRouter(mux *http.ServeMux, orderHandler order.OrderHandler) http.Ha
 	//  Hủy đơn hàng
 	userGroup.HandleFunc("POST", "/{id}/cancel", orderHandler.CancelOrder)
 
+	//  Xác nhận đã chuyển tiền
+	userGroup.HandleFunc("POST", "/{id}/transferred", orderHandler.UserConfirmTransferred)
+
 	// =================================================================
 	adminGroup := newGroup(mux, "/api/admin/orders", middleware.AdminOnlyMiddleware)
 

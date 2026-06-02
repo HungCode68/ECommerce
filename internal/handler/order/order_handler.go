@@ -325,3 +325,27 @@ func (h *orderHandler) ConfirmPayment(w http.ResponseWriter, r *http.Request) {
 
 	utils.WriteJSON(w, http.StatusOK, "Xác nhận thanh toán thành công", nil)
 }
+
+// UserConfirmTransferred: Khách hàng báo đã chuyển tiền
+func (h *orderHandler) UserConfirmTransferred(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	if !ok || userID == 0 {
+		utils.WriteError(w, http.StatusUnauthorized, "Unauthorized", nil)
+		return
+	}
+
+	idStr := r.PathValue("id")
+	orderID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "ID đơn hàng không hợp lệ", nil)
+		return
+	}
+
+	err = h.OrderController.UserConfirmTransferred(r.Context(), userID, orderID)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err.Error(), nil)
+		return
+	}
+
+	utils.WriteJSON(w, http.StatusOK, "Thông báo đã chuyển khoản thành công", nil)
+}

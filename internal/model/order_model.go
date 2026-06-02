@@ -96,6 +96,7 @@ type OrderResponse struct {
 	Status          string                 `json:"status"`
 	TotalAmount     string                 `json:"total_amount"`
 	PaymentStatus   string                 `json:"payment_status"`
+	PaymentMethod   string                 `json:"payment_method"`
 	Note            string                 `json:"note,omitempty"`
 	ShippingAddress *OrderAddress          `json:"shipping_address,omitempty"`
 	Items           []OrderItemResponse    `json:"items,omitempty"`

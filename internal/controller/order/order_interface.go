@@ -30,4 +30,7 @@ type OrderController interface {
 
 	//  Admin xác nhận thanh toán
 	ConfirmPayment(ctx context.Context, orderID int64, status string, adminID int64) error
+
+	//  User xác nhận đã chuyển tiền
+	UserConfirmTransferred(ctx context.Context, userID int64, orderID int64) error
 }

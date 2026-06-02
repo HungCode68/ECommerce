@@ -26,4 +26,7 @@ type OrderHandler interface {
 
 	// Xác nhận thanh toán
 	ConfirmPayment(w http.ResponseWriter, r *http.Request)
+
+	// Khách hàng xác nhận đã chuyển tiền
+	UserConfirmTransferred(w http.ResponseWriter, r *http.Request)
 }

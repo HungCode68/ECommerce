@@ -423,6 +423,11 @@ func (c *orderController) GetMyOrder(ctx context.Context, userID int64, orderID 
 		})
 	}
 
+	paymentMethod := "cod"
+	if len(payments) > 0 {
+		paymentMethod = payments[0].Method
+	}
+
 	noteStr := ""
 	if order.Note != nil {
 		noteStr = *order.Note
@@ -438,6 +443,7 @@ func (c *orderController) GetMyOrder(ctx context.Context, userID int64, orderID 
 		Status:          order.Status,
 		TotalAmount:     utils.FormatVND(order.TotalAmount),
 		PaymentStatus:   order.PaymentStatus,
+		PaymentMethod:   paymentMethod,
 		Note:            noteStr,
 		ShippingAddress: address,
 		Items:           itemRes,
@@ -561,6 +567,11 @@ func (c *orderController) GetAdminOrderDetail(ctx context.Context, orderID int64
 		})
 	}
 
+	paymentMethod := "cod"
+	if len(payments) > 0 {
+		paymentMethod = payments[0].Method
+	}
+
 	noteStr := ""
 	if order.Note != nil {
 		noteStr = *order.Note
@@ -570,7 +581,7 @@ func (c *orderController) GetAdminOrderDetail(ctx context.Context, orderID int64
 	baseResponse := model.OrderResponse{
 		ID: order.ID, OrderNumber: order.OrderNumber, UserID: order.UserID, CustomerName: order.CustomerName,
 		FirstItemTitle: order.FirstItemTitle, ItemCount: len(itemRes), Status: order.Status,
-		TotalAmount: utils.FormatVND(order.TotalAmount), PaymentStatus: order.PaymentStatus, Note: noteStr,
+		TotalAmount: utils.FormatVND(order.TotalAmount), PaymentStatus: order.PaymentStatus, PaymentMethod: paymentMethod, Note: noteStr,
 		ShippingAddress: address, Items: itemRes, Payments: payRes,
 		PlacedAt: order.PlacedAt, UpdatedAt: order.UpdatedAt,
 		PaidAt:      order.PaidAt,
@@ -691,6 +702,69 @@ func (c *orderController) ConfirmPayment(ctx context.Context, orderID int64, sta
 	}
 
 	logger.InfoLogger.Printf("ConfirmPayment success. OrderID: %d confirmed by AdminID: %d", orderID, adminID)
+	return nil
+}
+
+// UserConfirmTransferred: Khách hàng thông báo xác nhận đã chuyển tiền
+func (c *orderController) UserConfirmTransferred(ctx context.Context, userID int64, orderID int64) error {
+	logger.InfoLogger.Printf("UserConfirmTransferred: UserID %d confirming transfer for OrderID %d", userID, orderID)
+
+	// Lấy thông tin đơn hàng
+	order, err := c.OrderRepo.GetOrderByID(ctx, orderID)
+	if err != nil {
+		logger.ErrorLogger.Printf("UserConfirmTransferred failed: Order ID %d not found. Error: %v", orderID, err)
+		return errors.New("không tìm thấy đơn hàng")
+	}
+
+	// Kiểm tra quyền sở hữu đơn hàng
+	if order.UserID != userID {
+		logger.WarnLogger.Printf("UserConfirmTransferred: User %d unauthorized to access order %d", userID, orderID)
+		return errors.New("bạn không có quyền thực hiện thao tác này")
+	}
+
+	// Đơn hàng đã được thanh toán rồi
+	if order.PaymentStatus == model.PaymentStatusPaid {
+		logger.WarnLogger.Printf("UserConfirmTransferred: Order %d already paid", orderID)
+		return errors.New("đơn hàng này đã được thanh toán rồi")
+	}
+
+	// Đơn hàng đã bị hủy
+	if order.Status == model.OrderStatusCancelled {
+		logger.WarnLogger.Printf("UserConfirmTransferred: Order %d already cancelled", orderID)
+		return errors.New("đơn hàng đã bị huỷ, không thể xác nhận thanh toán")
+	}
+
+	// 1. Tạo một Payment log mới ở trạng thái 'processing' (Đang đối soát)
+	payments, _ := c.OrderRepo.GetOrderPayments(ctx, orderID)
+	currentMethod := "bank_transfer"
+	if len(payments) > 0 {
+		currentMethod = payments[0].Method
+	}
+
+	newPaymentLog := &model.OrderPayment{
+		OrderID: orderID,
+		Method:  currentMethod,
+		Amount:  order.TotalAmount,
+		Status:  "processing", // Đang chờ đối soát
+		PaidAt:  nil,
+	}
+
+	err = c.OrderRepo.ConfirmPayment(ctx, orderID, newPaymentLog)
+	if err != nil {
+		logger.ErrorLogger.Printf("UserConfirmTransferred: ConfirmPayment failed. Error: %v", err)
+		return errors.New("không thể cập nhật trạng thái thanh toán")
+	}
+
+	// 2. Ghi nhận log lịch sử đơn hàng
+	note := "Khách hàng thông báo đã chuyển khoản thành công. Chờ Admin đối soát."
+	userIDPtr := &userID
+	err = c.OrderRepo.UpdateOrderStatus(ctx, orderID, order.Status, note, userIDPtr)
+	if err != nil {
+		logger.ErrorLogger.Printf("UserConfirmTransferred: UpdateOrderStatus failed. Error: %v", err)
+		return errors.New("không thể ghi nhận lịch sử đơn hàng")
+	}
+
+	logger.InfoLogger.Printf("UserConfirmTransferred success. OrderID: %d confirmed by UserID: %d", orderID, userID)
 	return nil
 }
 

@@ -10,6 +10,13 @@ import { formatVND, formatDateTime } from '@/utils/formatters/format'
 import { ORDER_STATUS_LABEL, ROUTES } from '@/utils/constants'
 import type { OrderStatus } from '@/types/order.types'
 
+const parseVNDToNumber = (vndStr: string | number | undefined | null): number => {
+  if (typeof vndStr === 'number') return vndStr
+  if (!vndStr) return 0
+  const cleanStr = vndStr.replace(/[^0-9-]/g, '')
+  return parseInt(cleanStr, 10) || 0
+}
+
 const NEXT_STATUSES: Partial<Record<OrderStatus, OrderStatus[]>> = {
   pending: ['confirmed', 'cancelled'],
   confirmed: ['shipping', 'cancelled'],
@@ -50,13 +57,11 @@ export function OrderDetailPage() {
 
   const nextStatuses = NEXT_STATUSES[order.status] ?? []
   const items = order.items ?? []
-  const subtotal = order.subtotal ?? items.reduce((sum, item) => {
-    const unitPrice = item.unit_price ?? item.price ?? 0
-    return sum + unitPrice * item.quantity
+  const rawSubtotal = items.reduce((sum, item) => {
+    return sum + parseVNDToNumber(item.line_subtotal ?? item.unit_price ?? item.price ?? 0)
   }, 0)
   const shippingFee = order.shipping_fee ?? 0
   const discount = order.discount ?? 0
-  const totalPayable = order.total_payable ?? Number(order.total_amount ?? 0)
 
   return (
     <div className="space-y-6">
@@ -67,11 +72,11 @@ export function OrderDetailPage() {
         <div className="flex-1">
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-bold text-slate-900">
-              Đơn hàng #ORD-{order.id.toString().padStart(4, '0')}
+              Đơn hàng #{order.order_number}
             </h1>
             <StatusBadge status={order.status} />
           </div>
-          <p className="text-sm text-slate-500">{formatDateTime(order.created_at)}</p>
+          <p className="text-sm text-slate-500">{formatDateTime(order.placed_at)}</p>
         </div>
       </div>
 
@@ -88,18 +93,18 @@ export function OrderDetailPage() {
                     <p className="text-sm font-medium text-slate-800">{item.product_name ?? item.title ?? `SP #${item.product_id}`}</p>
                     <p className="text-xs text-slate-400">x{item.quantity}</p>
                   </div>
-                  <p className="font-mono text-sm font-semibold">{formatVND((item.unit_price ?? item.price ?? 0) * item.quantity)}</p>
+                  <p className="font-mono text-sm font-semibold">{item.line_subtotal}</p>
                 </div>
               ))}
             </div>
             <div className="mt-4 space-y-1.5 text-sm">
-              <Row label="Tạm tính" value={formatVND(subtotal)} />
-              <Row label="Phí vận chuyển" value={formatVND(shippingFee)} />
+              <Row label="Tạm tính" value={formatVND(rawSubtotal)} />
+              <Row label="Phí vận chuyển" value={shippingFee === 0 ? 'Miễn phí' : formatVND(shippingFee)} />
               {discount > 0 && (
                 <Row label="Giảm giá" value={`-${formatVND(discount)}`} valueClass="text-green-600" />
               )}
               <div className="border-t border-slate-100 pt-2">
-                <Row label="Tổng thanh toán" value={formatVND(totalPayable)} valueClass="text-lg font-bold text-slate-900" />
+                <Row label="Tổng thanh toán" value={String(order.total_amount)} valueClass="text-lg font-bold text-slate-900" />
               </div>
             </div>
           </div>

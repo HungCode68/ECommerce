@@ -32,4 +32,9 @@ export const orderApi = {
     )
     return res.data.data
   },
+
+  confirmTransferred: async (id: number) => {
+    const res = await axiosClient.post<ApiResponse<any>>(`/api/orders/${id}/transferred`)
+    return res.data
+  },
 }

@@ -23,6 +23,15 @@ export type OrderItem = {
   variant_info?: string
 }
 
+export type OrderPayment = {
+  id: number
+  method: string
+  amount: string | number
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'refunded'
+  paid_at?: string
+  created_at?: string
+}
+
 export type Order = {
   id: number
   order_number: string
@@ -44,6 +53,7 @@ export type Order = {
   cancelled_at?: string
   cancel_reason?: string
   items?: OrderItem[]
+  payments?: OrderPayment[]
   // Legacy fields for compatibility
   payment_method?: PaymentMethod
   total_payable?: number
