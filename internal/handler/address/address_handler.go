@@ -41,6 +41,7 @@ func (h *addressHandler) CreateAddress(w http.ResponseWriter, r *http.Request) {
 
 	//  Validate
 	if errs := validator.Validate(req); errs != nil {
+		logger.WarnLogger.Printf("CreateAddress validation failed: %+v", errs)
 		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu đầu vào không hợp lệ", errs)
 		return
 	}

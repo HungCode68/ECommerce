@@ -1,0 +1,24 @@
+--- internal/repository/productreview/product_review_repo.go
++++ internal/repository/productreview/product_review_repo.go
+@@ -167,8 +167,19 @@
+ 	return reviews, nil
+ }
+ 
++func (pr *productReviewRepo) GetAverageRatingByProductID(productID int64) (float64, error) {
++	var avg sql.NullFloat64
++	err := pr.DB.QueryRow(`SELECT AVG(rating) FROM product_reviews WHERE product_id = ?`, productID).Scan(&avg)
++	if err != nil {
++		return 0, err
++	}
++	if !avg.Valid {
++		return 0, nil
++	}
++	return avg.Float64, nil
++}
++
+ func (pr *productReviewRepo) GetCountRatingByProductID(productID int64) (int64, error) {
+ 	var count int64
+-
+-
+ 	if err := pr.DB.QueryRow(`SELECT COUNT(*) FROM product_reviews WHERE product_id = ?`, productID).Scan(&count); err != nil {
+ 		return 0, err

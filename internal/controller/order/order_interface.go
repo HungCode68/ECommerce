@@ -13,6 +13,9 @@ type OrderController interface {
 	//  Lấy chi tiết đơn hàng của chính User
 	GetMyOrder(ctx context.Context, userID int64, orderID int64) (*model.OrderResponse, error)
 
+	//  Lấy chi tiết đơn hàng bằng mã đơn hàng (order_number)
+	GetMyOrderByCode(ctx context.Context, userID int64, orderCode string) (*model.OrderResponse, error)
+
 	//  Lấy danh sách đơn hàng của User
 	GetMyListOrders(ctx context.Context, userID int64, filter model.OrderFilter) ([]model.OrderResponse, int, error)
 

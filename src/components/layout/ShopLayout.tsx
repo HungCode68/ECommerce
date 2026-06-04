@@ -14,6 +14,7 @@ import { categoryApi } from '@/api/category.api'
 import { queryKeys } from '@/lib/queryKeys'
 import { ROUTES } from '@/utils/constants'
 import { cn } from '@/lib/utils'
+import { NotificationBell } from '@/components/shared/NotificationBell'
 import kcTechLogo from '@/assets/kc-tech-logo.svg'
 
 
@@ -225,7 +226,8 @@ export function ShopLayout() {
               </Link>
 
               {isAuthenticated ? (
-                <div className="shrink-0">
+                <div className="flex items-center gap-4 shrink-0">
+                  <NotificationBell />
                   <UserMenu />
                 </div>
               ) : (

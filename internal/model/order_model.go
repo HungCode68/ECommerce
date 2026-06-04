@@ -40,6 +40,7 @@ type Order struct {
 	PaidAt         *time.Time `json:"paid_at"         db:"paid_at"`
 	CompletedAt    *time.Time `json:"completed_at"    db:"completed_at"`
 	CancelledAt    *time.Time `json:"cancelled_at"    db:"cancelled_at"`
+	CancelReason   *string    `json:"cancel_reason"   db:"cancel_reason"`
 	CreatedAt      time.Time  `json:"created_at"      db:"created_at"`
 	UpdatedAt      time.Time  `json:"updated_at"      db:"updated_at"`
 }
@@ -63,7 +64,7 @@ type CreateOrderRequest struct {
 
 // Admin cập nhật trạng thái đơn hàng
 type AdminUpdateOrderRequest struct {
-	Status string `json:"status"    validate:"required,oneof=pending processing paid shipped completed cancelled refunded"`
+	Status string `json:"status"    validate:"required,oneof=pending processing confirmed shipping delivered completed cancelled refunded shipped paid"`
 }
 
 // Xác nhận thanh toán đơn hàng
@@ -75,7 +76,7 @@ type ConfirmPaymentRequest struct {
 type OrderFilter struct {
 	OrderID       string `validate:"omitempty,max=50"`
 	Keyword       string `validate:"omitempty,max=100"`
-	Status        string `validate:"omitempty,oneof=pending processing paid shipped completed cancelled refunded"`
+	Status        string `validate:"omitempty,oneof=pending processing confirmed shipping delivered completed cancelled refunded shipped paid"`
 	PaymentStatus string `validate:"omitempty,oneof=unpaid paid partially_refunded refunded"`
 	UserID        int64  `validate:"omitempty,min=0"`
 	CategoryID    int64  `validate:"omitempty,min=0"`
@@ -98,6 +99,7 @@ type OrderResponse struct {
 	PaymentStatus   string                 `json:"payment_status"`
 	PaymentMethod   string                 `json:"payment_method"`
 	Note            string                 `json:"note,omitempty"`
+	CancelReason    string                 `json:"cancel_reason,omitempty"`
 	ShippingAddress *OrderAddress          `json:"shipping_address,omitempty"`
 	Items           []OrderItemResponse    `json:"items,omitempty"`
 	Payments        []OrderPaymentResponse `json:"payments,omitempty"`

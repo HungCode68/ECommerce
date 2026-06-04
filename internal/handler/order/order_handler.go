@@ -148,6 +148,29 @@ func (h *orderHandler) GetMyOrderDetail(w http.ResponseWriter, r *http.Request) 
 	utils.WriteJSON(w, http.StatusOK, "Chi tiết đơn hàng", order)
 }
 
+// Chi tiết đơn hàng theo mã (order_number)
+func (h *orderHandler) GetMyOrderDetailByCode(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	if !ok || userID == 0 {
+		utils.WriteError(w, http.StatusUnauthorized, "Unauthorized", nil)
+		return
+	}
+
+	code := r.PathValue("code")
+	if code == "" {
+		utils.WriteError(w, http.StatusBadRequest, "Mã đơn hàng không hợp lệ", nil)
+		return
+	}
+
+	order, err := h.OrderController.GetMyOrderByCode(r.Context(), userID, code)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Không thể lấy chi tiết đơn hàng", nil)
+		return
+	}
+
+	utils.WriteJSON(w, http.StatusOK, "Chi tiết đơn hàng", order)
+}
+
 // Hủy đơn hàng
 func (h *orderHandler) CancelOrder(w http.ResponseWriter, r *http.Request) {
 	userID, ok := middleware.GetUserIDFromContext(r.Context())

@@ -15,6 +15,7 @@ import (
 	repository "golang/internal/repository/order"
 	"golang/internal/repository/product"
 	"golang/internal/repository/productvariant"
+	notificationrepo "golang/internal/repository/notification"
 	"golang/internal/utils"
 )
 
@@ -24,6 +25,7 @@ type orderController struct {
 	ProductVariantRepo productvariant.ProductVariantsRepository
 	AddressRepo        address.AddressRepo
 	CouponRepo         couponrepo.CouponsRepository
+	NotificationRepo   notificationrepo.NotificationRepository
 }
 
 func NewOrderController(
@@ -32,6 +34,7 @@ func NewOrderController(
 	variantRepo productvariant.ProductVariantsRepository,
 	addrRepo address.AddressRepo,
 	couponRepo couponrepo.CouponsRepository,
+	notificationRepo notificationrepo.NotificationRepository,
 ) OrderController {
 	return &orderController{
 		OrderRepo:          orderRepo,
@@ -39,6 +42,7 @@ func NewOrderController(
 		ProductVariantRepo: variantRepo,
 		AddressRepo:        addrRepo,
 		CouponRepo:         couponRepo,
+		NotificationRepo:   notificationRepo,
 	}
 }
 
@@ -196,10 +200,16 @@ func (c *orderController) CreateOrder(ctx context.Context, userID int64, req mod
 
 	orderNumber := fmt.Sprintf("ORD-%d", time.Now().UnixNano())
 
+	// Happy Case logic: Nếu là COD thì chuyển thẳng sang status 'processing' (Đã đặt hàng thành công)
+	initialStatus := model.OrderStatusPending
+	if req.PaymentMethod == model.PaymentMethodCOD {
+		initialStatus = model.OrderStatusProcessing
+	}
+
 	newOrder := &model.Order{
 		OrderNumber:   orderNumber,
 		UserID:        userID,
-		Status:        model.OrderStatusPending,
+		Status:        initialStatus,
 		PaymentStatus: model.PaymentStatusUnpaid,
 		TotalAmount:   finalTotalAmount,
 		Note:          &req.Note,
@@ -218,6 +228,16 @@ func (c *orderController) CreateOrder(ctx context.Context, userID int64, req mod
 		logger.ErrorLogger.Printf("CreateOrder failed for user %d: %v", userID, err)
 		return nil, err
 	}
+
+	// Create notification for user
+	go func() {
+		_ = c.NotificationRepo.Create(&model.Notification{
+			UserID:  userID,
+			Title:   "Đặt hàng thành công",
+			Message: fmt.Sprintf("Đơn hàng %s của bạn đã được tạo thành công.", orderNumber),
+			Type:    "ORDER_CREATED",
+		})
+	}()
 
 	// Trả về kết quả
 	return &model.OrderResponse{
@@ -456,6 +476,17 @@ func (c *orderController) GetMyOrder(ctx context.Context, userID int64, orderID 
 	}, nil
 }
 
+// Xem chi tiết đơn hàng bằng mã đơn hàng (order_number)
+func (c *orderController) GetMyOrderByCode(ctx context.Context, userID int64, orderCode string) (*model.OrderResponse, error) {
+	logger.DebugLogger.Printf("Starting GetMyOrderByCode. UserID: %d, Code: %s", userID, orderCode)
+	order, err := c.OrderRepo.GetByOrderNumber(ctx, orderCode)
+	if err != nil {
+		logger.ErrorLogger.Printf("GetMyOrderByCode: Order not found. Code: %s. Error: %v", orderCode, err)
+		return nil, err
+	}
+	return c.GetMyOrder(ctx, userID, order.ID)
+}
+
 // Lấy danh sách đơn hàng của tôi
 func (c *orderController) GetMyListOrders(ctx context.Context, userID int64, filter model.OrderFilter) ([]model.OrderResponse, int, error) {
 	logger.DebugLogger.Printf("Starting GetMyOrders for UserID: %d | Page: %d", userID, filter.Page)
@@ -512,10 +543,10 @@ func (c *orderController) CancelOrder(ctx context.Context, userID int64, orderID
 		return errors.New("không có quyền thao tác")
 	}
 
-	// Check trạng thái: Chỉ được hủy khi đang Pending
-	if order.Status != model.OrderStatusPending {
+	// Check trạng thái: Chỉ được hủy khi đang Pending hoặc Processing
+	if order.Status != model.OrderStatusPending && order.Status != model.OrderStatusProcessing {
 		logger.WarnLogger.Printf("CancelOrder: Invalid status '%s' for OrderID: %d", order.Status, orderID)
-		return errors.New("đơn hàng đã được xử lý, không thể hủy")
+		return errors.New("đơn hàng đã giao cho đơn vị vận chuyển hoặc không thể hủy")
 	}
 
 	// Gọi Repo update
@@ -527,6 +558,16 @@ func (c *orderController) CancelOrder(ctx context.Context, userID int64, orderID
 		logger.ErrorLogger.Printf("CancelOrder: UpdateStatus failed. Error: %v", err)
 		return err
 	}
+
+	// Create notification for user
+	go func() {
+		_ = c.NotificationRepo.Create(&model.Notification{
+			UserID:  userID,
+			Title:   "Hủy đơn hàng thành công",
+			Message: fmt.Sprintf("Đơn hàng %s của bạn đã được hủy thành công. Lý do: %s", order.OrderNumber, reason),
+			Type:    "ORDER_CANCELED",
+		})
+	}()
 
 	logger.InfoLogger.Printf("CancelOrder success. OrderID: %d", orderID)
 	return nil
@@ -576,12 +617,17 @@ func (c *orderController) GetAdminOrderDetail(ctx context.Context, orderID int64
 	if order.Note != nil {
 		noteStr = *order.Note
 	}
+	cancelReasonStr := ""
+	if order.CancelReason != nil {
+		cancelReasonStr = *order.CancelReason
+	}
 	logger.InfoLogger.Printf("GetAdminOrderDetail success. OrderID: %d", orderID)
 	//  Admin Response
 	baseResponse := model.OrderResponse{
 		ID: order.ID, OrderNumber: order.OrderNumber, UserID: order.UserID, CustomerName: order.CustomerName,
 		FirstItemTitle: order.FirstItemTitle, ItemCount: len(itemRes), Status: order.Status,
 		TotalAmount: utils.FormatVND(order.TotalAmount), PaymentStatus: order.PaymentStatus, PaymentMethod: paymentMethod, Note: noteStr,
+		CancelReason: cancelReasonStr,
 		ShippingAddress: address, Items: itemRes, Payments: payRes,
 		PlacedAt: order.PlacedAt, UpdatedAt: order.UpdatedAt,
 		PaidAt:      order.PaidAt,
@@ -611,6 +657,10 @@ func (c *orderController) SearchOrders(ctx context.Context, filter model.OrderFi
 		if o.Note != nil {
 			noteStr = *o.Note
 		}
+		cancelReasonStr := ""
+		if o.CancelReason != nil {
+			cancelReasonStr = *o.CancelReason
+		}
 		response = append(response, model.OrderResponse{
 			ID:             o.ID,
 			OrderNumber:    o.OrderNumber,
@@ -622,6 +672,7 @@ func (c *orderController) SearchOrders(ctx context.Context, filter model.OrderFi
 			TotalAmount:    utils.FormatVND(o.TotalAmount),
 			PaymentStatus:  o.PaymentStatus,
 			Note:           noteStr,
+			CancelReason:   cancelReasonStr,
 			PlacedAt:       o.PlacedAt,
 			UpdatedAt:      o.UpdatedAt,
 			PaidAt:         o.PaidAt,
@@ -741,12 +792,13 @@ func (c *orderController) UserConfirmTransferred(ctx context.Context, userID int
 		currentMethod = payments[0].Method
 	}
 
+	now := time.Now()
 	newPaymentLog := &model.OrderPayment{
 		OrderID: orderID,
 		Method:  currentMethod,
 		Amount:  order.TotalAmount,
-		Status:  "processing", // Đang chờ đối soát
-		PaidAt:  nil,
+		Status:  "completed", // Đã thanh toán thành công (Happy Case)
+		PaidAt:  &now,
 	}
 
 	err = c.OrderRepo.ConfirmPayment(ctx, orderID, newPaymentLog)
@@ -756,9 +808,9 @@ func (c *orderController) UserConfirmTransferred(ctx context.Context, userID int
 	}
 
 	// 2. Ghi nhận log lịch sử đơn hàng
-	note := "Khách hàng thông báo đã chuyển khoản thành công. Chờ Admin đối soát."
+	note := "Khách hàng xác nhận đã chuyển khoản thành công."
 	userIDPtr := &userID
-	err = c.OrderRepo.UpdateOrderStatus(ctx, orderID, order.Status, note, userIDPtr)
+	err = c.OrderRepo.UpdateOrderStatus(ctx, orderID, model.OrderStatusProcessing, note, userIDPtr)
 	if err != nil {
 		logger.ErrorLogger.Printf("UserConfirmTransferred: UpdateOrderStatus failed. Error: %v", err)
 		return errors.New("không thể ghi nhận lịch sử đơn hàng")

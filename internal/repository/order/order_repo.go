@@ -312,7 +312,8 @@ func (r *OrderRepository) GetOrderByID(ctx context.Context, id int64) (*model.Or
 				WHERE oi.order_id = o.id
 		       ), 0) AS item_count,
 		       o.status, o.total_amount, o.payment_status, o.note, 
-		       o.placed_at, o.created_at, o.updated_at, o.paid_at, o.completed_at, o.cancelled_at
+		       o.placed_at, o.created_at, o.updated_at, o.paid_at, o.completed_at, o.cancelled_at,
+		       (SELECT h.note FROM order_status_history h WHERE h.order_id = o.id AND h.to_status = 'cancelled' ORDER BY h.created_at DESC LIMIT 1) AS cancel_reason
 		FROM orders o
 		LEFT JOIN users u ON u.id = o.user_id
 		WHERE o.id = ?`
@@ -322,7 +323,7 @@ func (r *OrderRepository) GetOrderByID(ctx context.Context, id int64) (*model.Or
 		&o.ID, &o.OrderNumber, &o.UserID, &o.CustomerName, &o.FirstItemTitle, &o.ItemCount,
 		&o.Status, &o.TotalAmount, &o.PaymentStatus, &o.Note,
 		&o.PlacedAt, &o.CreatedAt, &o.UpdatedAt,
-		&o.PaidAt, &o.CompletedAt, &o.CancelledAt,
+		&o.PaidAt, &o.CompletedAt, &o.CancelledAt, &o.CancelReason,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -354,7 +355,8 @@ func (r *OrderRepository) GetByOrderNumber(ctx context.Context, orderNumber stri
 				WHERE oi.order_id = o.id
 		       ), 0) AS item_count,
 		       o.status, o.total_amount, o.payment_status, o.note, 
-		       o.placed_at, o.created_at, o.updated_at, o.paid_at, o.completed_at, o.cancelled_at
+		       o.placed_at, o.created_at, o.updated_at, o.paid_at, o.completed_at, o.cancelled_at,
+		       (SELECT h.note FROM order_status_history h WHERE h.order_id = o.id AND h.to_status = 'cancelled' ORDER BY h.created_at DESC LIMIT 1) AS cancel_reason
 		FROM orders o
 		LEFT JOIN users u ON u.id = o.user_id
 		WHERE o.order_number = ?`
@@ -364,7 +366,7 @@ func (r *OrderRepository) GetByOrderNumber(ctx context.Context, orderNumber stri
 		&o.ID, &o.OrderNumber, &o.UserID, &o.CustomerName, &o.FirstItemTitle, &o.ItemCount,
 		&o.Status, &o.TotalAmount, &o.PaymentStatus, &o.Note,
 		&o.PlacedAt, &o.CreatedAt, &o.UpdatedAt,
-		&o.PaidAt, &o.CompletedAt, &o.CancelledAt,
+		&o.PaidAt, &o.CompletedAt, &o.CancelledAt, &o.CancelReason,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -386,38 +388,38 @@ func (r *OrderRepository) GetOrders(ctx context.Context, filter model.OrderFilte
 	args := []interface{}{}
 
 	if filter.UserID > 0 {
-		whereClauses = append(whereClauses, "user_id = ?")
+		whereClauses = append(whereClauses, "o.user_id = ?")
 		args = append(args, filter.UserID)
 	}
 	if filter.Status != "" {
-		whereClauses = append(whereClauses, "status = ?")
+		whereClauses = append(whereClauses, "o.status = ?")
 		args = append(args, filter.Status)
 	}
 	if filter.PaymentStatus != "" {
-		whereClauses = append(whereClauses, "payment_status = ?")
+		whereClauses = append(whereClauses, "o.payment_status = ?")
 		args = append(args, filter.PaymentStatus)
 	}
 	if filter.OrderID != "" {
-		whereClauses = append(whereClauses, "order_number LIKE ?")
+		whereClauses = append(whereClauses, "o.order_number LIKE ?")
 		args = append(args, "%"+filter.OrderID+"%")
 	}
 	// Lọc theo ngày đặt hàng
 	if filter.StartDate != "" {
-		whereClauses = append(whereClauses, "placed_at >= ?")
+		whereClauses = append(whereClauses, "o.placed_at >= ?")
 		args = append(args, filter.StartDate) // Format YYYY-MM-DD
 	}
 	if filter.EndDate != "" {
-		whereClauses = append(whereClauses, "placed_at <= ?")
+		whereClauses = append(whereClauses, "o.placed_at <= ?")
 		args = append(args, filter.EndDate+" 23:59:59") // Lấy hết ngày cuối
 	}
 
 	if filter.Keyword != "" {
 		searchCondition := `(
-			order_number LIKE ? 
+			o.order_number LIKE ? 
 			OR EXISTS (
-				SELECT 1 FROM order_items 
-				WHERE order_items.order_id = orders.id 
-				AND order_items.title LIKE ?
+				SELECT 1 FROM order_items oi 
+				WHERE oi.order_id = o.id 
+				AND oi.title LIKE ?
 			)
 		)`
 		whereClauses = append(whereClauses, searchCondition)
@@ -426,13 +428,13 @@ func (r *OrderRepository) GetOrders(ctx context.Context, filter model.OrderFilte
 		args = append(args, kw, kw)
 	}
 
-	// Lọc theo danh mục sản phẩm (JOIN qua order_items -> products)
+	// Lọc theo danh mục sản phẩm (JOIN qua order_items -> product_categories)
 	if filter.CategoryID > 0 {
 		categoryCondition := `EXISTS (
 			SELECT 1 FROM order_items oi
-			JOIN products p ON p.id = oi.product_id
-			WHERE oi.order_id = orders.id
-			AND p.category_id = ?
+			JOIN product_categories pc ON pc.product_id = oi.product_id
+			WHERE oi.order_id = o.id
+			AND pc.category_id = ?
 		)`
 		whereClauses = append(whereClauses, categoryCondition)
 		args = append(args, filter.CategoryID)
@@ -441,7 +443,7 @@ func (r *OrderRepository) GetOrders(ctx context.Context, filter model.OrderFilte
 	whereQuery := strings.Join(whereClauses, " AND ")
 
 	//  Đếm tổng số lượng cho phân trang
-	countQuery := "SELECT COUNT(*) FROM orders WHERE " + whereQuery
+	countQuery := "SELECT COUNT(*) FROM orders o WHERE " + whereQuery
 	var total int
 	if err := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total); err != nil {
 		logger.ErrorLogger.Printf("GetOrders: Count failed. Query: %s, Error: %v", countQuery, err)
@@ -468,7 +470,8 @@ func (r *OrderRepository) GetOrders(ctx context.Context, filter model.OrderFilte
 				WHERE oi.order_id = o.id
 		       ), 0) AS item_count,
 		       o.status, o.total_amount, o.payment_status,
-		       o.placed_at, o.created_at, o.paid_at, o.completed_at, o.cancelled_at
+		       o.placed_at, o.created_at, o.paid_at, o.completed_at, o.cancelled_at,
+		       (SELECT h.note FROM order_status_history h WHERE h.order_id = o.id AND h.to_status = 'cancelled' ORDER BY h.created_at DESC LIMIT 1) AS cancel_reason
 		FROM orders o
 		LEFT JOIN users u ON u.id = o.user_id
 		WHERE %s 
@@ -503,6 +506,7 @@ func (r *OrderRepository) GetOrders(ctx context.Context, filter model.OrderFilte
 			&o.PaidAt,
 			&o.CompletedAt,
 			&o.CancelledAt,
+			&o.CancelReason,
 		); err != nil {
 			logger.ErrorLogger.Printf("GetOrders: Scan row failed: %v", err)
 			return nil, 0, err

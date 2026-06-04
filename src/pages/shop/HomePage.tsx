@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQueries, useQuery } from '@tanstack/react-query'
 import { bannerApi } from '@/api/banner.api'
@@ -232,6 +233,78 @@ function HomeEdgeBanner({ banner, side }: { banner: Banner; side: 'left' | 'righ
   )
 }
 
+function HomeBannerCarousel({ banners }: { banners: Banner[] }) {
+  const [currentIndex, setCurrentIndex] = useState(0)
+
+  useEffect(() => {
+    if (banners.length <= 1) return
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % banners.length)
+    }, 4000)
+    return () => clearInterval(interval)
+  }, [banners.length])
+
+  if (banners.length === 0) return null
+
+  return (
+    <div className="group relative h-[400px] w-full overflow-hidden rounded-2xl border border-[#e5e2e1] bg-[#eae7e7] shadow-sm">
+      {/* Slides */}
+      <div
+        className="flex h-full w-full transition-transform duration-500 ease-out"
+        style={{ transform: `translateX(-${currentIndex * 100}%)` }}
+      >
+        {banners.map((banner) => (
+          <BannerAnchor
+            key={banner.id}
+            banner={banner}
+            className="h-full w-full shrink-0"
+          >
+            <img
+              src={banner.image_url}
+              alt={banner.title}
+              className="h-full w-full object-cover"
+            />
+          </BannerAnchor>
+        ))}
+      </div>
+
+      {/* Navigation Arrows */}
+      {banners.length > 1 && (
+        <>
+          <button
+            onClick={() => setCurrentIndex((prev) => (prev - 1 + banners.length) % banners.length)}
+            className="absolute left-4 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-[#1c1b1b] opacity-0 shadow-md transition-all hover:bg-white group-hover:opacity-100"
+          >
+            <span className="material-symbols-outlined font-bold">chevron_left</span>
+          </button>
+          <button
+            onClick={() => setCurrentIndex((prev) => (prev + 1) % banners.length)}
+            className="absolute right-4 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-[#1c1b1b] opacity-0 shadow-md transition-all hover:bg-white group-hover:opacity-100"
+          >
+            <span className="material-symbols-outlined font-bold">chevron_right</span>
+          </button>
+        </>
+      )}
+
+      {/* Dots Indicator */}
+      {banners.length > 1 && (
+        <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 gap-2">
+          {banners.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => setCurrentIndex(index)}
+              className={cn(
+                'h-2 rounded-full transition-all duration-300',
+                currentIndex === index ? 'w-6 bg-[#630ed4]' : 'w-2 bg-white/60 hover:bg-white',
+              )}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function HomePage() {
   const { data: categories = [], isLoading: isCategoriesLoading } = useQuery({
     queryKey: queryKeys.categories.all,
@@ -251,6 +324,16 @@ export function HomePage() {
   const { data: homeRightEdgeBannersData } = useQuery({
     queryKey: queryKeys.banners.list('home_edge_right'),
     queryFn: () => bannerApi.getActive('home_edge_right'),
+    staleTime: 5 * 60 * 1000,
+  })
+  const { data: homeHeroBannersData } = useQuery({
+    queryKey: queryKeys.banners.list('home_hero'),
+    queryFn: () => bannerApi.getActive('home_hero'),
+    staleTime: 5 * 60 * 1000,
+  })
+  const { data: homeSidebarBannersData } = useQuery({
+    queryKey: queryKeys.banners.list('home_sidebar'),
+    queryFn: () => bannerApi.getActive('home_sidebar'),
     staleTime: 5 * 60 * 1000,
   })
 
@@ -285,6 +368,8 @@ export function HomePage() {
   const featuredFallbackProducts = prioritizedFeaturedProducts.slice(0, 5)
   const homeLeftEdgeBanners = Array.isArray(homeLeftEdgeBannersData) ? homeLeftEdgeBannersData : []
   const homeRightEdgeBanners = Array.isArray(homeRightEdgeBannersData) ? homeRightEdgeBannersData : []
+  const homeHeroBanners = Array.isArray(homeHeroBannersData) ? homeHeroBannersData : []
+  const homeSidebarBanners = Array.isArray(homeSidebarBannersData) ? homeSidebarBannersData : []
   const leftEdgeBanner = homeLeftEdgeBanners[0]
   const rightEdgeBanner = homeRightEdgeBanners[0]
 
@@ -307,93 +392,124 @@ export function HomePage() {
         )}
 
         <main className="flex w-full flex-col gap-6 px-4 py-6 md:px-6">
-        <section className="grid grid-cols-12 gap-4">
-          <div className="col-span-12 md:col-span-5">
-            {heroProduct ? (
-              <div className="flex min-h-[400px] flex-col justify-center rounded-xl bg-gradient-to-br from-[#630ed4] to-[#674bb5] p-8 text-white">
-                <span className="mb-3 inline-flex w-fit rounded-full bg-white/14 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-white/90">
-                  Sản phẩm nổi bật
-                </span>
-                <h1 className="mb-2 text-[32px] font-bold leading-[1.2] tracking-[-0.02em]">
-                  {heroProduct.name}
-                </h1>
-                <p className="mb-6 text-lg font-semibold leading-[1.4] text-white/90">
-                  {heroProduct.short_description || 'Hiệu năng mạnh mẽ, thiết kế cao cấp và mức giá tốt cho khách hàng đang tìm sản phẩm nổi bật.'}
-                </p>
-                <div className="mb-8">
-                  <span className="block text-xs text-white/80">Từ</span>
-                  <span className="text-2xl font-bold leading-[1.3]">{formatVND(heroProduct.final_price)}</span>
+        {homeHeroBanners.length > 0 ? (
+          <section className="grid grid-cols-12 gap-4">
+            <div
+              className={cn(
+                'col-span-12',
+                homeSidebarBanners.length > 0 ? 'lg:col-span-8' : 'lg:col-span-12',
+              )}
+            >
+              <HomeBannerCarousel banners={homeHeroBanners} />
+            </div>
+
+            {homeSidebarBanners.length > 0 && (
+              <div className="col-span-12 flex flex-col gap-4 lg:col-span-4 justify-between">
+                {homeSidebarBanners.slice(0, 2).map((banner) => (
+                  <BannerAnchor
+                    key={banner.id}
+                    banner={banner}
+                    className="group relative flex flex-1 overflow-hidden rounded-2xl border border-[#e5e2e1] bg-white shadow-sm transition hover:shadow-md h-[192px]"
+                  >
+                    <img
+                      src={banner.image_url}
+                      alt={banner.title}
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                  </BannerAnchor>
+                ))}
+              </div>
+            )}
+          </section>
+        ) : (
+          <section className="grid grid-cols-12 gap-4">
+            <div className="col-span-12 md:col-span-5">
+              {heroProduct ? (
+                <div className="flex min-h-[400px] flex-col justify-center rounded-xl bg-gradient-to-br from-[#630ed4] to-[#674bb5] p-8 text-white">
+                  <span className="mb-3 inline-flex w-fit rounded-full bg-white/14 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-white/90">
+                    Sản phẩm nổi bật
+                  </span>
+                  <h1 className="mb-2 text-[32px] font-bold leading-[1.2] tracking-[-0.02em]">
+                    {heroProduct.name}
+                  </h1>
+                  <p className="mb-6 text-lg font-semibold leading-[1.4] text-white/90">
+                    {heroProduct.short_description || 'Hiệu năng mạnh mẽ, thiết kế cao cấp và mức giá tốt cho khách hàng đang tìm sản phẩm nổi bật.'}
+                  </p>
+                  <div className="mb-8">
+                    <span className="block text-xs text-white/80">Từ</span>
+                    <span className="text-2xl font-bold leading-[1.3]">{formatVND(heroProduct.final_price)}</span>
+                  </div>
+                  <Link
+                    to={ROUTES.PRODUCT_DETAIL(heroProduct.id)}
+                    className="inline-flex w-fit items-center rounded-full bg-white px-8 py-3 text-sm font-semibold text-[#630ed4] shadow-lg transition hover:bg-white/90"
+                  >
+                    Mua ngay
+                  </Link>
                 </div>
+              ) : (
+                <div className="min-h-[400px] rounded-xl bg-gradient-to-br from-[#630ed4] to-[#674bb5] p-8">
+                  <LoadingSkeleton className="space-y-5" rows={5} />
+                </div>
+              )}
+            </div>
+
+            <div className="col-span-12 overflow-hidden rounded-xl border border-[#e5e2e1] bg-white p-4 md:col-span-4">
+              {heroProduct ? (
                 <Link
                   to={ROUTES.PRODUCT_DETAIL(heroProduct.id)}
-                  className="inline-flex w-fit items-center rounded-full bg-white px-8 py-3 text-sm font-semibold text-[#630ed4] shadow-lg transition hover:bg-white/90"
+                  className="flex h-full min-h-[400px] items-center justify-center"
                 >
-                  Mua ngay
+                  <ProductImage
+                    src={heroProduct.thumbnail_url}
+                    alt={heroProduct.name}
+                    className="h-full w-full"
+                    imgClassName="h-full w-full object-contain transition-transform duration-300 hover:scale-105"
+                  />
                 </Link>
-              </div>
-            ) : (
-              <div className="min-h-[400px] rounded-xl bg-gradient-to-br from-[#630ed4] to-[#674bb5] p-8">
-                <LoadingSkeleton className="space-y-5" rows={5} />
-              </div>
-            )}
-          </div>
-
-          <div className="col-span-12 overflow-hidden rounded-xl border border-[#e5e2e1] bg-white p-4 md:col-span-4">
-            {heroProduct ? (
-              <Link
-                to={ROUTES.PRODUCT_DETAIL(heroProduct.id)}
-                className="flex h-full min-h-[400px] items-center justify-center"
-              >
-                <ProductImage
-                  src={heroProduct.thumbnail_url}
-                  alt={heroProduct.name}
-                  className="h-full w-full"
-                  imgClassName="h-full w-full object-contain transition-transform duration-300 hover:scale-105"
-                />
-              </Link>
-            ) : (
-              <div className="flex min-h-[400px] items-center justify-center">
-                <LoadingSkeleton className="w-full" rows={4} />
-              </div>
-            )}
-          </div>
-
-          <div className="col-span-12 flex flex-col gap-4 md:col-span-3">
-            {promoProducts.length > 0 ? (
-              promoProducts.map((product) => (
-                <Link
-                  key={product.id}
-                  to={ROUTES.PRODUCT_DETAIL(product.id)}
-                  className="flex flex-1 items-center gap-4 rounded-xl border border-[#e5e2e1] bg-[#f6f3f2] p-5 transition-shadow hover:shadow-md"
-                >
-                  <div className="min-w-0 flex-1">
-                    <h3 className="line-clamp-2 text-lg font-semibold leading-[1.4] text-[#1c1b1b]">
-                      {formatProductName(product.name)}
-                    </h3>
-                    <p className="mt-1 text-lg font-bold text-[#630ed4]">
-                      {product.discount_percent > 0 ? `Giảm ${product.discount_percent}%` : formatVND(product.final_price)}
-                    </p>
-                    <span className="mt-2 inline-block text-sm font-semibold text-[#630ed4] hover:underline">
-                      Mua ngay
-                    </span>
-                  </div>
-                  <div className="h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-white p-2">
-                    <ProductImage src={product.thumbnail_url} alt={formatProductName(product.name)} imgClassName="h-full w-full object-contain" />
-                  </div>
-                </Link>
-              ))
-            ) : (
-              <>
-                <div className="rounded-xl border border-[#e5e2e1] bg-[#f6f3f2] p-5">
-                  <LoadingSkeleton rows={4} />
+              ) : (
+                <div className="flex min-h-[400px] items-center justify-center">
+                  <LoadingSkeleton className="w-full" rows={4} />
                 </div>
-                <div className="rounded-xl border border-[#e5e2e1] bg-[#f6f3f2] p-5">
-                  <LoadingSkeleton rows={4} />
-                </div>
-              </>
-            )}
-          </div>
-        </section>
+              )}
+            </div>
+
+            <div className="col-span-12 flex flex-col gap-4 md:col-span-3">
+              {promoProducts.length > 0 ? (
+                promoProducts.map((product) => (
+                  <Link
+                    key={product.id}
+                    to={ROUTES.PRODUCT_DETAIL(product.id)}
+                    className="flex flex-1 items-center gap-4 rounded-xl border border-[#e5e2e1] bg-[#f6f3f2] p-5 transition-shadow hover:shadow-md"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <h3 className="line-clamp-2 text-lg font-semibold leading-[1.4] text-[#1c1b1b]">
+                        {formatProductName(product.name)}
+                      </h3>
+                      <p className="mt-1 text-lg font-bold text-[#630ed4]">
+                        {product.discount_percent > 0 ? `Giảm ${product.discount_percent}%` : formatVND(product.final_price)}
+                      </p>
+                      <span className="mt-2 inline-block text-sm font-semibold text-[#630ed4] hover:underline">
+                        Mua ngay
+                      </span>
+                    </div>
+                    <div className="h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-white p-2">
+                      <ProductImage src={product.thumbnail_url} alt={formatProductName(product.name)} imgClassName="h-full w-full object-contain" />
+                    </div>
+                  </Link>
+                ))
+              ) : (
+                <>
+                  <div className="rounded-xl border border-[#e5e2e1] bg-[#f6f3f2] p-5">
+                    <LoadingSkeleton rows={4} />
+                  </div>
+                  <div className="rounded-xl border border-[#e5e2e1] bg-[#f6f3f2] p-5">
+                    <LoadingSkeleton rows={4} />
+                  </div>
+                </>
+              )}
+            </div>
+          </section>
+        )}
 
         <section className="grid grid-cols-2 gap-4 rounded-xl border border-[#e5e2e1] bg-white p-6 shadow-sm md:grid-cols-4">
           {[

@@ -4,8 +4,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Copy, Check, AlertCircle, QrCode, Clock, CreditCard, CheckCircle2, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { orderApi } from '@/api/order.api'
-import { queryKeys } from '@/lib/queryKeys'
-import { StatusBadge } from '@/components/shared/StatusBadge'
+import { reviewApi } from '@/api/review.api'
+
+import { OrderStatusBadge } from '@/features/shop/orders/OrderStatusBadge'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
+import { CancelOrderModal } from '@/features/shop/orders/CancelOrderModal'
 import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton'
 import { formatVND, formatDateTime, formatProductName } from '@/utils/formatters/format'
 import { ROUTES } from '@/utils/constants'
@@ -19,21 +22,35 @@ const parseVNDToNumber = (vndStr: string | number | undefined | null): number =>
 
 export function OrderDetailPage() {
   const { id } = useParams()
-  const orderId = Number(id)
+  const orderCode = id as string
   const qc = useQueryClient()
   const [copiedField, setCopiedField] = useState<string | null>(null)
+  const [cancelModalOpen, setCancelModalOpen] = useState(false)
+  const [cancelReason, setCancelReason] = useState('')
+
+  const { mutate: cancelOrder, isPending: cancelling } = useMutation({
+    mutationFn: (reason: string) => orderApi.cancel(order?.id ?? 0, { reason }),
+    onSuccess: () => {
+      toast.success('Đã hủy đơn hàng')
+      setCancelModalOpen(false)
+      setCancelReason('')
+      qc.invalidateQueries({ queryKey: ['orderDetail', orderCode] })
+      qc.invalidateQueries({ queryKey: ['orders'] })
+    },
+    onError: () => toast.error('Không thể hủy đơn hàng'),
+  })
 
   const { data: order, isLoading } = useQuery({
-    queryKey: queryKeys.orders.detail(orderId),
-    queryFn: () => orderApi.getDetail(orderId),
-    enabled: !!id,
+    queryKey: ['orderDetail', orderCode],
+    queryFn: () => orderApi.getDetailByCode(orderCode),
+    enabled: !!orderCode,
   })
 
   const { mutate: confirmTransferred, isPending: isConfirmPending } = useMutation({
-    mutationFn: () => orderApi.confirmTransferred(orderId),
+    mutationFn: () => orderApi.confirmTransferred(order?.id ?? 0),
     onSuccess: () => {
       toast.success('Gửi thông báo chuyển khoản thành công!')
-      qc.invalidateQueries({ queryKey: queryKeys.orders.detail(orderId) })
+      qc.invalidateQueries({ queryKey: ['orderDetail', orderCode] })
     },
     onError: () => {
       toast.error('Gửi thông báo thất bại, vui lòng thử lại!')
@@ -45,6 +62,51 @@ export function OrderDetailPage() {
     setCopiedField(fieldName)
     toast.success(`Đã sao chép ${fieldName}!`)
     setTimeout(() => setCopiedField(null), 2000)
+  }
+
+  const [activeReviewProduct, setActiveReviewProduct] = useState<{ id: number; name: string } | null>(null)
+  const [rating, setRating] = useState(5)
+  const [reviewBody, setReviewBody] = useState('')
+  const [reviewImages, setReviewImages] = useState<string[]>([])
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
+
+  const { mutate: submitReview, isPending: isSubmittingReview } = useMutation({
+    mutationFn: (payload: { productId: number; rating: number; body: string; image_urls?: string[] }) =>
+      reviewApi.create(payload.productId, {
+        order_id: order!.id,
+        rating: payload.rating,
+        body: payload.body,
+        performance_rating: payload.rating,
+        battery_rating: payload.rating,
+        camera_rating: payload.rating,
+        image_urls: payload.image_urls,
+      }),
+    onSuccess: () => {
+      toast.success('Đánh giá sản phẩm thành công! Cảm ơn bạn.')
+      setActiveReviewProduct(null)
+      setRating(5)
+      setReviewBody('')
+      setReviewImages([])
+    },
+    onError: (err: any) => {
+      const errMsg = err?.response?.data?.message || 'Gửi đánh giá thất bại, vui lòng thử lại!'
+      toast.error(errMsg)
+    },
+  })
+
+  const handleUploadImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+    setIsUploadingImage(true)
+    try {
+      const url = await reviewApi.uploadImage(files[0])
+      setReviewImages((prev) => [...prev, url])
+      toast.success('Tải ảnh lên thành công!')
+    } catch {
+      toast.error('Tải ảnh lên thất bại!')
+    } finally {
+      setIsUploadingImage(false)
+    }
   }
 
   if (isLoading) return <div className="container mx-auto px-4 py-8"><LoadingSkeleton rows={8} /></div>
@@ -76,8 +138,26 @@ export function OrderDetailPage() {
           </h1>
           <p className="text-sm text-slate-500">{formatDateTime(order.placed_at)}</p>
         </div>
-        <StatusBadge status={order.status} className="ml-auto" />
+        <OrderStatusBadge status={order.status} className="ml-auto" />
       </div>
+
+      {/* Hành động chính cho đơn hàng */}
+      {(() => {
+        const uiStatus = order.status === 'processing' || order.status === 'confirmed' ? 'processing' : order.status === 'pending' ? 'pending' : '';
+        if (uiStatus === 'pending' || uiStatus === 'processing') {
+          return (
+            <div className="mb-6 flex justify-end">
+              <button
+                onClick={() => setCancelModalOpen(true)}
+                className="rounded-xl border border-[#f3b6b1] px-4 py-2 text-sm font-semibold text-[#ba1a1a] transition-colors hover:bg-[#fff1f0]"
+              >
+                Hủy đơn hàng
+              </button>
+            </div>
+          )
+        }
+        return null
+      })()}
 
       {/* VietQR Card for Bank Transfer */}
       {order.payment_method === 'bank_transfer' && order.status !== 'cancelled' && order.payment_status !== 'paid' && (
@@ -231,14 +311,30 @@ export function OrderDetailPage() {
       {/* Items */}
       <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm mb-4">
         <h2 className="mb-4 font-semibold text-slate-800">Sản phẩm</h2>
-        <div className="space-y-3">
+        <div className="space-y-4">
           {items.map((item, i) => (
-            <div key={i} className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-800">{formatProductName(item.product_name ?? item.title ?? `Sản phẩm #${item.product_id}`)}</p>
-                <p className="text-xs text-slate-400">x{item.quantity}</p>
+            <div key={i} className="flex items-start justify-between border-b border-slate-50 pb-3 last:border-0 last:pb-0">
+              <div className="flex-1 pr-4">
+                <p className="text-sm font-medium text-slate-800">
+                  {formatProductName(item.product_name ?? item.title ?? `Sản phẩm #${item.product_id}`)}
+                </p>
+                <div className="mt-1 flex items-center gap-3">
+                  <span className="text-xs text-slate-400">x{item.quantity}</span>
+                  {order.status === 'completed' && (
+                    <button
+                      onClick={() => setActiveReviewProduct({
+                        id: item.product_id,
+                        name: item.product_name ?? item.title ?? `Sản phẩm #${item.product_id}`
+                      })}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">star</span>
+                      Đánh giá sản phẩm
+                    </button>
+                  )}
+                </div>
               </div>
-              <p className="font-mono text-sm font-semibold">{item.line_subtotal}</p>
+              <p className="font-mono text-sm font-semibold text-slate-800">{item.line_subtotal}</p>
             </div>
           ))}
         </div>
@@ -258,6 +354,132 @@ export function OrderDetailPage() {
         {order.note && <div className="flex justify-between"><span className="text-slate-500">Ghi chú</span><span className="text-slate-800">{order.note}</span></div>}
         {order.cancel_reason && <div className="flex justify-between"><span className="text-slate-500">Lý do hủy</span><span className="text-red-500">{order.cancel_reason}</span></div>}
       </div>
+
+      {/* Confirm Cancel Dialog */}
+      <CancelOrderModal
+        open={cancelModalOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCancelModalOpen(false)
+          }
+        }}
+        onConfirm={(reason) => cancelOrder(reason)}
+        loading={cancelling}
+      />
+
+      {/* Review Modal */}
+      {activeReviewProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl transition-all duration-300">
+            <h3 className="text-lg font-bold text-slate-900 mb-1">Đánh giá sản phẩm</h3>
+            <p className="text-sm text-slate-500 mb-4 line-clamp-1">{activeReviewProduct.name}</p>
+
+            {/* Stars selection */}
+            <div className="mb-4 flex flex-col items-center gap-2">
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Mức độ hài lòng</span>
+              <div className="flex gap-1.5">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    onClick={() => setRating(star)}
+                    className="text-amber-400 transition hover:scale-110"
+                  >
+                    <span className="material-symbols-outlined text-[32px] fill-current" style={{ fontVariationSettings: `"${rating >= star ? 'FILL' : 'GRAD'}" 1` }}>
+                      {rating >= star ? 'star' : 'star'}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <span className="text-sm font-bold text-amber-500">
+                {rating === 5 ? 'Cực kỳ hài lòng' : rating === 4 ? 'Hài lòng' : rating === 3 ? 'Bình thường' : rating === 2 ? 'Không hài lòng' : 'Rất tệ'}
+              </span>
+            </div>
+
+            {/* Text review */}
+            <div className="mb-4">
+              <textarea
+                value={reviewBody}
+                onChange={(e) => setReviewBody(e.target.value)}
+                placeholder="Hãy chia sẻ nhận xét của bạn về sản phẩm này nhé (hiệu năng, thiết kế, chất lượng...)"
+                rows={4}
+                className="w-full rounded-2xl border border-slate-200 p-4 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+              <div className="mt-1 flex justify-between text-xs">
+                <span className={reviewBody.length < 15 ? 'text-red-500 font-medium animate-pulse' : 'text-green-600 font-medium'}>
+                  {reviewBody.length < 15 ? `Cần nhập thêm ít nhất ${15 - reviewBody.length} ký tự` : 'Độ dài hợp lệ'}
+                </span>
+                <span className="text-slate-400">{reviewBody.length}/1000</span>
+              </div>
+            </div>
+
+            {/* Review images upload */}
+            <div className="mb-6">
+              <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Thêm hình ảnh thực tế</span>
+              <div className="flex flex-wrap gap-2">
+                {reviewImages.map((url, idx) => (
+                  <div key={idx} className="relative h-16 w-16 overflow-hidden rounded-xl border border-slate-100">
+                    <img src={url} alt="Review" className="h-full w-full object-cover" />
+                    <button
+                      onClick={() => setReviewImages((prev) => prev.filter((_, i) => i !== idx))}
+                      className="absolute right-0.5 top-0.5 rounded-full bg-black/60 p-0.5 text-white hover:bg-black"
+                    >
+                      <span className="material-symbols-outlined text-[12px]">close</span>
+                    </button>
+                  </div>
+                ))}
+                
+                {reviewImages.length < 3 && (
+                  <label className="flex h-16 w-16 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 hover:border-primary/40 hover:bg-slate-50 transition-colors">
+                    {isUploadingImage ? (
+                      <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    ) : (
+                      <div className="flex flex-col items-center">
+                        <span className="material-symbols-outlined text-slate-400 text-[20px]">add_a_photo</span>
+                        <span className="text-[10px] text-slate-400 font-medium">Tải ảnh</span>
+                      </div>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleUploadImage}
+                      className="hidden"
+                      disabled={isUploadingImage}
+                    />
+                  </label>
+                )}
+              </div>
+            </div>
+
+            {/* Actions buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setActiveReviewProduct(null)
+                  setRating(5)
+                  setReviewBody('')
+                  setReviewImages([])
+                }}
+                disabled={isSubmittingReview}
+                className="flex-1 rounded-2xl border border-slate-200 py-3 font-semibold text-slate-500 hover:bg-slate-50 disabled:opacity-50"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                onClick={() => submitReview({
+                  productId: activeReviewProduct.id,
+                  rating,
+                  body: reviewBody,
+                  image_urls: reviewImages,
+                })}
+                disabled={reviewBody.length < 15 || reviewBody.length > 1000 || isSubmittingReview || isUploadingImage}
+                className="flex-1 rounded-2xl bg-primary py-3 font-bold text-white shadow-lg shadow-primary/20 hover:bg-primary/90 disabled:opacity-50"
+              >
+                {isSubmittingReview ? 'Đang gửi...' : 'Gửi đánh giá'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

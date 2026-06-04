@@ -15,7 +15,7 @@ import { queryKeys } from '@/lib/queryKeys'
 import { getErrorMessage } from '@/utils/httpError'
 import { getCheapestVariant, getVariantPrice, getVariantStock } from '@/utils/productVariant'
 import { ROUTES } from '@/utils/constants'
-import type { CreateReviewRequest, Product, ProductVariant } from '@/types/product.types'
+import type { Product, ProductVariant } from '@/types/product.types'
 import { useCartStore } from '@/store/cartStore'
 
 type VariantAttributes = Record<string, string>
@@ -380,21 +380,6 @@ export function ProductDetailPage() {
     },
   })
 
-  const { mutate: submitReview, isPending: isSubmittingReview } = useMutation({
-    mutationFn: (payload: CreateReviewRequest) => reviewApi.create(productId, payload),
-    onSuccess: () => {
-      toast.success('Đã gửi đánh giá sản phẩm!')
-      qc.invalidateQueries({ queryKey: queryKeys.products.reviews(productId) })
-    },
-    onError: (error) => {
-      toast.error(getErrorMessage(error, 'Bạn cần mua sản phẩm trước khi đánh giá'))
-    },
-  })
-
-  const { mutate: uploadReviewImage, isPending: isUploadingReviewImage } = useMutation({
-    mutationFn: (file: File) => reviewApi.uploadImage(file),
-  })
-
   if (!Number.isFinite(productId)) {
     return <div className="mx-auto max-w-[1200px] px-4 py-20 text-center text-[#4a4455]">ID sản phẩm không hợp lệ.</div>
   }
@@ -462,21 +447,6 @@ export function ProductDetailPage() {
           description={product.description}
           specs={specs}
           reviews={reviews}
-          onSubmitReview={(payload) => submitReview(payload)}
-          onUploadReviewImage={(file) =>
-            uploadReviewImage(file, {
-              onSuccess: (url) => {
-                toast.success('Đã tải ảnh lên')
-                const event = new CustomEvent('product-review-image-uploaded', { detail: url })
-                window.dispatchEvent(event)
-              },
-              onError: (error) => {
-                toast.error(getErrorMessage(error, 'Tải ảnh đánh giá thất bại'))
-              },
-            })
-          }
-          reviewSubmitting={isSubmittingReview}
-          reviewUploading={isUploadingReviewImage}
         />
 
         <div className="rounded-2xl border border-[#ccc3d8] bg-white p-5">

@@ -1,7 +1,7 @@
 import { PackageCheck, PackageOpen, Truck, XCircle, type LucideIcon } from 'lucide-react'
 import type { Order, OrderItem } from '@/types/order.types'
 
-export type OrderUiStatus = 'pending' | 'shipping' | 'delivered' | 'cancelled'
+export type OrderUiStatus = 'pending' | 'processing' | 'shipping' | 'delivered' | 'cancelled'
 export type OrderFilterTab = 'all' | OrderUiStatus
 
 export type OrderStatusMeta = {
@@ -14,13 +14,15 @@ export type OrderStatusMeta = {
 export const ORDER_TABS: { key: OrderFilterTab; label: string }[] = [
   { key: 'all', label: 'Tất cả' },
   { key: 'pending', label: 'Chờ xác nhận' },
+  { key: 'processing', label: 'Đã đặt thành công' },
   { key: 'shipping', label: 'Đang giao' },
-  { key: 'delivered', label: 'Đã giao' },
+  { key: 'delivered', label: 'Giao hàng thành công' },
   { key: 'cancelled', label: 'Đã hủy' },
 ]
 
 export function normalizeOrderStatus(status: string | undefined): OrderUiStatus {
   switch (status) {
+    case 'shipped':
     case 'shipping':
       return 'shipping'
     case 'delivered':
@@ -28,7 +30,9 @@ export function normalizeOrderStatus(status: string | undefined): OrderUiStatus 
       return 'delivered'
     case 'cancelled':
       return 'cancelled'
+    case 'processing':
     case 'confirmed':
+      return 'processing'
     case 'pending':
     default:
       return 'pending'
@@ -37,6 +41,13 @@ export function normalizeOrderStatus(status: string | undefined): OrderUiStatus 
 
 export function getOrderStatusMeta(status: string | undefined): OrderStatusMeta {
   switch (normalizeOrderStatus(status)) {
+    case 'processing':
+      return {
+        label: 'Đã đặt hàng thành công',
+        description: 'Đơn hàng đã được xác nhận và đang được chuẩn bị',
+        icon: PackageOpen,
+        className: 'bg-emerald-100 text-emerald-800 border border-emerald-200',
+      }
     case 'shipping':
       return {
         label: 'Đang giao',
@@ -46,7 +57,7 @@ export function getOrderStatusMeta(status: string | undefined): OrderStatusMeta 
       }
     case 'delivered':
       return {
-        label: 'Đã giao',
+        label: 'Giao hàng thành công',
         description: 'Đơn hàng đã được giao thành công',
         icon: PackageCheck,
         className: 'bg-emerald-100 text-emerald-700',
@@ -73,8 +84,16 @@ export function getOrderPlacedAt(order: Order) {
   return order.created_at ?? order.placed_at ?? order.updated_at
 }
 
-export function getOrderTotal(order: Order) {
-  return Number(order.total_payable ?? order.total_amount ?? 0)
+export function getOrderTotal(order: Order): number {
+  if (order.total_payable !== undefined) return Number(order.total_payable)
+  const val = order.total_amount
+  if (typeof val === 'number') return val
+  if (typeof val === 'string') {
+    const cleanStr = val.replace(/[^0-9]/g, '')
+    const num = Number(cleanStr)
+    return isNaN(num) ? 0 : num
+  }
+  return 0
 }
 
 export function getOrderItems(order: Order): OrderItem[] {

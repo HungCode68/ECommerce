@@ -24,6 +24,11 @@ export const orderApi = {
     const res = await axiosClient.get<ApiResponse<Order>>(`/api/orders/${id}`)
     return res.data.data
   },
+  // New method to fetch order by order code (string)
+  getDetailByCode: async (code: string) => {
+    const res = await axiosClient.get<ApiResponse<Order>>(`/api/orders/code/${code}`)
+    return res.data.data
+  },
 
   cancel: async (id: number, data: CancelOrderRequest) => {
     const res = await axiosClient.post<ApiResponse<Order>>(

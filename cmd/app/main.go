@@ -43,6 +43,8 @@ func main() {
 
 	module.InitCouponsModule(db.Connection, mux)
 
+	module.InitNotificationModule(db.Connection, mux)
+
 	cronManager := module.InitStatsModule(db.Connection, mux)
 
 	// Kích hoạt Cron Job chạy ngầm

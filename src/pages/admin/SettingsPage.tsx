@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ImagePlus, LayoutTemplate, Loader2, MonitorSmartphone, Settings, Trash2 } from 'lucide-react'
+import { ImagePlus, LayoutTemplate, Loader2, MonitorSmartphone, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { adminBannerApi } from '@/api/admin/adminBanner.api'
 import { adminProductApi } from '@/api/admin/adminProduct.api'
@@ -51,26 +51,61 @@ const BANNER_SLOTS: BannerSlot[] = [
     desktopHint: 'Ảnh dọc 128x385',
   },
   {
-    key: 'top_strip_1',
-    label: 'Thanh ưu đãi trên cùng',
-    description: 'Dùng cho khuyến mãi mảnh ở đầu trang, nội dung ngắn và dễ đọc.',
-    position: 'top_strip',
+    key: 'home_hero_1',
+    label: 'Slide banner chính 1',
+    description: 'Slide đầu tiên trong slideshow trang chủ. Khuyến nghị ảnh rộng aspect-[21/8] (ví dụ: 1200x450).',
+    position: 'home_hero',
     sort_order: 1,
     previewAspectClass: 'aspect-[21/8]',
-    desktopHint: 'Ảnh ngang cho máy tính',
+    desktopHint: 'Ảnh rộng 1200x450',
   },
   {
-    key: 'products_promo_1',
-    label: 'Banner trang sản phẩm',
-    description: 'Hiển thị ở trang danh sách sản phẩm hoặc chiến dịch đang chạy.',
-    position: 'products_promo',
-    sort_order: 1,
+    key: 'home_hero_2',
+    label: 'Slide banner chính 2',
+    description: 'Slide thứ hai trong slideshow trang chủ.',
+    position: 'home_hero',
+    sort_order: 2,
     previewAspectClass: 'aspect-[21/8]',
-    desktopHint: 'Ảnh ngang cho máy tính',
+    desktopHint: 'Ảnh rộng 1200x450',
+  },
+  {
+    key: 'home_hero_3',
+    label: 'Slide banner chính 3',
+    description: 'Slide thứ ba trong slideshow trang chủ.',
+    position: 'home_hero',
+    sort_order: 3,
+    previewAspectClass: 'aspect-[21/8]',
+    desktopHint: 'Ảnh rộng 1200x450',
+  },
+  {
+    key: 'home_sidebar_1',
+    label: 'Banner phụ phải 1',
+    description: 'Banner phụ nằm bên phải slideshow chính (phía trên). Tỷ lệ khuyến nghị aspect-[16/9].',
+    position: 'home_sidebar',
+    sort_order: 1,
+    previewAspectClass: 'aspect-[16/9]',
+    desktopHint: 'Ảnh ngang aspect-16/9',
+  },
+  {
+    key: 'home_sidebar_2',
+    label: 'Banner phụ phải 2',
+    description: 'Banner phụ nằm bên phải slideshow chính (phía dưới). Tỷ lệ khuyến nghị aspect-[16/9].',
+    position: 'home_sidebar',
+    sort_order: 2,
+    previewAspectClass: 'aspect-[16/9]',
+    desktopHint: 'Ảnh ngang aspect-16/9',
   },
 ]
 
-const HOME_BANNER_SLOT_KEYS = new Set(['home_edge_left_1', 'home_edge_right_1'])
+const HOME_BANNER_SLOT_KEYS = new Set([
+  'home_edge_left_1',
+  'home_edge_right_1',
+  'home_hero_1',
+  'home_hero_2',
+  'home_hero_3',
+  'home_sidebar_1',
+  'home_sidebar_2',
+])
 
 const emptySlotDraft = (sortOrder = 1): SlotDraft => ({
   localKey: `draft-${sortOrder}-${Math.random().toString(36).slice(2, 8)}`,
@@ -107,17 +142,13 @@ export function SettingsPage() {
   const [uploadingMobileSlotKey, setUploadingMobileSlotKey] = useState<string | null>(null)
   const [savingSlotKey, setSavingSlotKey] = useState<string | null>(null)
 
-  const { data: bannersData, isLoading } = useQuery({
+  const { data: bannersData } = useQuery({
     queryKey: queryKeys.admin.banners.list,
     queryFn: adminBannerApi.getAll,
   })
   const banners = Array.isArray(bannersData) ? bannersData : []
   const homeBannerSlots = useMemo(
     () => BANNER_SLOTS.filter((slot) => HOME_BANNER_SLOT_KEYS.has(slot.key)),
-    [],
-  )
-  const additionalBannerSlots = useMemo(
-    () => BANNER_SLOTS.filter((slot) => !HOME_BANNER_SLOT_KEYS.has(slot.key)),
     [],
   )
 
@@ -258,9 +289,8 @@ export function SettingsPage() {
               Trang này đã được dọn lại theo giao diện hiện tại của website. Ưu tiên trước là 2 banner dọc hai bên trang chủ, còn các vị trí khác được tách riêng bên dưới để khỏi lẫn với layout cũ.
             </p>
           </div>
-          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
             <StatCard label="Banner trang chủ" value={homeBannerSlots.length} />
-            <StatCard label="Banner phụ" value={additionalBannerSlots.length} />
             <StatCard label="Đang hiển thị" value={BANNER_SLOTS.filter((slot) => bannersBySlot[slot.key]?.is_active).length} />
           </div>
         </div>
@@ -419,168 +449,6 @@ export function SettingsPage() {
             )
           })}
         </div>
-      </section>
-
-      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="mb-5 flex items-center gap-3">
-          <div className="rounded-full bg-slate-100 p-2 text-slate-600">
-            <Settings className="h-5 w-5" />
-          </div>
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900">Banner phụ hoặc legacy</h2>
-            <p className="text-sm text-slate-500">Các vị trí này chưa được dùng trong homepage hiện tại, nhưng vẫn giữ ở đây nếu mày muốn tái sử dụng sau.</p>
-          </div>
-        </div>
-
-        {isLoading ? (
-          <div className="py-12 text-sm text-slate-500">Đang tải banner...</div>
-        ) : (
-          <div className="grid gap-5 xl:grid-cols-2">
-            {additionalBannerSlots.map((slot) => {
-              const draft = slotDrafts[slot.key] ?? emptySlotDraft()
-              const isUploadingDesktop = uploadingSlotKey === slot.key
-              const isUploadingMobile = uploadingMobileSlotKey === slot.key
-              const isSavingThisSlot = savingSlotKey === slot.key
-              const hasExistingBanner = Boolean(draft.id)
-
-              return (
-                <article
-                  key={slot.key}
-                  data-slot-key={slot.key}
-                  className={cn(
-                    'overflow-hidden rounded-[24px] border bg-slate-50 transition',
-                    activeSlotKey === slot.key
-                      ? 'border-cyan-400 ring-4 ring-cyan-100'
-                      : 'border-slate-200',
-                  )}
-                >
-                  <div className="flex items-start justify-between gap-4 border-b border-slate-200 bg-white px-5 py-4">
-                    <div>
-                      <h3 className="text-lg font-bold text-slate-900">{slot.label}</h3>
-                      <p className="mt-1 text-sm leading-6 text-slate-500">{slot.description}</p>
-                    </div>
-                    <span className={cn(
-                      'rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide',
-                      draft.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-200 text-slate-600',
-                    )}>
-                      {draft.is_active ? 'active' : 'inactive'}
-                    </span>
-                  </div>
-
-                      <div className="space-y-5 p-5">
-                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                      <div className={cn('w-full overflow-hidden bg-slate-100', slot.previewAspectClass ?? 'aspect-[21/8]')}>
-                        {draft.image_url ? (
-                          <img src={draft.image_url} alt={draft.title || slot.label} className="h-full w-full object-cover" />
-                        ) : (
-                          <div className="flex h-full items-center justify-center text-slate-400">
-                            <div className="text-center">
-                              <LayoutTemplate className="mx-auto h-10 w-10" />
-                              <p className="mt-3 text-sm font-medium">Chưa có ảnh banner</p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <UploadBox
-                        title="Ảnh desktop"
-                        subtitle={slot.desktopHint ?? 'Ảnh ngang cho máy tính'}
-                        loading={isUploadingDesktop}
-                        onPick={(file) => {
-                          setUploadingSlotKey(slot.key)
-                          uploadImage(file)
-                        }}
-                      />
-                      <UploadBox
-                        title="Ảnh mobile"
-                        subtitle="Tùy chọn, nếu muốn mobile riêng"
-                        loading={isUploadingMobile}
-                        onPick={(file) => {
-                          setUploadingMobileSlotKey(slot.key)
-                          uploadImage(file)
-                        }}
-                      />
-                    </div>
-
-                    {draft.mobile_image_url && (
-                      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                        <div className="flex items-center gap-2 border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700">
-                          <MonitorSmartphone className="h-4 w-4" />
-                          Preview mobile
-                        </div>
-                        <img src={draft.mobile_image_url} alt={`${slot.label} mobile`} className="aspect-[4/3] w-full object-cover" />
-                      </div>
-                    )}
-
-                    <Field label="Tên banner">
-                      <input
-                        value={draft.title}
-                        onChange={(e) => setDraftValue(slot.key, (current) => ({ ...current, title: e.target.value }))}
-                        className={inputClass}
-                        placeholder="Ví dụ: iPhone 17 Pro Max"
-                      />
-                    </Field>
-
-                    <Field label="Link khi người dùng bấm vào banner">
-                      <input
-                        value={draft.link_url}
-                        onChange={(e) => setDraftValue(slot.key, (current) => ({ ...current, link_url: e.target.value }))}
-                        className={inputClass}
-                        placeholder="/san-pham hoặc https://..."
-                      />
-                    </Field>
-
-                    <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700">
-                      <input
-                        type="checkbox"
-                        checked={draft.is_active}
-                        onChange={(e) => setDraftValue(slot.key, (current) => ({ ...current, is_active: e.target.checked }))}
-                        className="h-4 w-4 rounded border-slate-300"
-                      />
-                      Hiển thị banner này ngoài website
-                    </label>
-
-                    <div className="flex gap-3">
-                      <button
-                        type="button"
-                        disabled={isSavingThisSlot || isUploadingDesktop || !draft.image_url}
-                        onClick={() => {
-                          setSavingSlotKey(slot.key)
-                          saveSlotBanner(slot)
-                        }}
-                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {isSavingThisSlot && <Loader2 className="h-4 w-4 animate-spin" />}
-                        {hasExistingBanner ? 'Cập nhật ô banner' : 'Lưu ô banner'}
-                      </button>
-
-                      {hasExistingBanner ? (
-                        <button
-                          type="button"
-                          onClick={() => deleteSlotBanner(slot)}
-                          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-red-200 px-4 py-3 text-sm font-semibold text-red-600 transition hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          Xóa
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setSlotDrafts((current) => ({ ...current, [slot.key]: emptySlotDraft(slot.sort_order) }))}
-                          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-white"
-                        >
-                          Reset
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </article>
-              )
-            })}
-          </div>
-        )}
       </section>
     </div>
   )

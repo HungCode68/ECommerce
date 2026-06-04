@@ -1,12 +1,14 @@
-<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="541" height="204" viewBox="80 28 541 204" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="bg" x1="10" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#A855F7"/>
-      <stop offset="0.52" stop-color="#7C3AED"/>
-      <stop offset="1" stop-color="#4C1D95"/>
+    <linearGradient id="kc-gradient" x1="80" y1="20" x2="640" y2="220" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#C084FC"/>
+      <stop offset="0.45" stop-color="#7C3AED"/>
+      <stop offset="1" stop-color="#312E81"/>
     </linearGradient>
   </defs>
-  <rect x="4" y="4" width="56" height="56" rx="14" fill="url(#bg)"/>
-  <path d="M18 18H24V28.5L32.5 18H40L30.6 29.4L40.6 46H33.8L26.6 33.9L24 37V46H18V18Z" fill="white"/>
-  <path d="M48 23.6C46.7 22.4 45 21.7 43.1 21.7C39.4 21.7 36.5 24.7 36.5 28.4C36.5 32.2 39.4 35.2 43.1 35.2C45 35.2 46.7 34.5 48 33.2V39.2C46.5 40 44.8 40.5 42.9 40.5C36.1 40.5 30.7 35.1 30.7 28.4C30.7 21.8 36.1 16.4 42.9 16.4C44.8 16.4 46.6 16.8 48 17.7V23.6Z" fill="white"/>
+
+  <g fill="url(#kc-gradient)">
+    <path d="M80 28H132V121L230 28H301L193 131L307 232H234L132 142V232H80V28Z"/>
+    <path d="M363 28H621L574 79H412L354 130L412 181H574L621 232H363L262 130L363 28Z"/>
+  </g>
 </svg>

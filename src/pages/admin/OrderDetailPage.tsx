@@ -18,9 +18,9 @@ const parseVNDToNumber = (vndStr: string | number | undefined | null): number =>
 }
 
 const NEXT_STATUSES: Partial<Record<OrderStatus, OrderStatus[]>> = {
-  pending: ['confirmed', 'cancelled'],
-  confirmed: ['shipping', 'cancelled'],
-  shipping: ['delivered', 'cancelled'],
+  pending: ['processing', 'cancelled'],
+  processing: ['shipped', 'cancelled'],
+  shipped: ['completed', 'cancelled'],
 }
 
 export function OrderDetailPage() {
@@ -149,7 +149,7 @@ export function OrderDetailPage() {
             <h3 className="font-semibold text-slate-800 mb-3">Thông tin đơn hàng</h3>
             <Row label="Thanh toán" value={order.payment_method === 'cod' ? 'COD' : 'Chuyển khoản'} />
             {order.note && <Row label="Ghi chú" value={order.note} />}
-            {order.cancel_reason && <Row label="Lý do hủy" value={order.cancel_reason} valueClass="text-red-500" />}
+            {order.cancel_reason && <Row label="Lý do hủy" value={order.cancel_reason.replace(/^Khách hủy: /, '')} valueClass="text-red-500" />}
           </div>
         </div>
       </div>

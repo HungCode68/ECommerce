@@ -16,12 +16,17 @@ import {
   normalizeOrderStatus,
 } from './orderHelpers'
 
+const FIFTEEN_DAYS_MS = 15 * 24 * 60 * 60 * 1000
+
 type OrderCardProps = {
   order: Order
   onReorder: (order: Order) => void
   onViewDetail: (order: Order) => void
   onTrackOrder: (order: Order) => void
   onCancel?: (order: Order) => void
+  onReview?: (order: Order) => void
+  onViewOrEditReview?: (order: Order) => void
+  isReviewed?: boolean
   isReordering?: boolean
   isCancelling?: boolean
 }
@@ -32,6 +37,9 @@ export function OrderCard({
   onViewDetail,
   onTrackOrder,
   onCancel,
+  onReview,
+  onViewOrEditReview,
+  isReviewed,
   isReordering,
   isCancelling,
 }: OrderCardProps) {
@@ -99,7 +107,7 @@ export function OrderCard({
         </div>
 
         <div className="flex flex-wrap gap-3">
-          {uiStatus === 'pending' && onCancel ? (
+          {(uiStatus === 'pending' || uiStatus === 'processing') && onCancel ? (
             <button
               type="button"
               onClick={() => onCancel(order)}
@@ -120,6 +128,42 @@ export function OrderCard({
             </button>
           ) : null}
 
+          {(() => {
+            if (order.status !== 'completed') return null
+
+            const completedTime = order.completed_at
+              ? new Date(order.completed_at).getTime()
+              : new Date(order.updated_at).getTime()
+            
+            const isWithin15Days = Date.now() - completedTime <= FIFTEEN_DAYS_MS
+
+            if (isReviewed && onViewOrEditReview) {
+              return (
+                <button
+                  type="button"
+                  onClick={() => onViewOrEditReview(order)}
+                  className="rounded-xl border border-primary bg-primary/8 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/15"
+                >
+                  Đánh giá của bạn
+                </button>
+              )
+            }
+
+            if (!isReviewed && onReview && isWithin15Days) {
+              return (
+                <button
+                  type="button"
+                  onClick={() => onReview(order)}
+                  className="rounded-xl border border-primary bg-primary/8 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/15"
+                >
+                  Đánh giá
+                </button>
+              )
+            }
+
+            return null
+          })()}
+
           <button
             type="button"
             onClick={() => onViewDetail(order)}
@@ -139,7 +183,7 @@ export function OrderCard({
         </div>
       </div>
 
-      <Link to={ROUTES.ORDER_DETAIL(order.id)} className="sr-only">
+      <Link to={ROUTES.ORDER_DETAIL(order.order_number)} className="sr-only">
         Xem chi tiết đơn hàng
       </Link>
     </article>

@@ -124,6 +124,7 @@ export type ProductHistoryGroup = {
 export type Review = {
   id: number
   product_id: number
+  order_id?: number
   user_id: number
   user_name: string
   rating: number
@@ -133,8 +134,12 @@ export type Review = {
   image_urls?: string[]
   body?: string | null
   verified_purchase?: boolean
+  is_edited?: boolean
+  seller_reply?: string | null
   created_at: string
   updated_at?: string
+  deleted_at?: string | null
+  deleted_reason?: string | null
 }
 
 export type ReviewRatingBreakdown = {
@@ -155,8 +160,9 @@ export type ProductReviewSummary = {
 }
 
 export type CreateReviewRequest = {
+  order_id: number
   rating: number
-  body: string
+  body?: string
   performance_rating: number
   battery_rating: number
   camera_rating: number

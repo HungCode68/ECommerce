@@ -11,6 +11,7 @@ import (
 	"golang/internal/logger"
 	"golang/internal/middleware"
 	"golang/internal/model"
+	"golang/internal/utils"
 	"golang/internal/validator"
 	"io"
 	"mime/multipart"
@@ -30,51 +31,46 @@ func NewProductReviewHandler(ctrl productreviews.ProductReviewsController) Produ
 	return &productReviewHandler{controller: ctrl}
 }
 
-func (h *productReviewHandler) writeJson(w http.ResponseWriter, status int, data any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(data)
-}
-
-func (h *productReviewHandler) errJson(w http.ResponseWriter, status int, message string) {
-	h.writeJson(w, status, map[string]string{"error": message})
-}
-
 // CreateReviewHandler handles posting a review for a product
 func (h *productReviewHandler) CreateReviewHandler(w http.ResponseWriter, r *http.Request) {
 	productIdStr := r.PathValue("id")
 	productID, err := strconv.ParseInt(productIdStr, 10, 64)
 	if err != nil || productID <= 0 {
-		h.errJson(w, http.StatusBadRequest, "Invalid product ID")
+		utils.WriteError(w, http.StatusBadRequest, "Invalid product ID", nil)
 		return
 	}
 
 	// userID is stored by AuthMiddleware
 	userID, ok := middleware.GetUserIDFromContext(r.Context())
 	if !ok || userID == 0 {
-		h.errJson(w, http.StatusUnauthorized, "Unauthorized")
+		utils.WriteError(w, http.StatusUnauthorized, "Unauthorized", nil)
 		return
 	}
 
 	var req model.CreateProductReviewRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.errJson(w, http.StatusBadRequest, "Invalid request payload")
+		utils.WriteError(w, http.StatusBadRequest, "Invalid request payload", nil)
 		return
 	}
 
-	if err := validator.Validate(req); err != nil {
-		h.errJson(w, http.StatusBadRequest, fmt.Sprintf("Validation failed: %v", err))
+	if errs := validator.Validate(req); errs != nil {
+		// Try to extract the exact error message from badwords if it exists
+		errMsg := "Dữ liệu không hợp lệ"
+		if badWordErr, ok := errs["Body"]; ok {
+			errMsg = badWordErr
+		}
+		utils.WriteError(w, http.StatusBadRequest, errMsg, errs)
 		return
 	}
 
 	resp, err := h.controller.CreateReview(r.Context(), req, productID, userID)
 	if err != nil {
 		logger.ErrorLogger.Printf("CreateReviewHandler error (productID=%d, userID=%d): %v", productID, userID, err)
-		h.errJson(w, http.StatusInternalServerError, "Cannot create review")
+		utils.WriteError(w, http.StatusInternalServerError, "Cannot create review", nil)
 		return
 	}
 
-	h.writeJson(w, http.StatusCreated, resp)
+	utils.WriteJSON(w, http.StatusCreated, "Thành công", resp)
 }
 
 // ListReviewsHandler returns all reviews for a product along with summary
@@ -82,37 +78,42 @@ func (h *productReviewHandler) ListReviewsHandler(w http.ResponseWriter, r *http
 	productIdStr := r.PathValue("id")
 	productID, err := strconv.ParseInt(productIdStr, 10, 64)
 	if err != nil || productID <= 0 {
-		h.errJson(w, http.StatusBadRequest, "Invalid product ID")
+		utils.WriteError(w, http.StatusBadRequest, "Invalid product ID", nil)
 		return
 	}
 
 	resp, err := h.controller.ListReviews(productID)
 	if err != nil {
 		logger.ErrorLogger.Printf("ListReviewsHandler error (productID=%d): %v", productID, err)
-		h.errJson(w, http.StatusInternalServerError, "Cannot load reviews")
+		utils.WriteError(w, http.StatusInternalServerError, "Cannot load reviews", nil)
 		return
 	}
 
-	h.writeJson(w, http.StatusOK, resp)
+	utils.WriteJSON(w, http.StatusOK, "Thành công", resp)
 }
 
-// DeleteReviewHandler deletes a review by ID (admin or owner can be enforced upstream)
 func (h *productReviewHandler) DeleteReviewHandler(w http.ResponseWriter, r *http.Request) {
 	reviewIDStr := r.PathValue("reviewId")
 	reviewID, err := strconv.ParseInt(reviewIDStr, 10, 64)
 	if err != nil || reviewID <= 0 {
-		h.errJson(w, http.StatusBadRequest, "Invalid review ID")
+		utils.WriteError(w, http.StatusBadRequest, "Invalid review ID", nil)
 		return
 	}
 
-	resp, err := h.controller.DeleteReview(reviewID)
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	if !ok || userID == 0 {
+		utils.WriteError(w, http.StatusUnauthorized, "Unauthorized", nil)
+		return
+	}
+
+	resp, err := h.controller.DeleteReview(r.Context(), reviewID, userID)
 	if err != nil {
 		logger.ErrorLogger.Printf("DeleteReviewHandler error (reviewID=%d): %v", reviewID, err)
-		h.errJson(w, http.StatusInternalServerError, "Cannot delete review")
+		utils.WriteError(w, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
 
-	h.writeJson(w, http.StatusOK, resp)
+	utils.WriteJSON(w, http.StatusOK, "Thành công", resp)
 }
 
 func buildReviewCloudinarySignature(params map[string]string, apiSecret string) string {
@@ -219,13 +220,13 @@ func uploadReviewImageToCloudinary(file multipart.File, filename string) (string
 
 func (h *productReviewHandler) UploadReviewImageHandler(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseMultipartForm(10 << 20); err != nil {
-		h.errJson(w, http.StatusBadRequest, "Failed to parse form data")
+		utils.WriteError(w, http.StatusBadRequest, "Failed to parse form data", nil)
 		return
 	}
 
 	file, header, err := r.FormFile("image")
 	if err != nil {
-		h.errJson(w, http.StatusBadRequest, "Missing 'image' in form-data")
+		utils.WriteError(w, http.StatusBadRequest, "Missing 'image' in form-data", nil)
 		return
 	}
 	defer file.Close()
@@ -233,15 +234,155 @@ func (h *productReviewHandler) UploadReviewImageHandler(w http.ResponseWriter, r
 	imageURL, err := uploadReviewImageToCloudinary(file, header.Filename)
 	if err != nil {
 		logger.ErrorLogger.Printf("UploadReviewImageHandler error: %v", err)
-		h.errJson(w, http.StatusInternalServerError, "Failed to upload review image")
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to upload review image", nil)
 		return
 	}
 
-	h.writeJson(w, http.StatusOK, map[string]any{
-		"code":    http.StatusOK,
-		"message": "Upload review image successfully",
-		"data": map[string]string{
-			"url": imageURL,
+	utils.WriteJSON(w, http.StatusOK, "Upload review image successfully", map[string]string{
+		"url": imageURL,
+	})
+}
+
+func (h *productReviewHandler) GetUserReviewByOrderHandler(w http.ResponseWriter, r *http.Request) {
+	productIDStr := r.PathValue("id")
+	productID, _ := strconv.ParseInt(productIDStr, 10, 64)
+	orderIDStr := r.PathValue("orderId")
+	orderID, _ := strconv.ParseInt(orderIDStr, 10, 64)
+
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	if !ok || userID == 0 {
+		utils.WriteError(w, http.StatusUnauthorized, "Unauthorized", nil)
+		return
+	}
+
+	resp, err := h.controller.GetUserReviewByOrder(r.Context(), orderID, productID, userID)
+	if err != nil {
+		utils.WriteError(w, http.StatusNotFound, err.Error(), nil)
+		return
+	}
+
+	utils.WriteJSON(w, http.StatusOK, "Thành công", resp)
+}
+
+func (h *productReviewHandler) EditUserReviewHandler(w http.ResponseWriter, r *http.Request) {
+	reviewIDStr := r.PathValue("reviewId")
+	reviewID, err := strconv.ParseInt(reviewIDStr, 10, 64)
+	if err != nil || reviewID <= 0 {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid review ID", nil)
+		return
+	}
+
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	if !ok || userID == 0 {
+		utils.WriteError(w, http.StatusUnauthorized, "Unauthorized", nil)
+		return
+	}
+
+	var req model.UpdateProductReviewRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid request payload", nil)
+		return
+	}
+
+	if errs := validator.Validate(req); errs != nil {
+		errMsg := "Dữ liệu không hợp lệ"
+		if badWordErr, ok := errs["Body"]; ok {
+			errMsg = badWordErr
+		}
+		utils.WriteError(w, http.StatusBadRequest, errMsg, errs)
+		return
+	}
+
+	resp, err := h.controller.EditUserReview(r.Context(), reviewID, req, userID)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err.Error(), nil)
+		return
+	}
+
+	utils.WriteJSON(w, http.StatusOK, "Sửa đánh giá thành công", resp)
+}
+
+func (h *productReviewHandler) AdminReplyToReviewHandler(w http.ResponseWriter, r *http.Request) {
+	reviewIDStr := r.PathValue("reviewId")
+	reviewID, err := strconv.ParseInt(reviewIDStr, 10, 64)
+	if err != nil || reviewID <= 0 {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid review ID", nil)
+		return
+	}
+
+	var req model.AdminReplyReviewRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid request payload", nil)
+		return
+	}
+
+	if errs := validator.Validate(req); errs != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu không hợp lệ", errs)
+		return
+	}
+
+	if err := h.controller.AdminReplyToReview(r.Context(), reviewID, req); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err.Error(), nil)
+		return
+	}
+
+	utils.WriteJSON(w, http.StatusOK, "Phản hồi đánh giá thành công", nil)
+}
+
+func (h *productReviewHandler) GetAllReviewsAdminHandler(w http.ResponseWriter, r *http.Request) {
+	pageStr := r.URL.Query().Get("page")
+	limitStr := r.URL.Query().Get("limit")
+
+	page := 1
+	limit := 10
+	if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
+		page = p
+	}
+	if l, err := strconv.Atoi(limitStr); err == nil && l > 0 && l <= 100 {
+		limit = l
+	}
+
+	offset := (page - 1) * limit
+
+	reviews, total, err := h.controller.GetAllReviews(offset, limit)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Không thể lấy danh sách đánh giá", nil)
+		return
+	}
+
+	utils.WriteJSON(w, http.StatusOK, "Thành công", map[string]interface{}{
+		"data": reviews,
+		"pagination": map[string]interface{}{
+			"total": total,
+			"page":  page,
+			"limit": limit,
 		},
 	})
+}
+
+func (h *productReviewHandler) AdminDeleteReviewHandler(w http.ResponseWriter, r *http.Request) {
+	reviewIDStr := r.PathValue("reviewId")
+	reviewID, err := strconv.ParseInt(reviewIDStr, 10, 64)
+	if err != nil || reviewID <= 0 {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid review ID", nil)
+		return
+	}
+
+	var req model.AdminDeleteReviewRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid request payload", nil)
+		return
+	}
+
+	if errs := validator.Validate(req); errs != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu không hợp lệ", errs)
+		return
+	}
+
+	if err := h.controller.AdminDeleteReview(r.Context(), reviewID, req.Reason); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err.Error(), nil)
+		return
+	}
+
+	utils.WriteJSON(w, http.StatusOK, "Xóa đánh giá thành công", nil)
 }

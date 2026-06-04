@@ -19,6 +19,9 @@ func NewOrderRouter(mux *http.ServeMux, orderHandler order.OrderHandler) http.Ha
 	//  Lấy chi tiết đơn hàng
 	userGroup.HandleFunc("GET", "/{id}", orderHandler.GetMyOrderDetail)
 
+	//  Lấy chi tiết đơn hàng bằng mã đơn hàng
+	userGroup.HandleFunc("GET", "/code/{code}", orderHandler.GetMyOrderDetailByCode)
+
 	//  Hủy đơn hàng
 	userGroup.HandleFunc("POST", "/{id}/cancel", orderHandler.CancelOrder)
 

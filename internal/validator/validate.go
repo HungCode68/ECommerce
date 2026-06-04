@@ -71,6 +71,8 @@ func getErrorMessage(fe validator.FieldError) string {
 		return fmt.Sprintf("Độ dài tối đa chỉ được %s ký tự", fe.Param())
 	case "alphanum":
 		return "Chỉ được chứa chữ cái và số (không ký tự đặc biệt)"
+	case "numeric", "number":
+		return "Số điện thoại chỉ được chứa các chữ số"
 	case "oneof":
 		return fmt.Sprintf("Giá trị phải là một trong các loại: %s", strings.ReplaceAll(fe.Param(), " ", ", "))
 	case "gt":

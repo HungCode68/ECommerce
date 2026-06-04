@@ -1,9 +1,10 @@
 export type OrderStatus =
   | 'pending'
-  | 'confirmed'
-  | 'shipping'
-  | 'delivered'
+  | 'processing'
+  | 'shipped'
+  | 'completed'
   | 'cancelled'
+  | 'refunded'
 
 export type PaymentMethod = 'cod' | 'bank_transfer'
 

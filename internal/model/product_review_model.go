@@ -12,18 +12,41 @@ type ProductReview struct {
 	UserID            int64   `json:"user_id"`
 	UserName          string  `json:"user_name,omitempty"`
 	VerifiedPurchase  bool    `json:"verified_purchase"`
+	OrderID           *int64  `json:"order_id,omitempty"`
+	IsEdited          bool    `json:"is_edited"`
+	SellerReply       *string `json:"seller_reply,omitempty"`
 	CreatedAt         string  `json:"created_at"`
 	UpdatedAt         string  `json:"updated_at"`
+	DeletedAt         *string `json:"deleted_at,omitempty"`
+	DeletedReason     *string `json:"deleted_reason,omitempty"`
 }
 
 // Request create product review
 type CreateProductReviewRequest struct {
-	Body              *string `json:"body" binding:"required" validate:"min=15,max=1000,badwords"`
+	OrderID           int64   `json:"order_id" binding:"required" validate:"required,gt=0"`
+	Body              *string `json:"body" binding:"omitempty" validate:"omitempty,min=15,max=1000,badwords"`
 	Rating            int     `json:"rating" binding:"required" validate:"min=1,max=5"`
 	PerformanceRating int     `json:"performance_rating" binding:"required" validate:"min=1,max=5"`
 	BatteryRating     int     `json:"battery_rating" binding:"required" validate:"min=1,max=5"`
 	CameraRating      int     `json:"camera_rating" binding:"required" validate:"min=1,max=5"`
 	ImageURLs         []string `json:"image_urls,omitempty"`
+}
+
+type UpdateProductReviewRequest struct {
+	Rating            int      `json:"rating" binding:"required,min=1,max=5"`
+	Body              *string  `json:"body" binding:"omitempty" validate:"omitempty,min=15,max=1000,badwords"`
+	PerformanceRating int      `json:"performance_rating" binding:"required,min=1,max=5"`
+	BatteryRating     int      `json:"battery_rating" binding:"required,min=1,max=5"`
+	CameraRating      int      `json:"camera_rating" binding:"required,min=1,max=5"`
+	ImageURLs         []string `json:"image_urls,omitempty"`
+}
+
+type AdminReplyReviewRequest struct {
+	Reply *string `json:"reply" binding:"required"`
+}
+
+type AdminDeleteReviewRequest struct {
+	Reason string `json:"reason" binding:"required" validate:"min=5"`
 }
 
 // Response product review
@@ -39,8 +62,13 @@ type ProductReviewResponse struct {
 	UserID            int64   `json:"user_id"`
 	UserName          string  `json:"user_name,omitempty"`
 	VerifiedPurchase  bool    `json:"verified_purchase"`
+	OrderID           *int64  `json:"order_id,omitempty"`
+	IsEdited          bool    `json:"is_edited"`
+	SellerReply       *string `json:"seller_reply,omitempty"`
 	CreatedAt         string  `json:"created_at"`
 	UpdatedAt         string  `json:"updated_at"`
+	DeletedAt         *string `json:"deleted_at,omitempty"`
+	DeletedReason     *string `json:"deleted_reason,omitempty"`
 }
 
 type RatingBreakdownItem struct {

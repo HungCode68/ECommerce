@@ -12,6 +12,9 @@ type OrderHandler interface {
 	// Xem chi tiết một đơn hàng cụ thể 
 	GetMyOrderDetail(w http.ResponseWriter, r *http.Request)
 
+	// Xem chi tiết đơn hàng bằng mã đơn hàng (order_number)
+	GetMyOrderDetailByCode(w http.ResponseWriter, r *http.Request)
+
 	// Hủy hàng
 	CancelOrder(w http.ResponseWriter, r *http.Request)
 

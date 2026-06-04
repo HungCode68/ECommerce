@@ -14,6 +14,7 @@ import (
 	userRepository "golang/internal/repository/user"
 
 	couponsRepository "golang/internal/repository/coupons"
+	notificationRepo "golang/internal/repository/notification"
 
 	"golang/internal/router"
 )
@@ -26,6 +27,7 @@ func InitOrderModule(db *sql.DB, mux *http.ServeMux) {
 
 	couponRepo := couponsRepository.NewCouponsRepository(db)
 	userRepo := userRepository.NewUserDb(db)
+	notifRepo := notificationRepo.NewNotificationRepo(db)
 
 	//  Khởi tạo Controller
 	ctrl := orderController.NewOrderController(
@@ -34,6 +36,7 @@ func InitOrderModule(db *sql.DB, mux *http.ServeMux) {
 		variantRepo,
 		addressRepo,
 		couponRepo,
+		notifRepo,
 	)
 
 	//  Khởi tạo Handler

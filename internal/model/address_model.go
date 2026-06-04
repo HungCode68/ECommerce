@@ -24,7 +24,7 @@ type Address struct {
 type CreateAddressRequest struct {
 	Label             string `json:"label" validate:"omitempty,max=50"`
 	RecipientName     string `json:"recipient_name" validate:"required,min=2,max=150"`
-	Phone             string `json:"phone" validate:"required,min=9,max=20,numeric"`
+	Phone             string `json:"phone" validate:"required,min=9,max=20,number"`
 	Line1             string `json:"line1" validate:"required,max=255"`
 	Line2             string `json:"line2" validate:"omitempty,max=255"`
 	City              string `json:"city" validate:"required,max=100"`
@@ -37,7 +37,7 @@ type CreateAddressRequest struct {
 type UpdateAddressRequest struct {
 	Label             *string `json:"label,omitempty" validate:"omitempty,max=50"`
 	RecipientName     *string `json:"recipient_name,omitempty" validate:"omitempty,min=2,max=150"`
-	Phone             *string `json:"phone,omitempty" validate:"omitempty,min=9,max=20,numeric"`
+	Phone             *string `json:"phone,omitempty" validate:"omitempty,min=9,max=20,number"`
 	Line1             *string `json:"line1,omitempty" validate:"omitempty,max=255"`
 	Line2             *string `json:"line2,omitempty" validate:"omitempty,max=255"`
 	City              *string `json:"city,omitempty" validate:"omitempty,max=100"`

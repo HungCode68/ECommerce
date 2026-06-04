@@ -27,6 +27,18 @@ const checkoutSchema = z.object({
 
 type CheckoutFormData = z.infer<typeof checkoutSchema>
 
+const addressSchema = z.object({
+  receiver_name: z.string().min(2, 'Nhập tên người nhận'),
+  receiver_phone: z.string().min(9, 'Số điện thoại không hợp lệ'),
+  province: z.string().min(2, 'Nhập tỉnh/thành phố'),
+  district: z.string().optional(),
+  ward: z.string().min(2, 'Nhập phường/xã'),
+  address_detail: z.string().min(5, 'Nhập địa chỉ chi tiết'),
+  is_default: z.boolean().optional(),
+})
+
+type AddressFormData = z.infer<typeof addressSchema>
+
 export function CheckoutPage() {
   const navigate = useNavigate()
   const { isAuthenticated } = useAuthStore()
@@ -36,6 +48,9 @@ export function CheckoutPage() {
   const [discount, setDiscount] = useState(0)
   const [couponLoading, setCouponLoading] = useState(false)
   const [appliedCode, setAppliedCode] = useState('')
+  
+  // State for inline address creation form
+  const [showAddressForm, setShowAddressForm] = useState(false)
 
   const { data: cart } = useQuery({ queryKey: queryKeys.cart, queryFn: cartApi.getCart, enabled: isAuthenticated })
   const { data: addresses } = useQuery({
@@ -70,9 +85,68 @@ export function CheckoutPage() {
     enabled: subtotal > 0,
   })
 
-  const { register, handleSubmit, watch, formState: { errors } } = useForm<CheckoutFormData>({
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<CheckoutFormData>({
     resolver: zodResolver(checkoutSchema),
     defaultValues: { payment_method: 'cod' },
+  })
+
+  const {
+    register: registerAddr,
+    handleSubmit: handleSubmitAddr,
+    reset: resetAddr,
+    setError: setErrorAddr,
+    formState: { errors: errorsAddr },
+  } = useForm<AddressFormData>({
+    resolver: zodResolver(addressSchema),
+    defaultValues: { is_default: false },
+  })
+
+  const { mutate: saveAddress, isPending: savingAddress } = useMutation({
+    mutationFn: async (data: AddressFormData) => {
+      const payload = {
+        receiver_name: data.receiver_name,
+        receiver_phone: data.receiver_phone,
+        province: data.province,
+        district: data.district ?? '',
+        ward: data.ward,
+        address_detail: data.address_detail,
+        is_default: Boolean(data.is_default),
+      }
+      return addressApi.create(payload)
+    },
+    onSuccess: (saved) => {
+      toast.success('Đã thêm địa chỉ mới')
+      setShowAddressForm(false)
+      resetAddr({ is_default: false })
+      qc.invalidateQueries({ queryKey: queryKeys.addressKeys.all })
+      setValue('address_id', saved.id)
+    },
+    onError: (error: any) => {
+      const responseData = error?.response?.data
+      const validationErrors = responseData?.errors
+      
+      if (validationErrors && typeof validationErrors === 'object') {
+        Object.entries(validationErrors).forEach(([field, msg]) => {
+          const fieldLower = field.toLowerCase()
+          let formField: keyof AddressFormData | null = null
+          
+          if (fieldLower.includes('name')) formField = 'receiver_name'
+          else if (fieldLower.includes('phone')) formField = 'receiver_phone'
+          else if (fieldLower.includes('province') || fieldLower.includes('state')) formField = 'province'
+          else if (fieldLower.includes('ward') || fieldLower.includes('city')) formField = 'ward'
+          else if (fieldLower.includes('detail') || fieldLower.includes('line1')) formField = 'address_detail'
+          else if (fieldLower.includes('district')) formField = 'district'
+          
+          if (formField) {
+            setErrorAddr(formField, { type: 'server', message: String(msg) })
+          }
+        })
+        toast.error('Vui lòng kiểm tra lại các thông tin lỗi màu đỏ')
+      } else {
+        const errMsg = responseData?.message || 'Không thể lưu địa chỉ'
+        toast.error(errMsg)
+      }
+    },
   })
 
   const { mutate: placeOrder, isPending } = useMutation({
@@ -92,7 +166,7 @@ export function CheckoutPage() {
       toast.success('Đặt hàng thành công!')
       clearBuyNow()
       qc.invalidateQueries({ queryKey: queryKeys.cart })
-      navigate(ROUTES.ORDER_DETAIL(order.id))
+      navigate(ROUTES.ORDER_DETAIL(order.order_number))
     },
     onError: (error) => {
       if (axios.isAxiosError(error) && error.response?.status === 403) {
@@ -171,15 +245,116 @@ export function CheckoutPage() {
         <form onSubmit={handlePreSubmit} className="space-y-5">
           {/* Address */}
           <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="mb-5 flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
-                <MapPin className="h-5 w-5" />
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
+                  <MapPin className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="font-bold text-slate-900">Địa chỉ giao hàng</h2>
+                  <p className="text-sm text-slate-500">Chọn nơi nhận hàng chính xác để tránh chậm đơn.</p>
+                </div>
               </div>
-              <div>
-                <h2 className="font-bold text-slate-900">Địa chỉ giao hàng</h2>
-                <p className="text-sm text-slate-500">Chọn nơi nhận hàng chính xác để tránh chậm đơn.</p>
-              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddressForm(!showAddressForm)}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-primary/20 bg-primary/5 px-4 py-2 text-xs font-bold text-primary transition hover:bg-primary hover:text-white"
+              >
+                {showAddressForm ? 'Đóng Form' : '+ Thêm địa chỉ mới'}
+              </button>
             </div>
+
+            {showAddressForm && (
+              <div className="mb-5 rounded-[22px] border border-primary/20 bg-[#fffdfb] p-5 shadow-inner">
+                <h3 className="mb-4 text-sm font-bold text-slate-800">Thêm địa chỉ nhận hàng mới</h3>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="mb-2 block text-xs font-semibold text-slate-600">Họ và tên người nhận</label>
+                    <input
+                      {...registerAddr('receiver_name')}
+                      placeholder="Nguyễn Văn A"
+                      className={cn(
+                        "w-full rounded-xl border bg-white px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2",
+                        errorsAddr.receiver_name ? "border-red-300 focus:ring-red-200" : "border-slate-200 focus:border-primary focus:ring-primary/15"
+                      )}
+                    />
+                    {errorsAddr.receiver_name && <p className="mt-1 text-[10px] text-red-500">{errorsAddr.receiver_name.message}</p>}
+                  </div>
+                  <div>
+                    <label className="mb-2 block text-xs font-semibold text-slate-600">Số điện thoại</label>
+                    <input
+                      {...registerAddr('receiver_phone')}
+                      placeholder="0901234567"
+                      className={cn(
+                        "w-full rounded-xl border bg-white px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2",
+                        errorsAddr.receiver_phone ? "border-red-300 focus:ring-red-200" : "border-slate-200 focus:border-primary focus:ring-primary/15"
+                      )}
+                    />
+                    {errorsAddr.receiver_phone && <p className="mt-1 text-[10px] text-red-500">{errorsAddr.receiver_phone.message}</p>}
+                  </div>
+                  <div>
+                    <label className="mb-2 block text-xs font-semibold text-slate-600">Tỉnh / Thành phố</label>
+                    <input
+                      {...registerAddr('province')}
+                      placeholder="Hồ Chí Minh"
+                      className={cn(
+                        "w-full rounded-xl border bg-white px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2",
+                        errorsAddr.province ? "border-red-300 focus:ring-red-200" : "border-slate-200 focus:border-primary focus:ring-primary/15"
+                      )}
+                    />
+                    {errorsAddr.province && <p className="mt-1 text-[10px] text-red-500">{errorsAddr.province.message}</p>}
+                  </div>
+                  <div>
+                    <label className="mb-2 block text-xs font-semibold text-slate-600">Phường / Xã</label>
+                    <input
+                      {...registerAddr('ward')}
+                      placeholder="Phường Bến Nghé"
+                      className={cn(
+                        "w-full rounded-xl border bg-white px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2",
+                        errorsAddr.ward ? "border-red-300 focus:ring-red-200" : "border-slate-200 focus:border-primary focus:ring-primary/15"
+                      )}
+                    />
+                    {errorsAddr.ward && <p className="mt-1 text-[10px] text-red-500">{errorsAddr.ward.message}</p>}
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="mb-2 block text-xs font-semibold text-slate-600">Địa chỉ chi tiết</label>
+                    <textarea
+                      {...registerAddr('address_detail')}
+                      rows={2}
+                      placeholder="Số nhà, tên đường, khu phố..."
+                      className={cn(
+                        "w-full rounded-xl border bg-white px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2",
+                        errorsAddr.address_detail ? "border-red-300 focus:ring-red-200" : "border-slate-200 focus:border-primary focus:ring-primary/15"
+                      )}
+                    />
+                    {errorsAddr.address_detail && <p className="mt-1 text-[10px] text-red-500">{errorsAddr.address_detail.message}</p>}
+                  </div>
+                </div>
+
+                <div className="mt-4 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAddressForm(false)
+                      resetAddr({ is_default: false })
+                    }}
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 transition"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="button"
+                    disabled={savingAddress}
+                    onClick={handleSubmitAddr((data) => saveAddress(data))}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-black text-white hover:opacity-90 disabled:opacity-60 transition"
+                  >
+                    {savingAddress ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                    Lưu địa chỉ
+                  </button>
+                </div>
+              </div>
+            )}
+
             {addresses && addresses.length > 0 ? (
               <div className="space-y-3">
                 {addresses.map((addr) => (
@@ -208,10 +383,18 @@ export function CheckoutPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-slate-400">
-                Bạn chưa có địa chỉ.{' '}
-                <a href="/dia-chi" className="text-primary hover:underline">Thêm địa chỉ</a>
-              </p>
+              <div className="rounded-[22px] border border-dashed border-slate-200 p-6 text-center">
+                <p className="text-sm font-semibold text-slate-500">
+                  Bạn chưa có địa chỉ giao hàng nào.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowAddressForm(true)}
+                  className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-white transition hover:opacity-90"
+                >
+                  + Thêm địa chỉ đầu tiên
+                </button>
+              </div>
             )}
             {errors.address_id && <p className="mt-2 text-xs text-red-500">{errors.address_id.message}</p>}
           </div>

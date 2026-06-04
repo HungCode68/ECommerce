@@ -155,6 +155,7 @@ export function AddressesPage() {
     handleSubmit,
     reset,
     watch,
+    setError,
     formState: { errors },
   } = useForm<AddressFormData>({
     resolver: zodResolver(addressSchema),
@@ -190,7 +191,32 @@ export function AddressesPage() {
       reset({ is_default: false })
       qc.invalidateQueries({ queryKey: queryKeys.addressKeys.all })
     },
-    onError: () => toast.error('Không thể lưu địa chỉ'),
+    onError: (error: any) => {
+      const responseData = error?.response?.data
+      const validationErrors = responseData?.errors
+      
+      if (validationErrors && typeof validationErrors === 'object') {
+        Object.entries(validationErrors).forEach(([field, msg]) => {
+          const fieldLower = field.toLowerCase()
+          let formField: keyof AddressFormData | null = null
+          
+          if (fieldLower.includes('name')) formField = 'receiver_name'
+          else if (fieldLower.includes('phone')) formField = 'receiver_phone'
+          else if (fieldLower.includes('province') || fieldLower.includes('state')) formField = 'province'
+          else if (fieldLower.includes('ward') || fieldLower.includes('city')) formField = 'ward'
+          else if (fieldLower.includes('detail') || fieldLower.includes('line1')) formField = 'address_detail'
+          else if (fieldLower.includes('district')) formField = 'district'
+          
+          if (formField) {
+            setError(formField, { type: 'server', message: String(msg) })
+          }
+        })
+        toast.error('Vui lòng kiểm tra lại các thông tin lỗi màu đỏ trên Form')
+      } else {
+        const errMsg = responseData?.message || 'Không thể lưu địa chỉ'
+        toast.error(errMsg)
+      }
+    },
   })
 
   const { mutate: setDefaultAddress, isPending: settingDefault } = useMutation({

@@ -17,9 +17,9 @@ import { getInitials, getAvatarColor } from '@/utils/adminDashboard'
 const STATUS_OPTIONS: { label: string; value: OrderStatus | ''; icon: string }[] = [
   { label: 'Tất cả trạng thái', value: '', icon: 'apps' },
   { label: 'Đang chờ xử lý', value: 'pending', icon: 'hourglass_empty' },
-  { label: 'Đã xác nhận', value: 'confirmed', icon: 'check_circle' },
-  { label: 'Đang giao hàng', value: 'shipping', icon: 'local_shipping' },
-  { label: 'Đã giao', value: 'delivered', icon: 'task_alt' },
+  { label: 'Đã xác nhận', value: 'processing', icon: 'check_circle' },
+  { label: 'Đang giao hàng', value: 'shipped', icon: 'local_shipping' },
+  { label: 'Đã giao', value: 'completed', icon: 'task_alt' },
   { label: 'Đã hủy', value: 'cancelled', icon: 'cancel' },
 ]
 
@@ -30,19 +30,19 @@ const STATUS_MAP: Record<OrderStatus, { label: string; bg: string; text: string;
     text: 'text-tertiary',
     dot: 'bg-tertiary',
   },
-  confirmed: {
+  processing: {
     label: 'Confirmed',
     bg: 'bg-blue-500/10',
     text: 'text-blue-600',
     dot: 'bg-blue-500',
   },
-  shipping: {
+  shipped: {
     label: 'Shipping',
     bg: 'bg-primary-container/10',
     text: 'text-primary',
     dot: 'bg-primary-container',
   },
-  delivered: {
+  completed: {
     label: 'Delivered',
     bg: 'bg-green-500/10',
     text: 'text-green-600',
@@ -53,6 +53,12 @@ const STATUS_MAP: Record<OrderStatus, { label: string; bg: string; text: string;
     bg: 'bg-error/10',
     text: 'text-error',
     dot: 'bg-error',
+  },
+  refunded: {
+    label: 'Refunded',
+    bg: 'bg-slate-100',
+    text: 'text-slate-600',
+    dot: 'bg-slate-400',
   },
 }
 
@@ -298,7 +304,7 @@ export function OrdersPage() {
                         )}
                       </td>
                       <td className="px-6 py-5">
-                        <div className="flex justify-center">
+                        <div className="flex flex-col items-center justify-center gap-1.5">
                           <span className={cn(
                             "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border",
                             s.bg, s.text, `border-${s.text.replace('text-', '')}/20`
@@ -306,6 +312,14 @@ export function OrdersPage() {
                             <span className={cn("w-1.5 h-1.5 rounded-full", s.dot)}></span>
                             {s.label}
                           </span>
+                          {order.status === 'cancelled' && order.cancel_reason && (
+                            <div 
+                              className="text-[10px] text-error font-medium truncate max-w-[120px] px-2 py-0.5 bg-error/5 rounded text-center cursor-help"
+                              title={order.cancel_reason}
+                            >
+                              Lý do: {order.cancel_reason.replace(/^Khách hủy: /, '')}
+                            </div>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-5 text-right">

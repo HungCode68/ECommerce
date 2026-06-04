@@ -15,6 +15,7 @@ import (
 	producthistory "golang/internal/repository/producthistory"
 	productreview "golang/internal/repository/productreview"
 	productVariant "golang/internal/repository/productvariant"
+	notificationrepo "golang/internal/repository/notification"
 	"golang/internal/router"
 	"net/http"
 )
@@ -26,12 +27,13 @@ func InitProductModule(db *sql.DB, mux *http.ServeMux) {
 	repoHistory := producthistory.NewProductHistoryRepo(db)
 	repoReview := productreview.NewProductReviewRepo(db)
 	orderRepo := order.NewOrderRepository(db)
+	notifRepo := notificationrepo.NewNotificationRepo(db)
 
 	// khởi tạo Controller
 	ctrlProduct := productController.NewProductController(repoProduct, repoVariant, repoHistory, repoReview)
 	ctrlVariant := productVariantController.NewProductVariantController(repoVariant)
 	ctrlHistory := producthistoryController.NewProductHistoryController(repoHistory)
-	ctrlReview := productReviewsController.NewProductReviewsController(repoReview, orderRepo)
+	ctrlReview := productReviewsController.NewProductReviewsController(repoReview, orderRepo, notifRepo)
 	// khởi tạo Handler
 	hdlProduct := productHandler.NewProductHandler(ctrlProduct)
 	hdlVariant := productVariantHandler.NewVariantHandler(ctrlVariant)
