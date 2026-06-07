@@ -5,6 +5,7 @@ export interface Notification {
   message: string
   type: string
   is_read: boolean
+  reference_id?: number | null
   created_at: string
 }
 

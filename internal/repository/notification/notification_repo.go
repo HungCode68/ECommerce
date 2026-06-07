@@ -15,9 +15,9 @@ func NewNotificationRepo(db *sql.DB) NotificationRepository {
 
 func (r *notificationRepo) Create(notification *model.Notification) error {
 	res, err := r.DB.Exec(`
-		INSERT INTO notifications (user_id, title, message, type, is_read, created_at)
-		VALUES (?, ?, ?, ?, 0, NOW())
-	`, notification.UserID, notification.Title, notification.Message, notification.Type)
+		INSERT INTO notifications (user_id, title, message, type, is_read, reference_id, created_at)
+		VALUES (?, ?, ?, ?, 0, ?, NOW())
+	`, notification.UserID, notification.Title, notification.Message, notification.Type, notification.ReferenceID)
 	
 	if err != nil {
 		return err
@@ -39,7 +39,7 @@ func (r *notificationRepo) GetByUserID(userID int64, offset int, limit int) ([]m
 	}
 
 	rows, err := r.DB.Query(`
-		SELECT id, user_id, title, message, type, is_read, created_at
+		SELECT id, user_id, title, message, type, is_read, reference_id, created_at
 		FROM notifications
 		WHERE user_id = ?
 		ORDER BY created_at DESC
@@ -55,10 +55,14 @@ func (r *notificationRepo) GetByUserID(userID int64, offset int, limit int) ([]m
 	for rows.Next() {
 		var n model.Notification
 		var isRead int
-		if err := rows.Scan(&n.ID, &n.UserID, &n.Title, &n.Message, &n.Type, &isRead, &n.CreatedAt); err != nil {
+		var refID sql.NullInt64
+		if err := rows.Scan(&n.ID, &n.UserID, &n.Title, &n.Message, &n.Type, &isRead, &refID, &n.CreatedAt); err != nil {
 			return nil, 0, err
 		}
 		n.IsRead = isRead == 1
+		if refID.Valid {
+			n.ReferenceID = &refID.Int64
+		}
 		notifications = append(notifications, n)
 	}
 

@@ -22,8 +22,8 @@ const parseVNDToNumber = (vndStr: string | number | undefined | null): number =>
 
 export function OrderDetailPage() {
   const { id } = useParams()
-  const orderCode = id as string
   const qc = useQueryClient()
+  const isNumericId = id ? !isNaN(Number(id)) && !id.startsWith('#') : false
   const [copiedField, setCopiedField] = useState<string | null>(null)
   const [cancelModalOpen, setCancelModalOpen] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
@@ -34,23 +34,28 @@ export function OrderDetailPage() {
       toast.success('Đã hủy đơn hàng')
       setCancelModalOpen(false)
       setCancelReason('')
-      qc.invalidateQueries({ queryKey: ['orderDetail', orderCode] })
+      qc.invalidateQueries({ queryKey: ['orderDetail', id] })
       qc.invalidateQueries({ queryKey: ['orders'] })
     },
     onError: () => toast.error('Không thể hủy đơn hàng'),
   })
 
   const { data: order, isLoading } = useQuery({
-    queryKey: ['orderDetail', orderCode],
-    queryFn: () => orderApi.getDetailByCode(orderCode),
-    enabled: !!orderCode,
+    queryKey: ['orderDetail', id],
+    queryFn: () => {
+      if (isNumericId) {
+        return orderApi.getDetail(Number(id))
+      }
+      return orderApi.getDetailByCode(id as string)
+    },
+    enabled: !!id,
   })
 
   const { mutate: confirmTransferred, isPending: isConfirmPending } = useMutation({
     mutationFn: () => orderApi.confirmTransferred(order?.id ?? 0),
     onSuccess: () => {
       toast.success('Gửi thông báo chuyển khoản thành công!')
-      qc.invalidateQueries({ queryKey: ['orderDetail', orderCode] })
+      qc.invalidateQueries({ queryKey: ['orderDetail', id] })
     },
     onError: () => {
       toast.error('Gửi thông báo thất bại, vui lòng thử lại!')
@@ -305,6 +310,56 @@ export function OrderDetailPage() {
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Cancellation Details */}
+      {order.status === 'cancelled' && (
+        <div className="mt-6 mb-4 rounded-xl border border-red-100 bg-red-50 p-4 sm:p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <AlertCircle className="h-5 w-5 text-red-600" />
+            <h3 className="font-bold text-red-800 text-lg">Chi tiết thông tin hủy đơn</h3>
+          </div>
+          <div className="grid gap-3 text-sm">
+            <div className="flex justify-between">
+              <span className="text-slate-600 font-medium">Thời gian hủy:</span>
+              <span className="font-semibold text-slate-800">{order.cancelled_at ? formatDateTime(order.cancelled_at) : 'Không xác định'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-600 font-medium">Yêu cầu bởi:</span>
+              <span className="font-semibold text-slate-800">
+                {order.cancel_reason?.startsWith('Khách hủy:') ? 'Người mua (Bạn)' : 'Hệ thống / Quản trị viên'}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-600 font-medium">Lý do hủy:</span>
+              <span className="font-semibold text-slate-800 text-right max-w-[60%]">
+                {order.cancel_reason?.replace('Khách hủy: ', '') || 'Không có lý do'}
+              </span>
+            </div>
+
+            {order.payment_method === 'bank_transfer' && (
+              <>
+                <div className="h-px bg-red-200 my-2" />
+                <div className="flex justify-between">
+                  <span className="text-slate-600 font-medium">Trạng thái hoàn tiền:</span>
+                  <span className="font-semibold text-orange-600">
+                    {order.payment_status === 'refunded' ? 'Đã hoàn tiền' : 'Chờ hoàn tiền (nếu bạn đã chuyển khoản)'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-600 font-medium">Số tiền hoàn lại:</span>
+                  <span className="font-bold text-red-600 text-lg">{formatVND(parseVNDToNumber(order.total_amount))}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-600 font-medium">Hoàn vào tài khoản:</span>
+                  <span className="font-semibold text-slate-800 text-right max-w-[60%]">
+                    Tài khoản ngân hàng gốc (Vui lòng liên hệ CSKH nếu cần hỗ trợ)
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
 

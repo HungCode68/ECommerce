@@ -102,8 +102,8 @@ func (c *orderController) CreateOrder(ctx context.Context, userID int64, req mod
 			return nil, fmt.Errorf("biến thể '%s' không thuộc sản phẩm '%s'", *variant.Title, parentProduct.Name)
 		}
 
-		//  Kiểm tra tồn kho
-		if variant.StockQuantity < reqItem.Quantity {
+		//  Kiểm tra tồn kho (Bỏ qua nếu là đơn đặt trước)
+		if !req.IsPreorder && variant.StockQuantity < reqItem.Quantity {
 			logger.WarnLogger.Printf("CreateOrder: Out of stock (VariantID: %d, Req: %d, Stock: %d)", reqItem.VariantID, reqItem.Quantity, variant.StockQuantity)
 			return nil, fmt.Errorf("sản phẩm '%s' (Phân loại: %s) không đủ hàng. Còn: %d", parentProduct.Name, *variant.Title, variant.StockQuantity)
 		}
@@ -198,6 +198,16 @@ func (c *orderController) CreateOrder(ctx context.Context, userID int64, req mod
 		finalTotalAmount = 0
 	}
 
+	if req.IsPreorder {
+		finalTotalAmount = finalTotalAmount * 0.3
+		if req.Note != "" {
+			req.Note += " - "
+		}
+		req.Note += "[ĐƠN ĐẶT TRƯỚC - Đã cọc 30%]"
+		// Ensure payment method is bank_transfer
+		req.PaymentMethod = model.PaymentMethodBankTransfer
+	}
+
 	orderNumber := fmt.Sprintf("ORD-%d", time.Now().UnixNano())
 
 	// Happy Case logic: Nếu là COD thì chuyển thẳng sang status 'processing' (Đã đặt hàng thành công)
@@ -234,8 +244,9 @@ func (c *orderController) CreateOrder(ctx context.Context, userID int64, req mod
 		_ = c.NotificationRepo.Create(&model.Notification{
 			UserID:  userID,
 			Title:   "Đặt hàng thành công",
-			Message: fmt.Sprintf("Đơn hàng %s của bạn đã được tạo thành công.", orderNumber),
-			Type:    "ORDER_CREATED",
+			Message:     fmt.Sprintf("Đơn hàng %s của bạn đã được tạo thành công.", orderNumber),
+			Type:        "ORDER_CREATED",
+			ReferenceID: &newOrder.ID,
 		})
 	}()
 
@@ -452,6 +463,10 @@ func (c *orderController) GetMyOrder(ctx context.Context, userID int64, orderID 
 	if order.Note != nil {
 		noteStr = *order.Note
 	}
+	cancelReasonStr := ""
+	if order.CancelReason != nil {
+		cancelReasonStr = *order.CancelReason
+	}
 	logger.InfoLogger.Printf("GetMyOrder success for UserID: %d", userID)
 	return &model.OrderResponse{
 		ID:              order.ID,
@@ -465,6 +480,7 @@ func (c *orderController) GetMyOrder(ctx context.Context, userID int64, orderID 
 		PaymentStatus:   order.PaymentStatus,
 		PaymentMethod:   paymentMethod,
 		Note:            noteStr,
+		CancelReason:    cancelReasonStr,
 		ShippingAddress: address,
 		Items:           itemRes,
 		Payments:        payRes,
@@ -564,8 +580,9 @@ func (c *orderController) CancelOrder(ctx context.Context, userID int64, orderID
 		_ = c.NotificationRepo.Create(&model.Notification{
 			UserID:  userID,
 			Title:   "Hủy đơn hàng thành công",
-			Message: fmt.Sprintf("Đơn hàng %s của bạn đã được hủy thành công. Lý do: %s", order.OrderNumber, reason),
-			Type:    "ORDER_CANCELED",
+			Message:     fmt.Sprintf("Đơn hàng %s của bạn đã được hủy thành công. Lý do: %s", order.OrderNumber, reason),
+			Type:        "ORDER_CANCELED",
+			ReferenceID: &orderID,
 		})
 	}()
 

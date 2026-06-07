@@ -74,8 +74,10 @@ export function CheckoutPage() {
     ? [buyNowItem]
     : (cart?.items ?? []).filter((i) => selectedIds.includes(i.item_id))
 
-  const subtotal = checkedItems.reduce((acc, i) => acc + i.price * i.quantity, 0)
-  const shippingFee = subtotal >= 500_000 ? 0 : 30_000
+  const isPreorder = buyNowItem?.is_preorder === true
+  const originalSubtotal = checkedItems.reduce((acc, i) => acc + i.price * i.quantity, 0)
+  const subtotal = isPreorder ? originalSubtotal * 0.3 : originalSubtotal
+  const shippingFee = originalSubtotal >= 500_000 ? 0 : 30_000
   const total = subtotal + shippingFee - discount
   const totalQuantity = checkedItems.reduce((acc, item) => acc + item.quantity, 0)
 
@@ -87,7 +89,7 @@ export function CheckoutPage() {
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<CheckoutFormData>({
     resolver: zodResolver(checkoutSchema),
-    defaultValues: { payment_method: 'cod' },
+    defaultValues: { payment_method: buyNowItem?.is_preorder ? 'bank_transfer' : 'cod' },
   })
 
   const {
@@ -161,11 +163,13 @@ export function CheckoutPage() {
           quantity: i.quantity,
         })),
         order_coupon_code: appliedCode || undefined,
+        is_preorder: isPreorder,
       }),
     onSuccess: (order) => {
       toast.success('Đặt hàng thành công!')
       clearBuyNow()
       qc.invalidateQueries({ queryKey: queryKeys.cart })
+      qc.invalidateQueries({ queryKey: queryKeys.products.all })
       navigate(ROUTES.ORDER_DETAIL(order.order_number))
     },
     onError: (error) => {
@@ -414,20 +418,27 @@ export function CheckoutPage() {
               {[
                 { value: 'cod', label: 'Thanh toán tiền mặt khi nhận hàng (COD)' },
                 { value: 'bank_transfer', label: 'Chuyển khoản ngân hàng' },
-              ].map((pm) => (
-                <label
-                  key={pm.value}
-                  className={cn(
-                    'flex cursor-pointer items-center gap-3 rounded-2xl border p-4 transition-colors',
-                    watch('payment_method') === pm.value
-                      ? 'border-primary bg-primary/5'
-                      : 'border-slate-200 hover:border-primary/50',
-                  )}
-                >
-                  <input type="radio" {...register('payment_method')} value={pm.value} />
-                  <span className="text-sm font-medium text-slate-700">{pm.label}</span>
-                </label>
-              ))}
+              ].map((pm) => {
+                const isDisabled = isPreorder && pm.value === 'cod'
+                return (
+                  <label
+                    key={pm.value}
+                    className={cn(
+                      'flex items-center gap-3 rounded-2xl border p-4 transition-colors',
+                      isDisabled ? 'cursor-not-allowed opacity-50 bg-slate-50' : 'cursor-pointer',
+                      watch('payment_method') === pm.value
+                        ? 'border-primary bg-primary/5'
+                        : 'border-slate-200 hover:border-primary/50',
+                    )}
+                  >
+                    <input type="radio" {...register('payment_method')} value={pm.value} disabled={isDisabled} />
+                    <span className="text-sm font-medium text-slate-700">
+                      {pm.label}
+                      {isDisabled && <span className="ml-2 text-xs text-red-500 font-normal">(Không áp dụng cho đơn đặt trước)</span>}
+                    </span>
+                  </label>
+                )
+              })}
             </div>
           </div>
 
@@ -454,7 +465,7 @@ export function CheckoutPage() {
             className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-4 text-sm font-bold text-white transition hover:bg-primary-dark disabled:opacity-60"
           >
             {isPending && <Loader2 className="h-5 w-5 animate-spin" />}
-            Đặt hàng ({formatVND(total)})
+            {isPreorder ? `Đặt trước (${formatVND(total)})` : `Đặt hàng (${formatVND(total)})`}
           </button>
         </form>
 
@@ -602,7 +613,7 @@ export function CheckoutPage() {
               <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
                 <div className="flex items-end justify-between gap-4">
                   <div>
-                    <p className="text-sm font-semibold text-slate-500">Tổng thanh toán</p>
+                    <p className="text-sm font-semibold text-slate-500">{isPreorder ? 'Tổng tiền cọc (30%)' : 'Tổng thanh toán'}</p>
                     <p className="mt-2 text-3xl font-black tracking-tight text-primary">
                       {formatVND(total)}
                     </p>
@@ -612,6 +623,15 @@ export function CheckoutPage() {
                   </span>
                 </div>
               </div>
+
+              {isPreorder && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                  <p className="text-sm font-bold text-amber-800">Đơn hàng Đặt Trước (Pre-order)</p>
+                  <p className="mt-1 text-xs text-amber-700 leading-relaxed">
+                    Sản phẩm hiện đang tạm hết hàng. Quý khách vui lòng thanh toán trước khoản tiền cọc bằng <strong>30% giá trị đơn hàng</strong> để giữ chỗ. Chúng tôi sẽ liên hệ khi có hàng.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>

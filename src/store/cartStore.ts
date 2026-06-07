@@ -26,6 +26,7 @@ export type BuyNowItem = {
   variant_name: string
   thumbnail_url: string
   stock_quantity: number
+  is_preorder?: boolean
 }
 
 type CartState = {

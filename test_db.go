@@ -1,32 +1,34 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
-	"log"
-
+	"time"
 	_ "github.com/go-sql-driver/mysql"
 )
 
 func main() {
-	db, err := sql.Open("mysql", "root:root@tcp(127.0.0.1:3306)/ecommerce")
+	db, err := sql.Open("mysql", "root:11042005@tcp(127.0.0.1:3306)/ECommerce?parseTime=true&loc=Asia%2FHo_Chi_Minh")
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 	defer db.Close()
 
-	rows, err := db.Query("SELECT id, option_values FROM product_variants LIMIT 10")
+	query := `SELECT DATE(placed_at), SUM(total_amount) FROM orders WHERE payment_status = 'paid' GROUP BY DATE(placed_at)`
+	rows, err := db.QueryContext(context.Background(), query)
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 	defer rows.Close()
 
 	for rows.Next() {
-		var id int
-		var optionValues sql.NullString
-		if err := rows.Scan(&id, &optionValues); err != nil {
-			log.Fatal(err)
+		var d time.Time
+		var r float64
+		if err := rows.Scan(&d, &r); err != nil {
+			fmt.Printf("Error: %v\n", err)
+		} else {
+			fmt.Printf("Date: %s, Revenue: %f\n", d.Format("2006-01-02"), r)
 		}
-		fmt.Printf("ID: %d, OptionValues: %s\n", id, optionValues.String)
 	}
 }

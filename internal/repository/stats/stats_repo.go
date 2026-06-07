@@ -68,14 +68,15 @@ func (r *StatsRepository) GetDashboardOverview(ctx context.Context, filter model
 		return nil, err
 	}
 
-	//  Query doanh thu REAL (Từ bảng sales_summary_daily - thống kê đã chốt)
+	//  Query doanh thu REAL (Từ bảng orders - realtime, chỉ lấy đơn đã thanh toán)
 	// Lấy số liệu thực tế trong khoảng realStart -> realEnd
 	queryReal := `
 		SELECT 
-			COALESCE(SUM(real_orders), 0), 
-			COALESCE(SUM(real_revenue), 0)
-		FROM sales_summary_daily
-		WHERE summary_date >= ? AND summary_date <= ?`
+			COALESCE(COUNT(id), 0), 
+			COALESCE(SUM(total_amount), 0)
+		FROM orders
+		WHERE DATE(placed_at) >= ? AND DATE(placed_at) <= ?
+		AND payment_status = 'paid'`
 
 	if err := r.db.QueryRowContext(ctx, queryReal, realStart, realEnd).Scan(&realOrd, &realRev); err != nil {
 		logger.ErrorLogger.Printf("StatsRepo: Query Real failed: %v", err)
@@ -178,11 +179,12 @@ func (r *StatsRepository) GetRevenueChart(ctx context.Context, filter model.Stat
 	}
 
 	query := `
-		SELECT summary_date, COALESCE(SUM(total_revenue), 0)
-		FROM sales_summary_daily
-		WHERE summary_date >= ? AND summary_date <= ?
-		GROUP BY summary_date
-		ORDER BY summary_date ASC`
+		SELECT DATE(placed_at), COALESCE(SUM(total_amount), 0)
+		FROM orders
+		WHERE DATE(placed_at) >= ? AND DATE(placed_at) <= ?
+		AND payment_status = 'paid'
+		GROUP BY DATE(placed_at)
+		ORDER BY DATE(placed_at) ASC`
 
 	rows, err := r.db.QueryContext(ctx, query, filter.StartDate, filter.EndDate)
 	if err != nil {
@@ -197,6 +199,7 @@ func (r *StatsRepository) GetRevenueChart(ctx context.Context, filter model.Stat
 		if err := rows.Scan(&date, &revenue); err != nil {
 			return nil, err
 		}
+		
 		chart = append(chart, model.RevenueChartResponse{
 			Label:   date.Format("2006-01-02"),
 			Revenue: revenue,

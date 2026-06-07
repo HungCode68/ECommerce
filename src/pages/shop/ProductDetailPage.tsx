@@ -331,9 +331,11 @@ export function ProductDetailPage() {
       toast.error('Sản phẩm chưa có biến thể để mua')
       return
     }
-    if ((getVariantStock(variant) ?? 0) <= 0) {
-      toast.error('Sản phẩm đã hết hàng')
-      return
+    const stock = getVariantStock(variant) ?? 0
+    const isPreorder = stock <= 0
+    
+    if (isPreorder) {
+      toast.success('Sản phẩm tạm hết hàng. Bạn đang tiến hành đặt trước!')
     }
 
     setBuyNow({
@@ -344,7 +346,8 @@ export function ProductDetailPage() {
       product_name: product?.name ?? '',
       variant_name: variant.title?.trim() ?? '',
       thumbnail_url: variant.thumbnail_url ?? product?.thumbnail_url ?? '',
-      stock_quantity: getVariantStock(variant) ?? 0,
+      stock_quantity: stock,
+      is_preorder: isPreorder,
     })
     navigate(ROUTES.CHECKOUT)
   }
@@ -397,7 +400,8 @@ export function ProductDetailPage() {
   }
 
   const currentVariant = selectedVariant ?? fallbackVariant;
-  const disableActions = isAdding || (currentVariant ? getVariantStock(currentVariant) <= 0 : true);
+  const disableAddToCart = isAdding || (currentVariant ? getVariantStock(currentVariant) <= 0 : true);
+  const disableBuyNow = isAdding;
 
   return (
     <main className="mx-auto max-w-[1200px] space-y-10 px-4 py-6 md:px-6">
@@ -426,7 +430,7 @@ export function ProductDetailPage() {
           ratingCount={reviews?.rating_count ?? product.rating_count ?? 0}
           price={displayPrice}
           originalPrice={originalPrice}
-          variantStock={selectedVariant ? getVariantStock(selectedVariant) : null}
+          variantStock={currentVariant ? getVariantStock(currentVariant) : null}
           selectedAttributes={selectedAttributes}
           variantGroups={variantGroups}
           onSelectAttribute={handleSelectAttribute}
@@ -437,8 +441,8 @@ export function ProductDetailPage() {
           onIncreaseQty={() => setQty((current) => current + 1)}
           onBuyNow={handleBuyNow}
           onAddToCart={() => addToCart()}
-          disableBuyNow={disableActions}
-          disableAddToCart={disableActions}
+          disableBuyNow={disableBuyNow}
+          disableAddToCart={disableAddToCart}
         />
       </section>
 

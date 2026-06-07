@@ -84,7 +84,7 @@ function formatChartLabel(dateString: string, period: Period): string {
 }
 
 function groupChartPoints(points: ChartResponse[], period: Period): RevenuePoint[] {
-  if (period !== '1Y') {
+  if (period === '1W') {
     return points.map((point) => ({
       label: formatChartLabel(point.label, period),
       revenue: point.revenue,
@@ -93,24 +93,47 @@ function groupChartPoints(points: ChartResponse[], period: Period): RevenuePoint
 
   const grouped = new Map<string, number>()
 
+  if (period === '1M') {
+    grouped.set('Tuần 1', 0)
+    grouped.set('Tuần 2', 0)
+    grouped.set('Tuần 3', 0)
+    grouped.set('Tuần 4', 0)
+    grouped.set('Tuần 5', 0)
+  } else if (period === '1Y') {
+    grouped.set('Quý 1', 0)
+    grouped.set('Quý 2', 0)
+    grouped.set('Quý 3', 0)
+    grouped.set('Quý 4', 0)
+  }
+
   points.forEach((point) => {
     const date = new Date(`${point.label}T00:00:00`)
     if (Number.isNaN(date.getTime())) {
       return
     }
 
-    const key = `${date.getFullYear()}-${date.getMonth()}`
+    let key = ''
+    if (period === '1M') {
+      const week = Math.ceil(date.getDate() / 7)
+      key = `Tuần ${week}`
+    } else if (period === '1Y') {
+      const quarter = Math.ceil((date.getMonth() + 1) / 3)
+      key = `Quý ${quarter}`
+    }
+
     const current = grouped.get(key) ?? 0
     grouped.set(key, current + point.revenue)
   })
 
-  return Array.from(grouped.entries()).map(([key, revenue]) => {
-    const [, monthIndex] = key.split('-')
-    return {
-      label: `T${Number(monthIndex) + 1}`,
-      revenue,
-    }
-  })
+  // Filter out Tuần 5 if it's 0 to keep chart clean if it doesn't exist
+  if (period === '1M' && grouped.get('Tuần 5') === 0) {
+    grouped.delete('Tuần 5')
+  }
+
+  return Array.from(grouped.entries()).map(([label, revenue]) => ({
+    label,
+    revenue,
+  }))
 }
 
 export const adminStatsApi = {

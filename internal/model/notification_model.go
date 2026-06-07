@@ -6,8 +6,9 @@ type Notification struct {
 	Title     string `json:"title"`
 	Message   string `json:"message"`
 	Type      string `json:"type"`
-	IsRead    bool   `json:"is_read"`
-	CreatedAt string `json:"created_at"`
+	IsRead      bool   `json:"is_read"`
+	ReferenceID *int64 `json:"reference_id,omitempty"`
+	CreatedAt   string `json:"created_at"`
 }
 
 type NotificationListResponse struct {

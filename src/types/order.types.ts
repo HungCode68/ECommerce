@@ -72,6 +72,7 @@ export type CreateOrderRequest = {
   shipping_coupon_code?: string
   payment_method: PaymentMethod
   note?: string
+  is_preorder?: boolean
 }
 
 export type CancelOrderRequest = {

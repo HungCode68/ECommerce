@@ -397,7 +397,7 @@ function RevenueChartCard({
                         Doanh thu
                     </h2>
                     <p className="text-sm text-on-surface-variant">
-                        Hiệu suất theo tháng
+                        Hiệu suất theo {period === '1W' ? 'tuần' : period === '1M' ? 'tháng' : 'năm'}
                     </p>
                 </div>
 

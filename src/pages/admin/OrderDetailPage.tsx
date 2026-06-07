@@ -6,6 +6,7 @@ import { ArrowLeft, Loader2 } from 'lucide-react'
 import { adminOrderApi } from '@/api/admin/adminOrder.api'
 import { queryKeys } from '@/lib/queryKeys'
 import { StatusBadge } from '@/components/shared/StatusBadge'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { formatVND, formatDateTime } from '@/utils/formatters/format'
 import { ORDER_STATUS_LABEL, ROUTES } from '@/utils/constants'
 import type { OrderStatus } from '@/types/order.types'
@@ -29,6 +30,19 @@ export function OrderDetailPage() {
   const qc = useQueryClient()
   const [selectedStatus, setSelectedStatus] = useState<OrderStatus | ''>('')
   const [note, setNote] = useState('')
+  const [confirmModal, setConfirmModal] = useState<{
+    open: boolean
+    title: string
+    description: string
+    action: 'completed' | 'refunded' | null
+    variant: 'default' | 'danger'
+  }>({
+    open: false,
+    title: '',
+    description: '',
+    action: null,
+    variant: 'default',
+  })
 
   const { data: order, isLoading } = useQuery({
     queryKey: queryKeys.admin.orders.detail(Number(id)),
@@ -49,6 +63,20 @@ export function OrderDetailPage() {
       setNote('')
     },
     onError: () => toast.error('Có lỗi xảy ra'),
+  })
+
+  const { mutate: confirmPayment, isPending: isConfirmingPayment } = useMutation({
+    mutationFn: (status: 'completed' | 'refunded') =>
+      adminOrderApi.confirmPayment(Number(id), { status }),
+    onSuccess: (_, status) => {
+      toast.success(status === 'completed' ? 'Xác nhận thanh toán thành công!' : 'Đã xác nhận hoàn tiền thành công!')
+      qc.invalidateQueries({ queryKey: queryKeys.admin.orders.detail(Number(id)) })
+      setConfirmModal((prev) => ({ ...prev, open: false }))
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || 'Có lỗi xảy ra')
+      setConfirmModal((prev) => ({ ...prev, open: false }))
+    },
   })
 
   if (isLoading || !order) {
@@ -148,11 +176,74 @@ export function OrderDetailPage() {
           <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm space-y-2 text-sm">
             <h3 className="font-semibold text-slate-800 mb-3">Thông tin đơn hàng</h3>
             <Row label="Thanh toán" value={order.payment_method === 'cod' ? 'COD' : 'Chuyển khoản'} />
+            <Row 
+              label="Trạng thái T.Toán" 
+              value={order.payment_status === 'paid' ? 'Đã thanh toán' : order.payment_status === 'refunded' ? 'Đã hoàn tiền' : 'Chưa thanh toán'} 
+              valueClass={order.payment_status === 'paid' ? 'text-green-600 font-semibold' : order.payment_status === 'refunded' ? 'text-orange-600 font-semibold' : 'text-slate-500 font-semibold'}
+            />
             {order.note && <Row label="Ghi chú" value={order.note} />}
-            {order.cancel_reason && <Row label="Lý do hủy" value={order.cancel_reason.replace(/^Khách hủy: /, '')} valueClass="text-red-500" />}
+            {order.cancel_reason && <Row label="Lý do hủy" value={order.cancel_reason.replace(/^Khách hủy: /, '')} valueClass="text-red-500 font-medium" />}
           </div>
+
+          {/* Payment actions */}
+          {order.payment_method === 'bank_transfer' && order.payment_status === 'unpaid' && order.status !== 'cancelled' && (
+            <div className="rounded-xl border border-blue-200 bg-blue-50 p-5 shadow-sm space-y-3">
+              <h3 className="font-semibold text-blue-800">Xác nhận thanh toán</h3>
+              <p className="text-xs text-blue-700">Khách hàng chọn chuyển khoản. Hãy kiểm tra biến động số dư trước khi xác nhận.</p>
+              <button
+                onClick={() => setConfirmModal({
+                  open: true,
+                  title: 'Xác nhận nhận tiền',
+                  description: 'Bạn đã kiểm tra đối soát và xác nhận đã nhận được tiền cho đơn hàng này?',
+                  action: 'completed',
+                  variant: 'default',
+                })}
+                disabled={isConfirmingPayment}
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition"
+              >
+                {isConfirmingPayment && <Loader2 className="h-4 w-4 animate-spin" />}
+                Xác nhận đã nhận tiền
+              </button>
+            </div>
+          )}
+
+          {/* Refund actions */}
+          {order.payment_status === 'paid' && order.status === 'cancelled' && (
+            <div className="rounded-xl border border-orange-200 bg-orange-50 p-5 shadow-sm space-y-3">
+              <h3 className="font-semibold text-orange-800">Hoàn tiền đơn hàng</h3>
+              <p className="text-xs text-orange-700">Khách hàng đã thanh toán nhưng đơn hàng bị hủy. Vui lòng hoàn tiền cho khách.</p>
+              <button
+                onClick={() => setConfirmModal({
+                  open: true,
+                  title: 'Xác nhận hoàn tiền',
+                  description: 'Bạn xác nhận đã thực hiện hoàn tiền đầy đủ cho khách hàng? Thao tác này không thể hoàn tác.',
+                  action: 'refunded',
+                  variant: 'danger',
+                })}
+                disabled={isConfirmingPayment}
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-orange-600 py-2.5 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-50 transition"
+              >
+                {isConfirmingPayment && <Loader2 className="h-4 w-4 animate-spin" />}
+                Xác nhận đã hoàn tiền
+              </button>
+            </div>
+          )}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmModal.open}
+        onOpenChange={(open) => setConfirmModal((prev) => ({ ...prev, open }))}
+        title={confirmModal.title}
+        description={confirmModal.description}
+        variant={confirmModal.variant}
+        loading={isConfirmingPayment}
+        onConfirm={() => {
+          if (confirmModal.action) {
+            confirmPayment(confirmModal.action)
+          }
+        }}
+      />
     </div>
   )
 }

@@ -66,7 +66,11 @@ export function NotificationBell() {
 
     // Redirect based on type
     if (notification.type === 'ORDER_CREATED' || notification.type === 'ORDER_CANCELED') {
-      navigate(ROUTES.ORDERS)
+      if (notification.reference_id) {
+        navigate(`${ROUTES.ORDERS}/${notification.reference_id}`)
+      } else {
+        navigate(ROUTES.ORDERS)
+      }
     } else if (notification.type === 'REVIEW_DELETED') {
       // Just stay or navigate to home
     }

@@ -259,16 +259,18 @@ export function ProductInfoPanel({
             disabled={disableBuyNow}
             className="rounded-xl bg-[#630ed4] px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Mua ngay
+            {typeof variantStock === 'number' && variantStock <= 0 ? 'Đặt trước' : 'Mua ngay'}
           </button>
-          <button
-            type="button"
-            onClick={onAddToCart}
-            disabled={disableAddToCart}
-            className="rounded-xl border border-[#630ed4] bg-white px-4 py-3 text-sm font-semibold text-[#630ed4] transition hover:bg-[#630ed4]/5 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            Thêm vào giỏ hàng
-          </button>
+          {typeof variantStock === 'number' && variantStock <= 0 ? null : (
+            <button
+              type="button"
+              onClick={onAddToCart}
+              disabled={disableAddToCart}
+              className="rounded-xl border border-[#630ed4] bg-white px-4 py-3 text-sm font-semibold text-[#630ed4] transition hover:bg-[#630ed4]/5 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Thêm vào giỏ hàng
+            </button>
+          )}
         </div>
       </div>
 

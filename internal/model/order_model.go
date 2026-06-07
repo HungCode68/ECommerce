@@ -60,6 +60,7 @@ type CreateOrderRequest struct {
 	CouponCode         *string                  `json:"coupon_code" validate:"omitempty"` // Legacy alias of OrderCouponCode
 	OrderCouponCode    *string                  `json:"order_coupon_code" validate:"omitempty,min=3,max=50"`
 	ShippingCouponCode *string                  `json:"shipping_coupon_code" validate:"omitempty,min=3,max=50"`
+	IsPreorder         bool                     `json:"is_preorder"`
 }
 
 // Admin cập nhật trạng thái đơn hàng
