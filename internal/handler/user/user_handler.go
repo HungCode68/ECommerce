@@ -106,6 +106,29 @@ func (h *userHandler) GoogleLogin(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, http.StatusOK, "Đăng nhập Google thành công", res)
 }
 
+func (h *userHandler) FacebookLogin(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
+
+	var req model.FacebookLoginRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu JSON không hợp lệ", nil)
+		return
+	}
+
+	if errs := validator.Validate(req); errs != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu đầu vào không hợp lệ", errs)
+		return
+	}
+
+	res, err := h.UserController.FacebookLogin(req)
+	if err != nil {
+		utils.WriteError(w, http.StatusUnauthorized, err.Error(), nil)
+		return
+	}
+
+	utils.WriteJSON(w, http.StatusOK, "Đăng nhập Facebook thành công", res)
+}
+
 func (h *userHandler) SendEmailVerificationOTP(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
 

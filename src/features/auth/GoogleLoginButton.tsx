@@ -6,6 +6,7 @@ import { authApi } from '@/api/auth.api'
 import { useAuthStore } from '@/store/authStore'
 import { cn } from '@/lib/utils'
 import { ROUTES } from '@/utils/constants'
+import { getErrorMessage } from '@/utils/httpError'
 
 const GOOGLE_SCRIPT_ID = 'google-identity-services'
 
@@ -31,8 +32,8 @@ export function GoogleLoginButton({ className, children }: GoogleLoginButtonProp
       }
       navigate(ROUTES.HOME)
     },
-    onError: () => {
-      toast.error('Không thể đăng nhập bằng Google')
+    onError: (error) => {
+      toast.error(getErrorMessage(error, 'Không thể đăng nhập bằng Google'))
     },
   })
 

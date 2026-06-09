@@ -2,9 +2,11 @@ package user
 
 import (
 	"context"
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -39,6 +41,17 @@ type googleTokenInfoResponse struct {
 	ExpiresAt     string `json:"exp"`
 }
 
+type facebookTokenInfoResponse struct {
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Email   string `json:"email"`
+	Picture struct {
+		Data struct {
+			URL string `json:"url"`
+		} `json:"data"`
+	} `json:"picture"`
+}
+
 const (
 	emailVerificationOTPExpiry   = 5 * time.Minute
 	emailVerificationOTPCooldown = 60 * time.Second
@@ -66,6 +79,7 @@ func toUserProfileResponse(user model.User) model.UserProfileResponse {
 		ID:            user.ID,
 		Username:      user.Username,
 		Email:         user.Email,
+		Phone:         user.Phone,
 		BirthDate:     formatBirthDate(user.BirthDate),
 		EmailVerified: user.EmailVerified,
 		Role:          user.Role,
@@ -81,6 +95,7 @@ func toAdminUserResponse(user model.User) model.AdminUserResponse {
 		ID:            user.ID,
 		Username:      user.Username,
 		Email:         user.Email,
+		Phone:         user.Phone,
 		EmailVerified: user.EmailVerified,
 		Role:          user.Role,
 		IsActive:      user.IsActive,
@@ -189,7 +204,7 @@ func (c *userController) Login(req model.LoginRequest) (model.LoginResponse, err
 
 	//  Check khóa
 	if !user.IsActive {
-		return model.LoginResponse{}, errors.New("tài khoản này đã bị khóa")
+		return model.LoginResponse{}, errors.New("Tài khoản này đã bị chặn. Vui lòng liên hệ chăm sóc khách hàng để được xử lý.")
 	}
 
 	//  Check nếu user bị xóa
@@ -281,6 +296,51 @@ func (c *userController) GoogleLogin(req model.GoogleLoginRequest) (model.LoginR
 	}, nil
 }
 
+func (c *userController) FacebookLogin(req model.FacebookLoginRequest) (model.LoginResponse, error) {
+	appID := os.Getenv("VITE_FACEBOOK_APP_ID")
+	appSecret := os.Getenv("FACEBOOK_APP_SECRET")
+	logger.InfoLogger.Printf("[FB_LOGIN] appID=%q appSecret_len=%d", appID, len(appSecret))
+	if appID == "" || appSecret == "" {
+		return model.LoginResponse{}, errors.New("server chưa cấu hình VITE_FACEBOOK_APP_ID hoặc FACEBOOK_APP_SECRET")
+	}
+
+	logger.InfoLogger.Printf("[FB_LOGIN] Verifying token (first 20 chars): %s...", req.AccessToken[:min(20, len(req.AccessToken))])
+	tokenInfo, err := verifyFacebookToken(context.Background(), req.AccessToken, appSecret)
+	if err != nil {
+		logger.WarnLogger.Printf("[FB_LOGIN] Token verification FAILED: %v", err)
+		return model.LoginResponse{}, errors.New("facebook token không hợp lệ")
+	}
+	logger.InfoLogger.Printf("[FB_LOGIN] Token OK - id=%s name=%s email=%s", tokenInfo.ID, tokenInfo.Name, tokenInfo.Email)
+
+	userData, err := c.resolveFacebookUser(tokenInfo)
+	if err != nil {
+		logger.WarnLogger.Printf("[FB_LOGIN] resolveFacebookUser FAILED: %v", err)
+		return model.LoginResponse{}, err
+	}
+	logger.InfoLogger.Printf("[FB_LOGIN] User resolved - id=%d username=%s role=%s", userData.ID, userData.Username, userData.Role)
+
+	accessToken, refreshToken, err := generateTokens(userData.ID, userData.Role)
+	if err != nil {
+		logger.WarnLogger.Printf("[FB_LOGIN] generateTokens FAILED: %v", err)
+		return model.LoginResponse{}, err
+	}
+
+	activityAt := time.Now()
+	refreshTokenExpiry := activityAt.Add(7 * 24 * time.Hour)
+	if err := c.UserRepo.UpdateRefreshToken(userData.ID, refreshToken, refreshTokenExpiry); err != nil {
+		logger.WarnLogger.Printf("[FB_LOGIN] UpdateRefreshToken FAILED: %v", err)
+		return model.LoginResponse{}, err
+	}
+
+	userData.LastActiveAt = &activityAt
+	logger.InfoLogger.Printf("[FB_LOGIN] ✅ Login SUCCESS for user %s (id=%d)", userData.Username, userData.ID)
+	return model.LoginResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		User:         toUserProfileResponse(userData),
+	}, nil
+}
+
 func (c *userController) SendEmailVerificationOTP(req model.SendEmailVerificationOTPRequest) error {
 	userData, err := c.UserRepo.GetUserByIdentifier(req.Email)
 	if err != nil {
@@ -294,7 +354,7 @@ func (c *userController) SendEmailVerificationOTP(req model.SendEmailVerificatio
 		return errors.New("tài khoản này đã bị xóa")
 	}
 	if !userData.IsActive {
-		return errors.New("tài khoản này đã bị khóa")
+		return errors.New("tài khoản này đã bị chặn. Vui lòng liên hệ chăm sóc khách hàng để được xử lý.")
 	}
 	if userData.EmailVerified {
 		return errors.New("email này đã được xác minh")
@@ -655,10 +715,10 @@ func (c *userController) resolveGoogleUser(tokenInfo googleTokenInfoResponse) (m
 	switch {
 	case err == nil:
 		if !userData.IsActive {
-			return model.User{}, errors.New("tài khoản này đã bị khóa")
+			return model.User{}, errors.New("Tài khoản này đã bị chặn. Vui lòng liên hệ chăm sóc khách hàng để được xử lý.")
 		}
 		if userData.DeletedAt != nil {
-			return model.User{}, errors.New("tài khoản này đã bị xóa")
+			return model.User{}, errors.New("Tài khoản này đã bị chặn. Vui lòng liên hệ chăm sóc khách hàng để được xử lý.")
 		}
 		return userData, nil
 	case !errors.Is(err, sql.ErrNoRows):
@@ -669,10 +729,10 @@ func (c *userController) resolveGoogleUser(tokenInfo googleTokenInfoResponse) (m
 	switch {
 	case err == nil:
 		if !existingUser.IsActive {
-			return model.User{}, errors.New("tài khoản này đã bị khóa")
+			return model.User{}, errors.New("Tài khoản này đã bị chặn. Vui lòng liên hệ chăm sóc khách hàng để được xử lý.")
 		}
 		if existingUser.DeletedAt != nil {
-			return model.User{}, errors.New("tài khoản này đã bị xóa")
+			return model.User{}, errors.New("Tài khoản này đã bị xóa.")
 		}
 		return c.UserRepo.LinkGoogleAccount(existingUser.ID, tokenInfo.Sub, optionalString(tokenInfo.Picture), true)
 	case !errors.Is(err, sql.ErrNoRows):
@@ -691,6 +751,60 @@ func (c *userController) resolveGoogleUser(tokenInfo googleTokenInfoResponse) (m
 		ProviderUserID: stringPtr(tokenInfo.Sub),
 		EmailVerified:  true,
 		AvatarURL:      optionalString(tokenInfo.Picture),
+		Role:           "user",
+		IsActive:       true,
+	}
+
+	return c.UserRepo.CreateUser(newUser)
+}
+
+func (c *userController) resolveFacebookUser(tokenInfo facebookTokenInfoResponse) (model.User, error) {
+	userData, err := c.UserRepo.GetUserByProviderID("facebook", tokenInfo.ID)
+	switch {
+	case err == nil:
+		if !userData.IsActive {
+			return model.User{}, errors.New("Tài khoản này đã bị chặn. Vui lòng liên hệ chăm sóc khách hàng để được xử lý.")
+		}
+		if userData.DeletedAt != nil {
+			return model.User{}, errors.New("Tài khoản này đã bị chặn. Vui lòng liên hệ chăm sóc khách hàng để được xử lý.")
+		}
+		return userData, nil
+	case !errors.Is(err, sql.ErrNoRows):
+		return model.User{}, err
+	}
+
+	if tokenInfo.Email != "" {
+		existingUser, err := c.UserRepo.GetUserByIdentifier(tokenInfo.Email)
+		switch {
+		case err == nil:
+			if !existingUser.IsActive {
+				return model.User{}, errors.New("Tài khoản này đã bị chặn. Vui lòng liên hệ chăm sóc khách hàng để được xử lý.")
+			}
+			if existingUser.DeletedAt != nil {
+				return model.User{}, errors.New("Tài khoản này đã bị xóa.")
+			}
+			return c.UserRepo.LinkProviderAccount(existingUser.ID, "facebook", tokenInfo.ID, optionalString(tokenInfo.Picture.Data.URL), true)
+		case !errors.Is(err, sql.ErrNoRows):
+			return model.User{}, err
+		}
+	}
+
+	if tokenInfo.Email == "" {
+		return model.User{}, errors.New("tài khoản Facebook của bạn chưa có email. Vui lòng thêm email vào Facebook rồi thử lại")
+	}
+
+	username, err := c.generateUniqueUsername(tokenInfo.Name, tokenInfo.Email)
+	if err != nil {
+		return model.User{}, err
+	}
+
+	newUser := model.User{
+		Username:       username,
+		Email:          tokenInfo.Email,
+		AuthProvider:   "facebook",
+		ProviderUserID: stringPtr(tokenInfo.ID),
+		EmailVerified:  true,
+		AvatarURL:      optionalString(tokenInfo.Picture.Data.URL),
 		Role:           "user",
 		IsActive:       true,
 	}
@@ -775,6 +889,49 @@ func verifyGoogleIDToken(ctx context.Context, credential string, clientID string
 	}
 	if payload.Sub == "" || payload.Email == "" {
 		return googleTokenInfoResponse{}, errors.New("google token missing required claims")
+	}
+
+	return payload, nil
+}
+
+func generateAppSecretProof(accessToken, appSecret string) string {
+	h := hmac.New(sha256.New, []byte(appSecret))
+	h.Write([]byte(accessToken))
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+func verifyFacebookToken(ctx context.Context, accessToken string, appSecret string) (facebookTokenInfoResponse, error) {
+	proof := generateAppSecretProof(accessToken, appSecret)
+	url := fmt.Sprintf("https://graph.facebook.com/me?fields=id,name,email,picture&access_token=%s&appsecret_proof=%s", accessToken, proof)
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodGet,
+		url,
+		nil,
+	)
+	if err != nil {
+		return facebookTokenInfoResponse{}, err
+	}
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return facebookTokenInfoResponse{}, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return facebookTokenInfoResponse{}, errors.New("facebook graph api rejected token")
+	}
+
+	var payload facebookTokenInfoResponse
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		return facebookTokenInfoResponse{}, err
+	}
+
+	if payload.ID == "" {
+		return facebookTokenInfoResponse{}, errors.New("facebook token missing required fields")
 	}
 
 	return payload, nil

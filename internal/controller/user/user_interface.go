@@ -13,6 +13,9 @@ type UserController interface {
 	// Đăng nhập bằng Google
 	GoogleLogin(req model.GoogleLoginRequest) (model.LoginResponse, error)
 
+	// Đăng nhập bằng Facebook
+	FacebookLogin(req model.FacebookLoginRequest) (model.LoginResponse, error)
+
 	// Gửi OTP xác minh email
 	SendEmailVerificationOTP(req model.SendEmailVerificationOTPRequest) error
 

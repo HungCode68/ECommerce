@@ -4,31 +4,41 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"time"
+	"log"
+
 	_ "github.com/go-sql-driver/mysql"
 )
 
 func main() {
-	db, err := sql.Open("mysql", "root:11042005@tcp(127.0.0.1:3306)/ECommerce?parseTime=true&loc=Asia%2FHo_Chi_Minh")
+	db, err := sql.Open("mysql", "root:11042005@tcp(127.0.0.1:3306)/ECommerce?parseTime=true")
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	defer db.Close()
 
-	query := `SELECT DATE(placed_at), SUM(total_amount) FROM orders WHERE payment_status = 'paid' GROUP BY DATE(placed_at)`
+	query := `
+		SELECT o.order_number,
+		       COALESCE((
+				SELECT GROUP_CONCAT(CONCAT(oi.quantity, 'x ', oi.title) SEPARATOR '\n')
+				FROM order_items oi
+				WHERE oi.order_id = o.id
+		       ), '') AS all_item_titles
+		FROM orders o
+		ORDER BY o.placed_at DESC
+		LIMIT 5`
+
 	rows, err := db.QueryContext(context.Background(), query)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	defer rows.Close()
 
 	for rows.Next() {
-		var d time.Time
-		var r float64
-		if err := rows.Scan(&d, &r); err != nil {
-			fmt.Printf("Error: %v\n", err)
-		} else {
-			fmt.Printf("Date: %s, Revenue: %f\n", d.Format("2006-01-02"), r)
+		var orderNumber string
+		var allItemTitles string
+		if err := rows.Scan(&orderNumber, &allItemTitles); err != nil {
+			log.Fatal(err)
 		}
+		fmt.Printf("Order: %s\nItems: %q\n---\n", orderNumber, allItemTitles)
 	}
 }

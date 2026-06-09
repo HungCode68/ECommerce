@@ -22,5 +22,8 @@ func NewStatsRouter(mux *http.ServeMux, statsHandler stats.StatsHandler) http.Ha
 	// Sync dữ liệu
 	adminGroup.HandleFunc("POST", "/sync", statsHandler.SyncDailyStats)
 
+	// Report PDF
+	adminGroup.HandleFunc("GET", "/report/pdf", statsHandler.GetPDFReportData)
+
 	return mux
 }

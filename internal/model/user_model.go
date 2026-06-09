@@ -8,6 +8,7 @@ type User struct {
 	ID                 int64      `db:"id"`
 	Username           string     `db:"username"`
 	Email              string     `db:"email"`
+	Phone              *string    `db:"phone"`
 	BirthDate          *time.Time `db:"birth_date"`
 	PasswordHash       *string    `db:"password_hash"`
 	AuthProvider       string     `db:"auth_provider"`
@@ -43,6 +44,10 @@ type GoogleLoginRequest struct {
 	Credential string `json:"credential" validate:"required"`
 }
 
+type FacebookLoginRequest struct {
+	AccessToken string `json:"access_token" validate:"required"`
+}
+
 // Lọc dữ liệu tài khoản
 type UserFilter struct {
 	Keyword   string `validate:"omitempty,max=100"`
@@ -57,6 +62,7 @@ type UserFilter struct {
 type UserUpdateProfileRequest struct {
 	Username  *string `json:"username,omitempty"   validate:"omitempty,min=3,max=100,alphanum"`
 	Email     *string `json:"email,omitempty"      validate:"omitempty,email"`
+	Phone     *string `json:"phone,omitempty"      validate:"omitempty,max=20"`
 	BirthDate *string `json:"birth_date,omitempty" validate:"omitempty,datetime=2006-01-02"`
 	Password  *string `json:"password,omitempty"   validate:"omitempty,min=6,max=30"`
 }
@@ -100,6 +106,7 @@ type UserProfileResponse struct {
 	ID            int64      `json:"id"`
 	Username      string     `json:"username"`
 	Email         string     `json:"email"`
+	Phone         *string    `json:"phone,omitempty"`
 	BirthDate     *string    `json:"birth_date,omitempty"`
 	EmailVerified bool       `json:"email_verified"`
 	Role          string     `json:"role"`
@@ -114,6 +121,7 @@ type AdminUserResponse struct {
 	ID            int64      `json:"id"`
 	Username      string     `json:"username"`
 	Email         string     `json:"email"`
+	Phone         *string    `json:"phone,omitempty"`
 	EmailVerified bool       `json:"email_verified"`
 	Role          string     `json:"role"`
 	IsActive      bool       `json:"is_active"`

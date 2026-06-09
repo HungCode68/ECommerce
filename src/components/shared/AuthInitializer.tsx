@@ -12,6 +12,13 @@ type RefreshSessionData = {
   refresh_token: string
 }
 
+const parseFacebookHash = () => {
+  if (!window.location.hash) return null
+  const hashStr = window.location.hash.substring(1)
+  const params = new URLSearchParams(hashStr)
+  return params.get('access_token')
+}
+
 let authBootstrapPromise: Promise<void> | null = null
 let authBootstrapCompleted = false
 
@@ -39,6 +46,28 @@ export const AuthInitializer = ({ children }: { children: React.ReactNode }) => 
     let cancelled = false
 
     const restoreSession = async () => {
+      // 1. Kiểm tra URL xem Facebook có redirect fallback chứa access_token không
+      const fbToken = parseFacebookHash()
+      if (fbToken) {
+        try {
+          console.log('[AUTH_DEBUG] Bắt được Facebook fallback token trong URL')
+          // Xóa hash để URL sạch
+          window.history.replaceState(null, '', window.location.pathname + window.location.search)
+          
+          const { data } = await axios.post(`${(API_BASE_URL as string) === '/' ? '' : API_BASE_URL}/api/auth/facebook`, {
+            access_token: fbToken,
+          })
+          
+          const res = data.data
+          useAuthStore.getState().setAuth(res.user, res.access_token, res.refresh_token)
+          toast.success('Đăng nhập Facebook thành công!')
+          return
+        } catch (error) {
+          console.error('[AUTH_DEBUG] Lỗi khi xử lý Facebook fallback token:', error)
+          toast.error('Lỗi xác thực Facebook. Vui lòng thử lại.')
+        }
+      }
+
       if (accessToken) {
         return
       }

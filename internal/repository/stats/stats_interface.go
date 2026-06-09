@@ -21,6 +21,9 @@ type IStatsRepository interface {
 	//  Lấy số liệu thống kê sản phẩm
 	GetProductStats(ctx context.Context, productID int64, filter model.StatsFilter) ([]model.ProductDailyStatsResponse, error)
 
+	// Lấy dữ liệu báo cáo PDF
+	GetPDFReportData(ctx context.Context, req model.GetPDFReportRequest) (*model.ReportDataResponse, error)
+
 	//  Refresh thống kê hàng ngày
 	RunDailyStatJob(ctx context.Context) error
 }

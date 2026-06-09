@@ -63,9 +63,9 @@ axiosClient.interceptors.response.use(
       responseData: error.response?.data,
     })
 
-    // Không logout khi request đăng nhập / đăng nhập Google bị 401.
+    // Không logout khi request đăng nhập bị 401.
     // Các màn hình auth sẽ tự xử lý lỗi và hiển thị message phù hợp.
-    if (url.includes('/auth/login') || url.includes('/auth/google')) {
+    if (url.includes('/auth/login') || url.includes('/auth/google') || url.includes('/auth/facebook')) {
       console.warn('[AUTH_DEBUG] auth endpoint 401, skip logout', { url })
       return Promise.reject(error)
     }

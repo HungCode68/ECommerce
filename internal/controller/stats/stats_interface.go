@@ -18,6 +18,9 @@ type StatsController interface {
 	//  Lấy số liệu thống kê của 1 sản phẩm
 	GetProductStats(ctx context.Context, productID int64, filter model.StatsFilter) ([]model.ProductDailyStatsResponse, error)
 
+	// Lấy dữ liệu báo cáo PDF
+	GetPDFReportData(ctx context.Context, req model.GetPDFReportRequest) (*model.ReportDataResponse, error)
+
 	// Refresh thống kê hàng ngày
 	SyncDailyStats(ctx context.Context) error
 }

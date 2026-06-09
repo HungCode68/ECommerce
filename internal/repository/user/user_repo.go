@@ -318,7 +318,8 @@ func (u *UserDb) UpdateUserProfile(id int64, req model.UserUpdateProfileRequest)
 
 	queryUpdate := `UPDATE users 
 					SET username = COALESCE(?, username), 
-						email = COALESCE(?, email), 
+						email = COALESCE(?, email),
+						phone = COALESCE(?, phone),
 						birth_date = COALESCE(?, birth_date),
 						email_verified = CASE WHEN ? IS NULL THEN email_verified ELSE 0 END,
 						password_hash = COALESCE(?, password_hash),
@@ -328,6 +329,7 @@ func (u *UserDb) UpdateUserProfile(id int64, req model.UserUpdateProfileRequest)
 	_, err := u.db.Exec(queryUpdate,
 		req.Username,
 		req.Email,
+		req.Phone,
 		req.BirthDate,
 		req.Email,
 		req.Password,
@@ -362,6 +364,23 @@ func (u *UserDb) LinkGoogleAccount(userID int64, providerUserID string, avatarUR
 		WHERE id = ? AND deleted_at IS NULL`
 
 	_, err := u.db.Exec(query, providerUserID, emailVerified, avatarURL, userID)
+	if err != nil {
+		return model.User{}, err
+	}
+
+	return u.GetUserByID(userID)
+}
+
+func (u *UserDb) LinkProviderAccount(userID int64, provider string, providerUserID string, avatarURL *string, emailVerified bool) (model.User, error) {
+	query := `UPDATE users
+		SET auth_provider = ?,
+			provider_user_id = ?,
+			email_verified = ?,
+			avatar_url = COALESCE(?, avatar_url),
+			updated_at = NOW()
+		WHERE id = ? AND deleted_at IS NULL`
+
+	_, err := u.db.Exec(query, provider, providerUserID, emailVerified, avatarURL, userID)
 	if err != nil {
 		return model.User{}, err
 	}

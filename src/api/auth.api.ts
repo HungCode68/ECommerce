@@ -4,6 +4,7 @@ import type {
   LoginRequest,
   LoginResponse,
   GoogleLoginRequest,
+  FacebookLoginRequest,
   RegisterRequest,
   SendEmailVerificationOtpRequest,
   UpdateProfileRequest,
@@ -23,6 +24,14 @@ export const authApi = {
   loginWithGoogle: async (data: GoogleLoginRequest) => {
     const res = await axiosClient.post<ApiResponse<LoginResponse>>(
       '/api/auth/google',
+      data,
+    )
+    return res.data.data
+  },
+
+  loginWithFacebook: async (data: FacebookLoginRequest) => {
+    const res = await axiosClient.post<ApiResponse<LoginResponse>>(
+      '/api/auth/facebook',
       data,
     )
     return res.data.data

@@ -28,7 +28,7 @@ CREATE TABLE users (
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   deleted_at DATETIME DEFAULT NULL,
   CONSTRAINT CHK_UserRole CHECK (role IN ('user','admin')),
-  CONSTRAINT chk_users_auth_provider CHECK (auth_provider IN ('local','google'))
+  CONSTRAINT chk_users_auth_provider CHECK (auth_provider IN ('local','google','facebook'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE INDEX idx_users_auth_provider ON users(auth_provider);
 CREATE INDEX idx_users_email_provider ON users(email, auth_provider);

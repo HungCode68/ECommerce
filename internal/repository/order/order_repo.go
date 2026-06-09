@@ -465,6 +465,11 @@ func (r *OrderRepository) GetOrders(ctx context.Context, filter model.OrderFilte
 				LIMIT 1
 		       ), '') AS first_item_title,
 		       COALESCE((
+				SELECT GROUP_CONCAT(CONCAT(oi.quantity, 'x ', oi.title) SEPARATOR '\n')
+				FROM order_items oi
+				WHERE oi.order_id = o.id
+		       ), '') AS all_item_titles,
+		       COALESCE((
 				SELECT COUNT(*)
 				FROM order_items oi
 				WHERE oi.order_id = o.id
@@ -491,12 +496,16 @@ func (r *OrderRepository) GetOrders(ctx context.Context, filter model.OrderFilte
 	var orders []model.Order
 	for rows.Next() {
 		var o model.Order
+		var firstItemTitle string
+		var allItemTitles string
+		var cancelReason sql.NullString
 		if err := rows.Scan(
 			&o.ID,
 			&o.OrderNumber,
 			&o.UserID,
 			&o.CustomerName,
-			&o.FirstItemTitle,
+			&firstItemTitle,
+			&allItemTitles,
 			&o.ItemCount,
 			&o.Status,
 			&o.TotalAmount,
@@ -506,10 +515,16 @@ func (r *OrderRepository) GetOrders(ctx context.Context, filter model.OrderFilte
 			&o.PaidAt,
 			&o.CompletedAt,
 			&o.CancelledAt,
-			&o.CancelReason,
+			&cancelReason,
 		); err != nil {
 			logger.ErrorLogger.Printf("GetOrders: Scan row failed: %v", err)
 			return nil, 0, err
+		}
+		o.FirstItemTitle = firstItemTitle
+		o.AllItemTitles = allItemTitles
+		if cancelReason.Valid {
+			str := cancelReason.String
+			o.CancelReason = &str
 		}
 		orders = append(orders, o)
 	}

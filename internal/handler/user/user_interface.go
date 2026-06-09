@@ -10,6 +10,8 @@ type UserHandler interface {
 
 	GoogleLogin(w http.ResponseWriter, r *http.Request) // Đăng nhập bằng Google
 
+	FacebookLogin(w http.ResponseWriter, r *http.Request) // Đăng nhập bằng Facebook
+
 	SendEmailVerificationOTP(w http.ResponseWriter, r *http.Request) // Gửi OTP xác minh email
 
 	VerifyEmailVerificationOTP(w http.ResponseWriter, r *http.Request) // Xác minh OTP email

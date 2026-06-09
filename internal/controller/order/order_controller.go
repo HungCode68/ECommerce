@@ -474,6 +474,7 @@ func (c *orderController) GetMyOrder(ctx context.Context, userID int64, orderID 
 		UserID:          order.UserID,
 		CustomerName:    order.CustomerName,
 		FirstItemTitle:  order.FirstItemTitle,
+		AllItemTitles:   order.AllItemTitles,
 		ItemCount:       order.ItemCount,
 		Status:          order.Status,
 		TotalAmount:     utils.FormatVND(order.TotalAmount),
@@ -529,6 +530,7 @@ func (c *orderController) GetMyListOrders(ctx context.Context, userID int64, fil
 			UserID:         o.UserID,
 			CustomerName:   o.CustomerName,
 			FirstItemTitle: o.FirstItemTitle,
+			AllItemTitles:  o.AllItemTitles,
 			ItemCount:      o.ItemCount,
 			Status:         o.Status,
 			TotalAmount:    utils.FormatVND(o.TotalAmount),
@@ -642,7 +644,7 @@ func (c *orderController) GetAdminOrderDetail(ctx context.Context, orderID int64
 	//  Admin Response
 	baseResponse := model.OrderResponse{
 		ID: order.ID, OrderNumber: order.OrderNumber, UserID: order.UserID, CustomerName: order.CustomerName,
-		FirstItemTitle: order.FirstItemTitle, ItemCount: len(itemRes), Status: order.Status,
+		FirstItemTitle: order.FirstItemTitle, AllItemTitles: order.AllItemTitles, ItemCount: len(itemRes), Status: order.Status,
 		TotalAmount: utils.FormatVND(order.TotalAmount), PaymentStatus: order.PaymentStatus, PaymentMethod: paymentMethod, Note: noteStr,
 		CancelReason: cancelReasonStr,
 		ShippingAddress: address, Items: itemRes, Payments: payRes,
@@ -684,6 +686,7 @@ func (c *orderController) SearchOrders(ctx context.Context, filter model.OrderFi
 			UserID:         o.UserID,
 			CustomerName:   o.CustomerName,
 			FirstItemTitle: o.FirstItemTitle,
+			AllItemTitles:  o.AllItemTitles,
 			ItemCount:      o.ItemCount,
 			Status:         o.Status,
 			TotalAmount:    utils.FormatVND(o.TotalAmount),

@@ -8,7 +8,7 @@ import (
 
 func NewCouponsRouter(mux *http.ServeMux, h coupons.CouponsHandler) http.Handler {
 	// Group User (Public hoặc dùng Authenticated tuỳ ý)
-	userGroup := newGroup(mux, "/api/coupons")
+	userGroup := newGroup(mux, "/api/coupons", middleware.AuthMiddleware)
 	userGroup.HandleFunc("POST", "/available", h.GetAvailableCoupons)
 	userGroup.HandleFunc("POST", "/validate", h.ValidateCoupon)
 	userGroup.HandleFunc("POST", "/apply", h.ApplyCoupon)

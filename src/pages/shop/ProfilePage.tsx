@@ -49,6 +49,10 @@ const getBirthDateError = (birthDate: string) => {
 const profileSchema = z.object({
   username: z.string().min(2, 'Tên tối thiểu 2 ký tự'),
   email: z.string().email('Email không hợp lệ'),
+  phone: z.string()
+    .regex(/^(0|\+84)[0-9]{9,10}$/, 'Số điện thoại không hợp lệ')
+    .or(z.literal(''))
+    .optional(),
   birthDate: z.string()
     .min(1, 'Vui lòng chọn ngày sinh')
     .superRefine((value, ctx) => {
@@ -91,6 +95,7 @@ export function ProfilePage() {
     defaultValues: {
       username: user?.username ?? '',
       email: user?.email ?? '',
+      phone: user?.phone ?? '',
       birthDate: user?.birth_date ?? '',
     },
   })
@@ -99,6 +104,7 @@ export function ProfilePage() {
     resetProfile({
       username: user?.username ?? '',
       email: user?.email ?? '',
+      phone: user?.phone ?? '',
       birthDate: user?.birth_date ?? '',
     })
   }, [resetProfile, user])
@@ -121,6 +127,7 @@ export function ProfilePage() {
     mutationFn: (data: ProfileFormData) => authApi.updateProfile({
       username: data.username,
       email: data.email,
+      phone: data.phone || '',
       birth_date: data.birthDate,
     }),
     onSuccess: (updatedUser) => {
@@ -212,6 +219,11 @@ export function ProfilePage() {
                 {user?.email_verified ? 'Email đã xác minh' : 'Email chưa xác minh'}
               </span>
             </div>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">Số điện thoại</label>
+            <input {...regProfile('phone')} type="tel" placeholder="VD: 0912345678" className={inputClass(!!profileErrors.phone)} />
+            {profileErrors.phone && <p className="mt-1 text-xs text-red-500">{profileErrors.phone.message}</p>}
           </div>
           <div>
             <label className="mb-1.5 block text-sm font-medium text-slate-700">Ngày sinh</label>

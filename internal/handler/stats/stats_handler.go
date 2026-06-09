@@ -147,3 +147,28 @@ func (h *statsHandler) SyncDailyStats(w http.ResponseWriter, r *http.Request) {
 	// Trả về thông báo thành công
 	utils.WriteJSON(w, http.StatusOK, "Đã cập nhật dữ liệu báo cáo thành công (Data refreshed)", nil)
 }
+
+// Lấy dữ liệu báo cáo PDF
+func (h *statsHandler) GetPDFReportData(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+	monthStr := query.Get("month")
+	yearStr := query.Get("year")
+
+	month, _ := strconv.Atoi(monthStr)
+	year, _ := strconv.Atoi(yearStr)
+
+	req := model.GetPDFReportRequest{
+		Type:  query.Get("type"),
+		Month: month,
+		Year:  year,
+	}
+
+	resp, err := h.StatsController.GetPDFReportData(r.Context(), req)
+	if err != nil {
+		logger.ErrorLogger.Printf("GetPDFReportData error: %v", err)
+		utils.WriteError(w, http.StatusInternalServerError, "Lỗi lấy dữ liệu báo cáo PDF", nil)
+		return
+	}
+
+	utils.WriteJSON(w, http.StatusOK, "Thành công", resp)
+}

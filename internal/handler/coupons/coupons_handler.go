@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"golang/internal/controller/coupons"
 	"golang/internal/logger"
+	"golang/internal/middleware"
 	"golang/internal/model"
 	"golang/internal/utils"
 	"golang/internal/validator"
@@ -136,6 +137,12 @@ func (h *couponsHandler) GetAvailableCoupons(w http.ResponseWriter, r *http.Requ
 		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu JSON không hợp lệ", nil)
 		return
 	}
+
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	if ok {
+		req.UserID = userID
+	}
+
 	if errs := validator.Validate(req); errs != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu đầu vào không hợp lệ", errs)
 		return
@@ -156,6 +163,12 @@ func (h *couponsHandler) ValidateCoupon(w http.ResponseWriter, r *http.Request) 
 		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu JSON không hợp lệ", nil)
 		return
 	}
+
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	if ok {
+		req.UserID = userID
+	}
+
 	if errs := validator.Validate(req); errs != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu đầu vào không hợp lệ", errs)
 		return
@@ -176,6 +189,12 @@ func (h *couponsHandler) ApplyCoupon(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu JSON không hợp lệ", nil)
 		return
 	}
+
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	if ok {
+		req.UserID = userID
+	}
+
 	if errs := validator.Validate(req); errs != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu đầu vào không hợp lệ", errs)
 		return

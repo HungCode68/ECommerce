@@ -4,6 +4,7 @@ import type {
   RecentOrder,
   RevenuePoint,
   TopProduct,
+  ReportDataResponse,
 } from '@/types/adminStats.types'
 
 type ChartResponse = {
@@ -142,6 +143,11 @@ export const adminStatsApi = {
     return res.data.data as DashboardStats
   },
 
+  async getPDFReportData(params: { type: 'month' | 'year'; month?: number; year: number }): Promise<ReportDataResponse> {
+    const res = await axiosClient.get('/api/admin/stats/report/pdf', { params })
+    return res.data.data as ReportDataResponse
+  },
+
   async getRevenueChart(period: Period = '1M'): Promise<RevenuePoint[]> {
     const { start, end } = getPeriodRange(period)
     const res = await axiosClient.get('/api/admin/stats/dashboard', {
@@ -172,6 +178,7 @@ export const adminStatsApi = {
       order_number: order.order_number,
       customer_name: order.customer_name ?? '',
       first_item_title: order.first_item_title ?? '',
+      all_item_titles: (order as any).all_item_titles ?? order.first_item_title ?? '',
       item_count: order.item_count ?? 0,
       total: parseMoney(order.total_amount),
       status: order.status,

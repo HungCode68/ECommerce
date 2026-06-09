@@ -277,3 +277,26 @@ func percentChangeText(current, previous float64) string {
 	}
 	return fmt.Sprintf("%s%.0f%%", sign, change)
 }
+
+func (c *statsController) GetPDFReportData(ctx context.Context, req model.GetPDFReportRequest) (*model.ReportDataResponse, error) {
+	logger.DebugLogger.Printf("StatsController: Starting GetPDFReportData. Request: %+v", req)
+
+	if req.Type != "month" && req.Type != "year" {
+		return nil, fmt.Errorf("invalid report type, must be 'month' or 'year'")
+	}
+	if req.Year < 2000 || req.Year > 2100 {
+		return nil, fmt.Errorf("invalid year")
+	}
+	if req.Type == "month" && (req.Month < 1 || req.Month > 12) {
+		return nil, fmt.Errorf("invalid month")
+	}
+
+	resp, err := c.StatsRepo.GetPDFReportData(ctx, req)
+	if err != nil {
+		logger.ErrorLogger.Printf("StatsController: GetPDFReportData failed: %v", err)
+		return nil, err
+	}
+
+	logger.InfoLogger.Println("StatsController: GetPDFReportData success")
+	return resp, nil
+}

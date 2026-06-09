@@ -37,6 +37,12 @@ type StatsFilter struct {
 	Limit     int    `validate:"omitempty,min=1,max=100"`       // Dùng cho Top Products
 }
 
+type GetPDFReportRequest struct {
+	Type  string `json:"type" query:"type"`   // "month" or "year"
+	Month int    `json:"month" query:"month"` // 1-12
+	Year  int    `json:"year" query:"year"`   // e.g. 2026
+}
+
 //  RESPONSES
 
 // ProductDailyStatsResponse: Dùng cho API thống kê của 1 sản phẩm
@@ -84,4 +90,33 @@ type GetDashboardStatsResponse struct {
 	TotalCustomers  int64                  `json:"total_customers"`
 	CustomersChange string                 `json:"customers_change"`
 	RevenueChart    []RevenueChartResponse `json:"revenue_chart"`
+}
+
+// Báo cáo doanh thu PDF
+type ReportSummary struct {
+	TotalOrders      int64   `json:"total_orders"`
+	CompletedOrders  int64   `json:"completed_orders"`
+	CancelledOrders  int64   `json:"cancelled_orders"`
+	EstimatedRevenue float64 `json:"estimated_revenue"`
+	RealRevenue      float64 `json:"real_revenue"`
+}
+
+type RevenueReportRow struct {
+	Label            string  `json:"label"` // Ngày hoặc Tháng
+	TotalOrders      int64   `json:"total_orders"`
+	EstimatedRevenue float64 `json:"estimated_revenue"`
+	RealRevenue      float64 `json:"real_revenue"`
+}
+
+type ProductSalesReportRow struct {
+	ProductName  string  `json:"product_name"`
+	VariantTitle string  `json:"variant_title"`
+	UnitsSold    int64   `json:"units_sold"`
+	Revenue      float64 `json:"revenue"`
+}
+
+type ReportDataResponse struct {
+	Summary       ReportSummary           `json:"summary"`
+	RevenueByTime []RevenueReportRow      `json:"revenue_by_time"`
+	ProductSales  []ProductSalesReportRow `json:"product_sales"`
 }

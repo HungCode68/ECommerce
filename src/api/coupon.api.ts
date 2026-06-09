@@ -34,18 +34,34 @@ export const couponApi = {
   },
 
   validate: async (data: ValidateCouponRequest) => {
-    const res = await axiosClient.post<ApiResponse<CouponValidationResult>>(
+    const res = await axiosClient.post<ApiResponse<any>>(
       '/api/coupons/validate',
       data,
     )
-    return res.data.data
+    const backendData = res.data.data
+    if (backendData && !backendData.is_valid) {
+      throw new Error(backendData.message || res.data.message || 'Mã giảm giá không hợp lệ')
+    }
+    return {
+      valid: true,
+      discount: backendData?.discount_amount ?? 0,
+      message: backendData?.message ?? res.data.message
+    } as CouponValidationResult
   },
 
   apply: async (data: ApplyCouponRequest) => {
-    const res = await axiosClient.post<ApiResponse<CouponValidationResult>>(
-      '/api/coupons/apply',
+    const res = await axiosClient.post<ApiResponse<any>>(
+      '/api/coupons/validate', // MUST call validate instead of apply on Cart page
       data,
     )
-    return res.data.data
+    const backendData = res.data.data
+    if (backendData && !backendData.is_valid) {
+      throw new Error(backendData.message || res.data.message || 'Mã giảm giá không hợp lệ')
+    }
+    return {
+      valid: true,
+      discount: backendData?.discount_amount ?? 0,
+      message: backendData?.message ?? res.data.message
+    } as CouponValidationResult
   },
 }

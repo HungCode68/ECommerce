@@ -31,6 +31,7 @@ type Order struct {
 	UserID         int64      `json:"user_id"         db:"user_id"`
 	CustomerName   string     `json:"customer_name"   db:"customer_name"`
 	FirstItemTitle string     `json:"first_item_title" db:"first_item_title"`
+	AllItemTitles  string     `json:"all_item_titles" db:"all_item_titles"`
 	ItemCount      int        `json:"item_count"      db:"item_count"`
 	Status         string     `json:"status"          db:"status"`
 	TotalAmount    float64    `json:"total_amount"    db:"total_amount"`
@@ -94,6 +95,7 @@ type OrderResponse struct {
 	UserID          int64                  `json:"user_id,omitempty"`
 	CustomerName    string                 `json:"customer_name,omitempty"`
 	FirstItemTitle  string                 `json:"first_item_title,omitempty"`
+	AllItemTitles   string                 `json:"all_item_titles,omitempty" db:"all_item_titles"`
 	ItemCount       int                    `json:"item_count,omitempty"`
 	Status          string                 `json:"status"`
 	TotalAmount     string                 `json:"total_amount"`

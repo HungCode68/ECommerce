@@ -29,6 +29,10 @@ export type GoogleLoginRequest = {
   credential: string
 }
 
+export type FacebookLoginRequest = {
+  access_token: string
+}
+
 export type SendEmailVerificationOtpRequest = {
   email: string
 }
@@ -54,5 +58,6 @@ export type RefreshRequest = {
 export type UpdateProfileRequest = {
   username: string
   email: string
+  phone?: string
   birth_date: string
 }

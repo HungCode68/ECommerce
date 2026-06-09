@@ -23,6 +23,9 @@ import {
     getAvatarColor,
     getInitials,
 } from '@/utils/adminDashboard'
+import { generateRecentOrdersPDF } from '@/utils/pdfGenerator'
+import { useAuthStore } from '@/store/authStore'
+import { ExportPDFModal } from '@/features/admin/dashboard/ExportPDFModal'
 import type {
     DashboardStats,
     RecentOrder,
@@ -582,6 +585,7 @@ function RecentOrdersTable({
     isLoading: boolean
 }) {
     const navigate = useNavigate()
+    const { user } = useAuthStore()
 
     return (
         <div className="rounded-xl border border-outline-variant/10 bg-surface-container-lowest">
@@ -594,7 +598,14 @@ function RecentOrdersTable({
                 </div>
                 <button
                     type="button"
-                    onClick={() => toast.info('Tính năng tải báo cáo sẽ sớm được mở.')}
+                    onClick={() => {
+                        // Dùng setTimeout để tách event a.click() của jsPDF khỏi synchronous React event,
+                        // tránh lỗi 'A component suspended while responding to synchronous input'
+                        setTimeout(() => {
+                            generateRecentOrdersPDF(data, user?.name)
+                            toast.success('Xuất báo cáo đơn hàng thành công!')
+                        }, 0)
+                    }}
                     className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition-colors hover:border-cyan-200 hover:text-cyan-600"
                 >
                     <span className="material-symbols-outlined text-[18px]">download</span>
@@ -715,6 +726,7 @@ function RecentOrdersTable({
 
 export function DashboardPage() {
     const [period, setPeriod] = useState<Period>('1M')
+    const [isExportModalOpen, setIsExportModalOpen] = useState(false)
     const navigate = useNavigate()
 
     const statsQuery = useQuery({
@@ -754,7 +766,21 @@ export function DashboardPage() {
                         Bảng điều khiển KC29 TECH quản lý doanh thu, đơn hàng và tồn kho theo thời gian thực.
                     </p>
                 </div>
+                <button
+                    onClick={() => setIsExportModalOpen(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors shadow-sm font-medium"
+                >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Xuất báo cáo PDF
+                </button>
             </div>
+
+            <ExportPDFModal 
+                isOpen={isExportModalOpen} 
+                onClose={() => setIsExportModalOpen(false)} 
+            />
 
             {statsQuery.isLoading ? (
                 <StatCardsLoading />

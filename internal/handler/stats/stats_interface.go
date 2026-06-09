@@ -18,4 +18,6 @@ type StatsHandler interface {
 
 	// Chạy thủ công tính toán thống kê 
 	SyncDailyStats(w http.ResponseWriter, r *http.Request)
+
+	GetPDFReportData(w http.ResponseWriter, r *http.Request)
 }
