@@ -11,9 +11,40 @@ Project backend e-commerce viết bằng Go, sử dụng kiến trúc nhiều t�
 ## 1. Yêu cầu môi trường
 
 - Go 1.25+
+- Node.js (phiên bản mới nhất)
 - MySQL 8+
 
-## 2. Cấu trúc chính
+## 2. Hướng dẫn cài đặt cho người mới (Setup Guide)
+
+**Bước 1: Clone code về máy và tải thư viện**
+```bash
+git clone https://github.com/HungCode68/ECommerce.git
+cd ECommerce
+
+# 1. Cài đặt thư viện Frontend
+npm install
+
+# 2. Tải thư viện Backend
+go mod download
+```
+
+**Bước 2: Cài đặt Cơ sở dữ liệu**
+1. Mở MySQL (ví dụ qua XAMPP hoặc MySQL Workbench).
+2. Tạo một database rỗng tên là `ecommerce`.
+3. Chạy file `schemal.sql` để tạo toàn bộ cấu trúc bảng.
+4. Chạy file `dump.sql` (nếu có xin từ chủ project) để có sẵn dữ liệu mẫu.
+
+**Bước 3: Cấu hình biến môi trường**
+1. Tìm file `.env.example` ở ngoài cùng thư mục dự án.
+2. Copy nó và đổi tên file mới thành `.env`.
+3. Mở file `.env` lên, điền mật khẩu MySQL của bạn vào mục `DB_PASSWORD_MYSQL`.
+
+**Bước 4: Chạy dự án**
+Mở 2 cửa sổ terminal riêng biệt:
+- Terminal 1 (Chạy Frontend): `npm run dev` (truy cập `http://localhost:5173`)
+- Terminal 2 (Chạy Backend): `go run cmd/app/main.go`
+
+## 3. Cấu trúc chính
 
 - `cmd/app/main.go`: entrypoint chạy server
 - `internal/module`: khởi tạo dependency cho từng module
