@@ -377,7 +377,13 @@ func (c *userController) SendEmailVerificationOTP(req model.SendEmailVerificatio
 		return err
 	}
 	otpHash := hashOTP(otpCode)
-	expiresAt := time.Now().Add(emailVerificationOTPExpiry)
+	
+	expireMinStr := os.Getenv("OTP_EXPIRE_MINUTES")
+	expireMinutes := 5
+	if m, err := strconv.Atoi(expireMinStr); err == nil && m > 0 {
+		expireMinutes = m
+	}
+	expiresAt := time.Now().Add(time.Duration(expireMinutes) * time.Minute)
 
 	if err := c.UserRepo.CreateEmailVerificationOTP(userData.ID, userData.Email, otpHash, expiresAt); err != nil {
 		return err
@@ -385,7 +391,7 @@ func (c *userController) SendEmailVerificationOTP(req model.SendEmailVerificatio
 
 	if err := sendVerificationEmail(userData.Email, otpCode); err != nil {
 		logger.ErrorLogger.Printf("Failed to send verification email to %s: %v", userData.Email, err)
-		return errors.New("không thể gửi email OTP, kiểm tra cấu hình SMTP")
+		return fmt.Errorf("Lỗi SMTP: %v", err)
 	}
 
 	return nil
@@ -624,6 +630,12 @@ func (c *userController) DeleteSoftUsers(req model.AdminDeleteManyUsersRequest) 
 		return errors.New("lý do bị chặn là bắt buộc")
 	}
 	return c.UserRepo.DeleteSoftUsers(req.IDs, reason)
+}
+
+// Hàm xóa cứng nhiều user cùng lúc
+func (c *userController) HardDeleteUsers(req model.AdminDeleteManyUsersRequest) error {
+	logger.WarnLogger.Printf("Admin yêu cầu xóa cứng %d users", len(req.IDs))
+	return c.UserRepo.HardDeleteUsers(req.IDs)
 }
 
 // Hàm bỏ chặn nhiều user cùng lúc
@@ -975,20 +987,33 @@ func sendVerificationEmail(toEmail string, otpCode string) error {
 	smtpUsername := os.Getenv("SMTP_USERNAME")
 	smtpPassword := os.Getenv("SMTP_PASSWORD")
 	smtpFrom := os.Getenv("SMTP_FROM")
+	smtpFromName := os.Getenv("SMTP_FROM_NAME")
 
 	if smtpHost == "" || smtpPort == "" || smtpUsername == "" || smtpPassword == "" || smtpFrom == "" {
 		return errors.New("missing SMTP env config")
 	}
 
+	expireMinStr := os.Getenv("OTP_EXPIRE_MINUTES")
+	expireMinutes := 5
+	if m, err := strconv.Atoi(expireMinStr); err == nil && m > 0 {
+		expireMinutes = m
+	}
+
 	auth := smtp.PlainAuth("", smtpUsername, smtpPassword, smtpHost)
 	subject := "Mã OTP xác minh email"
 	body := fmt.Sprintf(
-		"Xin chao,\r\n\r\nMa OTP xac minh email cua ban la: %s\r\nMa nay co hieu luc trong 5 phut.\r\n\r\nNeu ban khong yeu cau, hay bo qua email nay.\r\n",
-		otpCode,
+		"Xin chao,\r\n\r\nMa OTP xac minh email cua ban la: %s\r\nMa nay co hieu luc trong %d phut.\r\n\r\nNeu ban khong yeu cau, hay bo qua email nay.\r\n",
+		otpCode, expireMinutes,
 	)
+
+	fromHeader := smtpFrom
+	if smtpFromName != "" {
+		fromHeader = fmt.Sprintf("%s <%s>", smtpFromName, smtpFrom)
+	}
+
 	message := []byte(
 		fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n%s",
-			smtpFrom, toEmail, subject, body),
+			fromHeader, toEmail, subject, body),
 	)
 
 	addr := net.JoinHostPort(smtpHost, smtpPort)

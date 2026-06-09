@@ -377,7 +377,7 @@ func (h *userHandler) UpdateUserProfile(w http.ResponseWriter, r *http.Request) 
 	res, err := h.UserController.UpdateUserProfile(userID, req)
 	if err != nil {
 		if err.Error() == "tên đăng nhập đã được sử dụng" || err.Error() == "email đã được sử dụng" {
-			utils.WriteError(w, http.StatusConflict, "Dữ liệu trùng lặp", nil)
+			utils.WriteError(w, http.StatusConflict, err.Error(), nil)
 			return
 		}
 		utils.WriteError(w, http.StatusBadRequest, err.Error(), nil)
@@ -443,6 +443,29 @@ func (h *userHandler) DeleteSoftUsers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.WriteJSON(w, http.StatusOK, "Xóa danh sách user thành công", nil)
+}
+
+// HardDeleteUsers - Xóa cứng nhiều người dùng cùng lúc (Admin)
+func (h *userHandler) HardDeleteUsers(w http.ResponseWriter, r *http.Request) {
+	var req model.AdminDeleteManyUsersRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu JSON không hợp lệ", err.Error())
+		return
+	}
+
+	if len(req.IDs) == 0 {
+		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu đầu vào không hợp lệ", "Danh sách ID không được để trống")
+		return
+	}
+
+	err := h.UserController.HardDeleteUsers(req)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Lỗi xóa cứng danh sách user", err.Error())
+		return
+	}
+
+	utils.WriteJSON(w, http.StatusOK, "Xóa cứng danh sách user thành công", nil)
 }
 
 // RestoreSoftUsers - Bỏ chặn nhiều người dùng cùng lúc (Admin)

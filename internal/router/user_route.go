@@ -31,7 +31,8 @@ func NewUserRouter(mux *http.ServeMux, userHandler user.UserHandler) http.Handle
 	adminGroup.HandleFunc("GET", "/search", userHandler.SearchUsers)        // Tìm kiếm users
 	adminGroup.HandleFunc("GET", "/{id}", userHandler.GetUserByID)          // Lấy user by ID
 	adminGroup.HandleFunc("POST", "", userHandler.CreateAdmin)              // Tạo mới admin
-	adminGroup.HandleFunc("DELETE", "", userHandler.DeleteSoftUsers)        // Xóa users
+	adminGroup.HandleFunc("DELETE", "", userHandler.DeleteSoftUsers)        // Xóa mềm users
+	adminGroup.HandleFunc("DELETE", "/hard", userHandler.HardDeleteUsers)   // Xóa cứng users
 	adminGroup.HandleFunc("POST", "/restore", userHandler.RestoreSoftUsers) // Bỏ chặn users
 	adminGroup.HandleFunc("PUT", "/{id}", userHandler.UpdateUser)           // Cập nhật user by ID
 	// adminGroup.HandleFunc("DELETE", "/{id}", userHandler.DeleteUserById) // Xóa user by ID

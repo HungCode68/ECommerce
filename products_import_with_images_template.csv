@@ -1,4 +1,0 @@
-Name,Slug,ThumbnailURL,MinPrice,DiscountPercent,ShortDescription,Description,Brand,Status,CategoryIDs
-iPhone 15 Pro Max,iphone-15-pro-max,https://res.cloudinary.com/your-cloud-name/image/upload/v1234567890/ecommerce/products/iphone-15-pro-max.jpg,31990000,0,iPhone flagship màn hình lớn,iPhone 15 Pro Max chip mạnh camera tốt pin lớn,Apple,active,1
-MacBook Air M3,macbook-air-m3,https://res.cloudinary.com/your-cloud-name/image/upload/v1234567890/ecommerce/products/macbook-air-m3.jpg,27990000,5,Laptop mỏng nhẹ chip M3,MacBook Air M3 phù hợp học tập làm việc và di chuyển,Apple,active,2
-AirPods Pro 2,airpods-pro-2,https://res.cloudinary.com/your-cloud-name/image/upload/v1234567890/ecommerce/products/airpods-pro-2.jpg,5990000,0,Tai nghe chống ồn chủ động,AirPods Pro 2 kết nối ổn định âm thanh tốt thời lượng pin cao,Apple,active,3

@@ -36,6 +36,8 @@ type UserHandler interface {
 
 	DeleteSoftUsers(w http.ResponseWriter, r *http.Request) // Xoá nhiều người dùng theo danh sách ID
 
+	HardDeleteUsers(w http.ResponseWriter, r *http.Request) // Xóa cứng nhiều người dùng theo danh sách ID
+
 	RestoreSoftUsers(w http.ResponseWriter, r *http.Request) // Bỏ chặn nhiều người dùng theo danh sách ID
 
 	RefreshToken(w http.ResponseWriter, r *http.Request) // Làm mới token

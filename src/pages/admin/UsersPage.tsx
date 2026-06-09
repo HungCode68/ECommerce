@@ -60,6 +60,7 @@ export function UsersPage() {
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [blockOpen, setBlockOpen] = useState(false)
   const [restoreOpen, setRestoreOpen] = useState(false)
+  const [hardDeleteOpen, setHardDeleteOpen] = useState(false)
   const [blockReason, setBlockReason] = useState('')
   const [editReasonOpen, setEditReasonOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null)
@@ -89,6 +90,17 @@ export function UsersPage() {
     },
     onError: (error) =>
       toast.error(error instanceof Error ? error.message : 'Chặn thất bại'),
+  })
+
+  const { mutate: hardDeleteMany, isPending: hardDeleting } = useMutation({
+    mutationFn: (ids: number[]) => adminUserApi.hardDeleteMany(ids),
+    onSuccess: (_data, ids) => {
+      toast.success(`Đã xóa vĩnh viễn ${ids.length} người dùng`)
+      setSelectedIds([])
+      setHardDeleteOpen(false)
+      qc.invalidateQueries({ queryKey: queryKeys.admin.users.all })
+    },
+    onError: () => toast.error('Xóa thất bại'),
   })
 
   const { mutate: restoreOne, isPending: restoring } = useMutation({
@@ -226,6 +238,16 @@ export function UsersPage() {
               >
                 <Ban className="h-4 w-4" />
                 Chặn ({selectedActiveIds.length})
+              </button>
+            )}
+            {selectedIds.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setHardDeleteOpen(true)}
+                className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 hover:bg-red-100"
+              >
+                <Ban className="h-4 w-4" />
+                Xóa vĩnh viễn ({selectedIds.length})
               </button>
             )}
           </div>
@@ -472,6 +494,16 @@ export function UsersPage() {
         onConfirm={() => restoreMany(selectedBlockedIds)}
         confirmLabel="Bỏ chặn"
         loading={restoringMany}
+      />
+
+      <ConfirmDialog
+        open={hardDeleteOpen}
+        onOpenChange={setHardDeleteOpen}
+        title="Xóa vĩnh viễn người dùng"
+        description={`Bạn có chắc muốn xóa vĩnh viễn ${selectedIds.length} người dùng đã chọn? Hành động này sẽ xóa dữ liệu khỏi database và không thể hoàn tác.`}
+        onConfirm={() => hardDeleteMany(selectedIds)}
+        confirmLabel="Xóa vĩnh viễn"
+        loading={hardDeleting}
       />
     </div>
   )

@@ -134,7 +134,16 @@ export function ProfilePage() {
       setUser(updatedUser)
       toast.success('Cập nhật thành công!')
     },
-    onError: () => toast.error('Có lỗi xảy ra'),
+    onError: (error: unknown) => {
+      const message =
+        typeof error === 'object' &&
+        error !== null &&
+        'response' in error &&
+        typeof (error as { response?: { data?: { message?: string } } }).response?.data?.message === 'string'
+          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
+          : 'Có lỗi xảy ra'
+      toast.error(message)
+    },
   })
 
   const { mutate: changePassword, isPending: changingPass } = useMutation({
@@ -218,7 +227,45 @@ export function ProfilePage() {
               )}>
                 {user?.email_verified ? 'Email đã xác minh' : 'Email chưa xác minh'}
               </span>
+              {!user?.email_verified && (
+                <button
+                  type="button"
+                  onClick={() => sendOtp()}
+                  disabled={sendingOtp || !user?.email}
+                  className="flex items-center gap-1 rounded-full bg-amber-500 px-3 py-1 font-semibold text-white hover:bg-amber-600 disabled:opacity-60 transition-colors"
+                >
+                  {sendingOtp && <Loader2 className="h-3 w-3 animate-spin" />}
+                  Gửi OTP
+                </button>
+              )}
             </div>
+            {!user?.email_verified && (
+              <div className="mt-3 flex gap-2">
+                <input
+                  {...regOtp('otp')}
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="Nhập mã OTP 6 số"
+                  className={cn(inputClass(!!otpErrors.otp), 'flex-1')}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      submitOtp((d) => verifyOtp(d))()
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => submitOtp((d) => verifyOtp(d))()}
+                  disabled={verifyingOtp}
+                  className="flex items-center gap-1 rounded-lg bg-slate-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-700 disabled:opacity-60 shrink-0"
+                >
+                  {verifyingOtp && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  Xác minh
+                </button>
+              </div>
+            )}
+            {!user?.email_verified && otpErrors.otp && <p className="mt-1 text-xs text-red-500">{otpErrors.otp.message}</p>}
           </div>
           <div>
             <label className="mb-1.5 block text-sm font-medium text-slate-700">Số điện thoại</label>
@@ -238,48 +285,6 @@ export function ProfilePage() {
           </div>
         </form>
       </div>
-
-      {!user?.email_verified && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 shadow-sm">
-          <h2 className="mb-2 font-semibold text-amber-900">Xác minh email</h2>
-          <p className="mb-4 text-sm text-amber-800">
-            Bạn vẫn có thể đăng nhập, nhưng cần xác minh email trước khi thanh toán và đặt hàng.
-          </p>
-          <div className="mb-4 flex justify-start">
-            <button
-              type="button"
-              onClick={() => sendOtp()}
-              disabled={sendingOtp || !user?.email}
-              className="flex items-center gap-2 rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-amber-600 disabled:opacity-60"
-            >
-              {sendingOtp && <Loader2 className="h-4 w-4 animate-spin" />}
-              Gửi OTP tới {user?.email}
-            </button>
-          </div>
-
-          <form onSubmit={submitOtp((d) => verifyOtp(d))} className="flex flex-col gap-3 sm:flex-row">
-            <div className="flex-1">
-              <input
-                {...regOtp('otp')}
-                inputMode="numeric"
-                maxLength={6}
-                placeholder="Nhập mã OTP 6 số"
-                className={inputClass(!!otpErrors.otp)}
-              />
-              {otpErrors.otp && <p className="mt-1 text-xs text-red-500">{otpErrors.otp.message}</p>}
-            </div>
-            <button
-              type="submit"
-              disabled={verifyingOtp}
-              className="flex items-center justify-center gap-2 rounded-xl bg-slate-800 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-700 disabled:opacity-60"
-            >
-              {verifyingOtp && <Loader2 className="h-4 w-4 animate-spin" />}
-              Xác minh OTP
-            </button>
-          </form>
-        </div>
-      )}
-
       {/* Change password */}
       <div className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
         <h2 className="mb-4 font-semibold text-slate-800">Đổi mật khẩu</h2>

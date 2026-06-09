@@ -431,6 +431,44 @@ func (u *UserDb) DeleteSoftUsers(ids []int64, reason string) error {
 	return nil
 }
 
+// Hàm Xóa cứng nhiều User cùng lúc (Hard Delete)
+func (u *UserDb) HardDeleteUsers(ids []int64) error {
+	logger.DebugLogger.Printf("Starting HardDeleteUsers for %d users", len(ids))
+
+	tx, err := u.db.Begin()
+	if err != nil {
+		logger.ErrorLogger.Printf("Failed to begin transaction: %v", err)
+		return err
+	}
+
+	query := `DELETE FROM users WHERE id = ?`
+
+	stmt, err := tx.Prepare(query)
+	if err != nil {
+		tx.Rollback()
+		logger.ErrorLogger.Printf("Failed to prepare statement: %v", err)
+		return err
+	}
+	defer stmt.Close()
+
+	for _, id := range ids {
+		_, err := stmt.Exec(id)
+		if err != nil {
+			tx.Rollback()
+			logger.ErrorLogger.Printf("Failed to hard delete user ID %d: %v", id, err)
+			return err
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		logger.ErrorLogger.Printf("Failed to commit transaction: %v", err)
+		return err
+	}
+
+	logger.InfoLogger.Printf("HardDeleteUsers success, %d users permanently deleted", len(ids))
+	return nil
+}
+
 // Hàm Bỏ chặn nhiều User cùng lúc (restore soft deleted users)
 func (u *UserDb) RestoreSoftUsers(ids []int64) error {
 	logger.DebugLogger.Printf("Starting RestoreManyUsers for %d users", len(ids))

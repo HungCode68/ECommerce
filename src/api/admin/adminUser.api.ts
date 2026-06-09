@@ -167,6 +167,10 @@ export const adminUserApi = {
     await softBlockUsers(ids, reason)
   },
 
+  hardDeleteMany: async (ids: number[]) => {
+    await axiosClient.delete('/api/admin/users/hard', { data: { ids } })
+  },
+
   restoreMany: async (ids: number[]) => {
     await softRestoreUsers(ids)
   },
