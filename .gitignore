@@ -1,10 +1,48 @@
+# ==================================
+# GO & BACKEND
+# ==================================
+# Binaries
+app
+main
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
 
+# ==================================
+# REACT & FRONTEND (NODE)
+# ==================================
+node_modules/
+dist/
+dist-ssr/
+build/
+*.local
 
+# npm/yarn/pnpm logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
-# Hoặc bỏ qua tất cả các file đuôi .log trong toàn dự án (Khuyên dùng)
-*.log
-
-# Biến môi trường — TUYỆT ĐỐI không commit
+# ==================================
+# DATABASE & MÔI TRƯỜNG
+# ==================================
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+
+# Các file dump dữ liệu lớn (không nên đẩy lên Git)
+dump.sql
+*.sql.gz
+
+# ==================================
+# IDE & HỆ ĐIỀU HÀNH
+# ==================================
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+scratch/
+.agent/
+*.log
