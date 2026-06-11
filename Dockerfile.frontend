@@ -10,6 +10,13 @@ COPY . .
 # Tăng giới hạn RAM cho Node.js để tránh lỗi Out Of Memory khi build các project lớn
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 ENV VITE_API_BASE_URL=""
+
+# Khai báo ARG để nhận biến từ docker-compose build args
+ARG VITE_GOOGLE_CLIENT_ID
+ARG VITE_FACEBOOK_APP_ID
+ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
+ENV VITE_FACEBOOK_APP_ID=$VITE_FACEBOOK_APP_ID
+
 RUN npm run build
 
 # Stage 2: Serve using Nginx
