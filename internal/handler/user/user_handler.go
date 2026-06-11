@@ -67,14 +67,11 @@ func (h *userHandler) Login(w http.ResponseWriter, r *http.Request) {
 	res, err := h.UserController.Login(req)
 	if err != nil {
 		switch err.Error() {
-		case "tài khoản này đã bị khóa":
+		case "Tài khoản này đã bị chặn. Vui lòng liên hệ chăm sóc khách hàng để được xử lý.",
+			"tài khoản này đã bị khóa":
 			utils.WriteError(w, http.StatusForbidden, err.Error(), nil)
-		case "tài khoản này đã bị xóa",
-			"tài khoản này chỉ hỗ trợ đăng nhập bằng Google",
-			"tài khoản chưa được cấu hình mật khẩu":
-			utils.WriteError(w, http.StatusUnauthorized, err.Error(), nil)
 		default:
-			utils.WriteError(w, http.StatusUnauthorized, "Đăng nhập thất bại", nil)
+			utils.WriteError(w, http.StatusUnauthorized, err.Error(), nil)
 		}
 		return
 	}

@@ -26,8 +26,9 @@ const (
 
 func NewDatabaseConnection() *DBConfig {
 	// Load file .env
+	// Bỏ qua lỗi nếu không tìm thấy file .env (ví dụ khi chạy trong Docker đã có sẵn biến môi trường)
 	if err := godotenv.Load("./.env"); err != nil {
-		log.Fatalf("Lỗi trong file .env: %v", err)
+		log.Println("Cảnh báo: Không tìm thấy file .env, sẽ sử dụng biến môi trường hệ thống")
 	}
 
 	var err error

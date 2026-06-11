@@ -15,6 +15,11 @@ var (
 )
 
 func InitLogger() {
+	// Đảm bảo thư mục tồn tại trước khi tạo file
+	if err := os.MkdirAll("internal/logs", 0755); err != nil {
+		log.Fatalf("Không thể tạo thư mục log: %v", err)
+	}
+
 	// 1. Mở MỘT file duy nhất cho tất cả các level log
 	file, err := os.OpenFile("internal/logs/server.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
