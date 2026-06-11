@@ -10,6 +10,13 @@ import { getErrorMessage } from '@/utils/httpError'
 
 const FACEBOOK_SCRIPT_ID = 'facebook-jssdk'
 
+declare global {
+  interface Window {
+    fbAsyncInit?: () => void
+    FB?: any
+  }
+}
+
 type FacebookLoginButtonProps = {
   className?: string
   children?: ReactNode
