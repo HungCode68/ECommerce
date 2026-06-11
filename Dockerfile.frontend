@@ -7,7 +7,8 @@ COPY package*.json ./
 RUN npm ci
 
 COPY . .
-# Biến môi trường lúc build (nếu có)
+# Tăng giới hạn RAM cho Node.js để tránh lỗi Out Of Memory khi build các project lớn
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 ENV VITE_API_BASE_URL=""
 RUN npm run build
 
