@@ -8,6 +8,7 @@ import { couponApi } from '@/api/coupon.api'
 import { productApi } from '@/api/product.api'
 import { queryKeys } from '@/lib/queryKeys'
 import { useCartStore } from '@/store/cartStore'
+import { useAuthStore } from '@/store/authStore'
 import { ROUTES } from '@/utils/constants'
 import { getErrorMessage } from '@/utils/httpError'
 import { TableSkeleton } from '@/components/shared/LoadingSkeleton'
@@ -208,7 +209,16 @@ export function CartPage() {
                 shippingFee={shippingFee}
                 discount={discount}
                 total={total}
-                onCheckout={() => navigate(ROUTES.CHECKOUT)}
+                onCheckout={() => {
+                  if (!useAuthStore.getState().isAuthenticated) {
+                    toast.error('Bạn cần đăng nhập trước khi thanh toán!')
+                    setTimeout(() => {
+                      navigate(ROUTES.LOGIN, { state: { from: ROUTES.CART } })
+                    }, 1500)
+                    return
+                  }
+                  navigate(ROUTES.CHECKOUT)
+                }}
                 checkoutDisabled={checkedItems.length === 0}
               />
             </aside>

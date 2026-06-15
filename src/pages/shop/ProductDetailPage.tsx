@@ -17,6 +17,7 @@ import { getCheapestVariant, getVariantPrice, getVariantStock } from '@/utils/pr
 import { ROUTES } from '@/utils/constants'
 import type { Product, ProductVariant } from '@/types/product.types'
 import { useCartStore } from '@/store/cartStore'
+import { useAuthStore } from '@/store/authStore'
 
 type VariantAttributes = Record<string, string>
 type ProductSpec = { label: string; value: string }
@@ -326,6 +327,14 @@ export function ProductDetailPage() {
   }, [galleryItems, selectedAttributes, selectedImage, variantGroups, product])
 
   const handleBuyNow = () => {
+    if (!useAuthStore.getState().isAuthenticated) {
+      toast.error('Bạn cần đăng nhập trước khi mua hàng!')
+      setTimeout(() => {
+        navigate(ROUTES.LOGIN, { state: { from: window.location.pathname } })
+      }, 1500)
+      return
+    }
+
     const variant = selectedVariant ?? fallbackVariant
     if (!variant?.id) {
       toast.error('Sản phẩm chưa có biến thể để mua')
