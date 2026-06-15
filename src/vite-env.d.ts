@@ -35,6 +35,7 @@ interface Window {
           parent: HTMLElement,
           options?: GoogleButtonConfiguration,
         ) => void
+        prompt: () => void
       }
     }
   }
