@@ -18,6 +18,7 @@ func NewCallbackController(repo callbackRepo.CallbackRepository) CallbackControl
 func (c *callbackController) Create(req model.CreateCallbackRequest) (*model.CallbackRequest, error) {
 	return c.repo.Create(&model.CallbackRequest{
 		PhoneNumber: req.PhoneNumber,
+		Reason:      req.Reason,
 		Status:      "pending",
 	})
 }

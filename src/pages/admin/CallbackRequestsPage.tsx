@@ -111,6 +111,7 @@ export function CallbackRequestsPage() {
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50 text-xs font-bold uppercase tracking-wider text-slate-500">
                   <th className="px-6 py-4">Số điện thoại</th>
+                  <th className="px-6 py-4">Nội dung</th>
                   <th className="px-6 py-4">Trạng thái</th>
                   <th className="px-6 py-4">Ngày yêu cầu</th>
                   <th className="px-6 py-4">Cập nhật lúc</th>
@@ -125,6 +126,11 @@ export function CallbackRequestsPage() {
                         <Phone size={16} className="text-slate-400" />
                         {item.phone_number}
                       </div>
+                    </td>
+                    <td className="px-6 py-4 max-w-[250px]">
+                      <p className="truncate text-slate-600" title={item.reason || 'Không có'}>
+                        {item.reason || <span className="text-slate-400 italic">Không có</span>}
+                      </p>
                     </td>
                     <td className="px-6 py-4">
                       {item.status === 'pending' && (

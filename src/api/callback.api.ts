@@ -3,9 +3,10 @@ import type { ApiResponse } from '@/types/api.types'
 import type { CallbackRequest } from '@/types/callback.types'
 
 export const callbackApi = {
-  create: async (phoneNumber: string) => {
+  create: async (payload: { phoneNumber: string; reason?: string }) => {
     const res = await axiosClient.post<ApiResponse<CallbackRequest>>('/api/callback-requests', {
-      phone_number: phoneNumber,
+      phone_number: payload.phoneNumber,
+      reason: payload.reason,
     })
     return res.data.data
   },

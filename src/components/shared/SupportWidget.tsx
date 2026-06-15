@@ -10,6 +10,7 @@ export function SupportWidget() {
   const [isOpen, setIsOpen] = useState(false)
   const [screen, setScreen] = useState<'menu' | 'callback' | 'success'>('menu')
   const [phoneNumber, setPhoneNumber] = useState('')
+  const [reason, setReason] = useState('')
 
   // Fetch settings dynamically
   const { data: settings } = useQuery({
@@ -24,6 +25,7 @@ export function SupportWidget() {
     onSuccess: () => {
       setScreen('success')
       setPhoneNumber('')
+      setReason('')
       toast.success('Gửi yêu cầu gọi lại thành công!')
     },
     onError: () => {
@@ -38,7 +40,7 @@ export function SupportWidget() {
       toast.error('Số điện thoại không hợp lệ. Vui lòng nhập từ 8 đến 15 chữ số.')
       return
     }
-    submitCallback.mutate(cleanPhone)
+    submitCallback.mutate({ phoneNumber: cleanPhone, reason: reason.trim() })
   }
 
   const zaloLink = settings?.zalo_link || 'https://zalo.me'
@@ -157,6 +159,15 @@ export function SupportWidget() {
                           onChange={(e) => setPhoneNumber(e.target.value)}
                           placeholder="Nhập số điện thoại (ví dụ: 0987xxxxxx)"
                           className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-cyan-500 focus:bg-white focus:ring-1 focus:ring-cyan-500"
+                        />
+                      </div>
+                      <div>
+                        <textarea
+                          rows={2}
+                          value={reason}
+                          onChange={(e) => setReason(e.target.value)}
+                          placeholder="Nội dung cần tư vấn (không bắt buộc)..."
+                          className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-cyan-500 focus:bg-white focus:ring-1 focus:ring-cyan-500 resize-none"
                         />
                       </div>
                       <button

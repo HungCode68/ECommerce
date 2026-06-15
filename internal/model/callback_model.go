@@ -5,6 +5,7 @@ import "time"
 type CallbackRequest struct {
 	ID          int64     `db:"id" json:"id"`
 	PhoneNumber string    `db:"phone_number" json:"phone_number"`
+	Reason      string    `db:"reason" json:"reason"`
 	Status      string    `db:"status" json:"status"`
 	CreatedAt   time.Time `db:"created_at" json:"created_at"`
 	UpdatedAt   time.Time `db:"updated_at" json:"updated_at"`
@@ -12,6 +13,7 @@ type CallbackRequest struct {
 
 type CreateCallbackRequest struct {
 	PhoneNumber string `json:"phone_number" validate:"required,min=8,max=20"`
+	Reason      string `json:"reason" validate:"omitempty,max=1000"`
 }
 
 type UpdateCallbackStatusRequest struct {
