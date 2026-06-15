@@ -19,6 +19,7 @@ export const ROUTES = {
   ADMIN_REVIEWS: '/admin/reviews',
   ADMIN_BANNER_SETTINGS: '/admin/banner-settings',
   ADMIN_SETTINGS: '/admin/settings',
+  ADMIN_CALLBACK_REQUESTS: '/admin/callback-requests',
 
   // Shop Routes
   PRODUCTS: '/san-pham',

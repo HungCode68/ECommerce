@@ -22,6 +22,7 @@ const SIDEBAR_NAV: NavItem[] = [
   { to: ROUTES.ADMIN_USERS, label: 'Khách hàng', icon: 'group' },
   { to: ROUTES.ADMIN_REVIEWS, label: 'Đánh giá', icon: 'star' },
   { to: ROUTES.ADMIN_BANNER_SETTINGS, label: 'Thiết lập banner', icon: 'photo_library' },
+  { to: ROUTES.ADMIN_CALLBACK_REQUESTS, label: 'Yêu cầu gọi lại', icon: 'call' },
   { to: ROUTES.ADMIN_SETTINGS, label: 'Cài đặt', icon: 'settings' },
 ]
 

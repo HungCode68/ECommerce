@@ -15,6 +15,7 @@ import { queryKeys } from '@/lib/queryKeys'
 import { ROUTES } from '@/utils/constants'
 import { cn } from '@/lib/utils'
 import { NotificationBell } from '@/components/shared/NotificationBell'
+import { SupportWidget } from '@/components/shared/SupportWidget'
 import kcTechLogo from '@/assets/kc-tech-logo.svg'
 
 
@@ -350,6 +351,7 @@ export function ShopLayout() {
           </div>
         </div>
       </footer>
+      <SupportWidget />
     </div>
   )
 }

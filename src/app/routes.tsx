@@ -81,6 +81,9 @@ const BannerSettingsPage = lazy(() =>
 const GeneralSettingsPage = lazy(() =>
   import('@/pages/admin/GeneralSettingsPage').then((module) => ({ default: module.GeneralSettingsPage })),
 )
+const CallbackRequestsPage = lazy(() =>
+  import('@/pages/admin/CallbackRequestsPage').then((module) => ({ default: module.CallbackRequestsPage })),
+)
 
 function PageLoader() {
   return (
@@ -240,6 +243,14 @@ export function AppRoutes() {
             element={
               <SuspensePage>
                 <GeneralSettingsPage />
+              </SuspensePage>
+            }
+          />
+          <Route
+            path="callback-requests"
+            element={
+              <SuspensePage>
+                <CallbackRequestsPage />
               </SuspensePage>
             }
           />
