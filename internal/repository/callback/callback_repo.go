@@ -33,7 +33,7 @@ func (r *callbackRepo) Create(req *model.CallbackRequest) (*model.CallbackReques
 }
 
 func (r *callbackRepo) GetAll(status string, limit, offset int) ([]model.CallbackRequest, error) {
-	query := `SELECT id, phone_number, reason, status, created_at, updated_at FROM callback_requests`
+	query := `SELECT id, phone_number, COALESCE(reason, ''), status, created_at, updated_at FROM callback_requests`
 	var args []any
 
 	if status != "" {
@@ -85,7 +85,7 @@ func (r *callbackRepo) Count(status string) (int, error) {
 func (r *callbackRepo) GetByID(id int64) (*model.CallbackRequest, error) {
 	var item model.CallbackRequest
 	err := r.db.QueryRow(`
-		SELECT id, phone_number, reason, status, created_at, updated_at
+		SELECT id, phone_number, COALESCE(reason, ''), status, created_at, updated_at
 		FROM callback_requests
 		WHERE id = ?`, id).Scan(
 		&item.ID,
