@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -12,13 +12,16 @@ const GOOGLE_SCRIPT_ID = 'google-identity-services'
 
 type GoogleLoginButtonProps = {
   className?: string
+  children?: React.ReactNode
 }
 
-export function GoogleLoginButton({ className }: GoogleLoginButtonProps) {
+export function GoogleLoginButton({ className, children }: GoogleLoginButtonProps) {
   const navigate = useNavigate()
   const { setAuth } = useAuthStore()
   const buttonRef = useRef<HTMLDivElement | null>(null)
+  const containerRef = useRef<HTMLDivElement | null>(null)
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+  const [btnWidth, setBtnWidth] = useState(200)
 
   const { mutate: loginWithGoogle } = useMutation({
     mutationFn: authApi.loginWithGoogle,
@@ -42,7 +45,6 @@ export function GoogleLoginButton({ className }: GoogleLoginButtonProps) {
     }
 
     let cancelled = false
-    let resizeObserver: ResizeObserver | null = null
     let lastRenderedWidth = 0
 
     const renderGoogleButton = (width: number) => {
@@ -50,7 +52,7 @@ export function GoogleLoginButton({ className }: GoogleLoginButtonProps) {
         return
       }
 
-      // Clamp width between 200 and 400 as required by Google API
+      // Clamp width between 200 and 400
       const clampedWidth = Math.max(200, Math.min(400, width))
       
       // If width didn't change significantly, skip rendering to avoid flashing
@@ -84,8 +86,7 @@ export function GoogleLoginButton({ className }: GoogleLoginButtonProps) {
 
     const initOrRender = () => {
       if (!buttonRef.current) return
-
-      const width = buttonRef.current.offsetWidth
+      const width = containerRef.current?.offsetWidth || 200
       if (width > 0) {
         if (window.google?.accounts.id) {
           renderGoogleButton(width)
@@ -93,9 +94,8 @@ export function GoogleLoginButton({ className }: GoogleLoginButtonProps) {
           const existingScript = document.getElementById(GOOGLE_SCRIPT_ID)
           if (existingScript) {
             existingScript.addEventListener('load', () => {
-              if (buttonRef.current) {
-                renderGoogleButton(buttonRef.current.offsetWidth)
-              }
+              const w = containerRef.current?.offsetWidth || 200
+              renderGoogleButton(w)
             })
           } else {
             const script = document.createElement('script')
@@ -104,9 +104,8 @@ export function GoogleLoginButton({ className }: GoogleLoginButtonProps) {
             script.async = true
             script.defer = true
             script.addEventListener('load', () => {
-              if (buttonRef.current) {
-                renderGoogleButton(buttonRef.current.offsetWidth)
-              }
+              const w = containerRef.current?.offsetWidth || 200
+              renderGoogleButton(w)
             })
             document.head.appendChild(script)
           }
@@ -114,12 +113,13 @@ export function GoogleLoginButton({ className }: GoogleLoginButtonProps) {
       }
     }
 
-    // Use ResizeObserver to detect when the container width becomes stable (e.g. after animations)
-    if (buttonRef.current) {
+    let resizeObserver: ResizeObserver | null = null
+    if (containerRef.current) {
       resizeObserver = new ResizeObserver((entries) => {
         for (const entry of entries) {
           const width = entry.contentRect.width
           if (width > 0) {
+            setBtnWidth(width)
             if (window.google?.accounts.id) {
               renderGoogleButton(width)
             } else {
@@ -128,7 +128,7 @@ export function GoogleLoginButton({ className }: GoogleLoginButtonProps) {
           }
         }
       })
-      resizeObserver.observe(buttonRef.current)
+      resizeObserver.observe(containerRef.current)
     }
 
     initOrRender()
@@ -152,12 +152,36 @@ export function GoogleLoginButton({ className }: GoogleLoginButtonProps) {
     )
   }
 
+  // Calculate the width for the absolute overlay container
+  const overlayWidth = Math.max(200, btnWidth)
+
   return (
-    <div className={cn('relative w-full', className)}>
+    <div ref={containerRef} className={cn('relative overflow-visible', className)}>
+      {/* Custom Button Content */}
+      {children}
+
+      {/* Invisible Google Sign-in button wrapper */}
       <div
-        ref={buttonRef}
-        className="w-full flex justify-center [&>div]:w-full [&_iframe]:w-full"
-      />
+        style={{
+          width: `${overlayWidth}px`,
+          height: '100%',
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          zIndex: 10,
+          cursor: 'pointer',
+          // Use filter: opacity(0) to make it invisible to the user
+          // while keeping getComputedStyle(el).opacity at 1 to bypass Google's clickjacking checks.
+          filter: 'opacity(0)',
+          WebkitFilter: 'opacity(0)',
+        }}
+      >
+        <div
+          ref={buttonRef}
+          className="w-full h-full [&>div]:w-full [&_iframe]:w-full [&>div]:h-full [&_iframe]:h-full"
+        />
+      </div>
     </div>
   )
 }
