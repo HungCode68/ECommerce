@@ -30,7 +30,7 @@ func (h *settingHandler) errJson(w http.ResponseWriter, status int, message stri
 func (h *settingHandler) GetSettings(w http.ResponseWriter, r *http.Request) {
 	settings, err := h.ctrl.GetSettings()
 	if err != nil {
-		h.errJson(w, http.StatusInternalServerError, "Failed to fetch settings")
+		h.errJson(w, http.StatusInternalServerError, "DB ERROR: "+err.Error())
 		return
 	}
 
