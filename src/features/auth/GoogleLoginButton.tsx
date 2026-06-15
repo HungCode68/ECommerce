@@ -44,9 +44,9 @@ export const GoogleLoginButton = React.memo(function GoogleLoginButton({ classNa
     window.google.accounts.id.renderButton(containerRef.current, {
       theme: 'outline',
       size: 'large',
-      text: 'signin_with',
-      shape: 'rectangular',
-      width: 250,
+      text: 'continue_with',
+      shape: 'pill',
+      width: 200,
       logo_alignment: 'left',
     })
   }

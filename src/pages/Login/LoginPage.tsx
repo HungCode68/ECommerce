@@ -156,14 +156,14 @@ export function LoginPage() {
                 <h1 className="font-headline text-4xl font-bold text-on-surface tracking-tight mb-2">Chào Mừng Quay Lại</h1>
                 <p className="text-on-surface-variant font-medium">Nền Tảng Bán Hàng Điện Tử Số 1 Việt Nam</p>
               </header>
-              <div className="flex flex-col items-center gap-4 mb-8">
-                <GoogleLoginButton className="rounded-xl min-h-[48px] w-full max-w-[250px]" />
-                <FacebookLoginButton className="rounded-xl w-full max-w-[250px]">
-                  <div className="flex items-center justify-center gap-3 py-2 px-4 rounded border border-outline-variant/20 hover:bg-surface-bright transition-all group h-10 w-full">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="#1877F2">
+              <div className="flex flex-wrap justify-center gap-3 mb-8 w-full">
+                <GoogleLoginButton className="w-[200px]" />
+                <FacebookLoginButton className="w-[200px]">
+                  <div className="flex items-center justify-center gap-2 px-3 w-full h-[40px] rounded-full border border-[#dadce0] bg-white hover:bg-gray-50 transition-colors cursor-pointer">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="#1877F2">
                       <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.469h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
                     </svg>
-                    <span className="text-sm font-medium text-on-surface group-hover:text-primary transition-colors">Đăng nhập Facebook</span>
+                    <span className="text-[14px] font-medium text-[#3c4043]">Facebook</span>
                   </div>
                 </FacebookLoginButton>
               </div>
