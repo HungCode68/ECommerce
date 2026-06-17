@@ -172,14 +172,16 @@ export function OrderCard({
             Xem chi tiết
           </button>
 
-          <button
-            type="button"
-            onClick={() => onReorder(order)}
-            disabled={isReordering}
-            className="rounded-xl bg-[#630ed4] px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            Mua lại
-          </button>
+          {(uiStatus === 'delivered' || uiStatus === 'cancelled') && (
+            <button
+              type="button"
+              onClick={() => onReorder(order)}
+              disabled={isReordering}
+              className="rounded-xl bg-[#630ed4] px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Mua lại
+            </button>
+          )}
         </div>
       </div>
 

@@ -381,7 +381,7 @@ export function CheckoutPage() {
                         : 'border-slate-200 hover:border-primary/50',
                     )}
                   >
-                    <input type="radio" {...register('address_id')} value={addr.id} className="mt-0.5" />
+                    <input type="radio" {...register('address_id')} value={String(addr.id)} checked={Number(watch('address_id')) === addr.id} className="mt-0.5 h-4 w-4 cursor-pointer accent-primary" />
                     <div className="text-sm">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="font-semibold text-slate-900">{addr.receiver_name}</p>
@@ -441,7 +441,7 @@ export function CheckoutPage() {
                         : 'border-slate-200 hover:border-primary/50',
                     )}
                   >
-                    <input type="radio" {...register('payment_method')} value={pm.value} disabled={isDisabled} />
+                    <input type="radio" {...register('payment_method')} value={pm.value} checked={watch('payment_method') === pm.value} disabled={isDisabled} className="h-4 w-4 cursor-pointer accent-primary" />
                     <span className="text-sm font-medium text-slate-700">
                       {pm.label}
                       {isDisabled && <span className="ml-2 text-xs text-red-500 font-normal">(Không áp dụng cho đơn đặt trước)</span>}
