@@ -67,6 +67,12 @@ type UserUpdateProfileRequest struct {
 	Password  *string `json:"password,omitempty"   validate:"omitempty,min=6,max=30"`
 }
 
+// UserChangePasswordRequest: Dùng khi user đổi mật khẩu
+type UserChangePasswordRequest struct {
+	OldPassword string `json:"old_password" validate:"required"`
+	NewPassword string `json:"new_password" validate:"required,min=6,max=30"`
+}
+
 type SendEmailVerificationOTPRequest struct {
 	Email string `json:"email" validate:"required,email"`
 }

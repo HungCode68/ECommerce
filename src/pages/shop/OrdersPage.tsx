@@ -71,9 +71,14 @@ export function OrdersPage() {
 
   const { mutate: reorderOrder, isPending: reordering } = useMutation({
     mutationFn: async (order: Order) => {
-      const items = order.items?.filter((item) => item.product_id && item.variant_id && item.quantity > 0) ?? []
+      let detailedOrder = order
+      if (!order.items || order.items.length === 0) {
+        detailedOrder = await orderApi.getDetailByCode(order.order_number)
+      }
+
+      const items = detailedOrder.items?.filter((item) => item.product_id && item.variant_id != null && item.quantity > 0) ?? []
       if (items.length === 0) {
-        const fallbackProductId = order.items?.[0]?.product_id
+        const fallbackProductId = detailedOrder.items?.[0]?.product_id
         if (fallbackProductId) {
           return { mode: 'navigate' as const, productId: fallbackProductId }
         }

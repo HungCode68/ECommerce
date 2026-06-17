@@ -30,6 +30,8 @@ type UserHandler interface {
 
 	UpdateUserProfile(w http.ResponseWriter, r *http.Request) // Cập nhật tài khoản người dùng hiện tại
 
+	ChangePassword(w http.ResponseWriter, r *http.Request) // Đổi mật khẩu
+
 	DeleteMyAccount(w http.ResponseWriter, r *http.Request) // Xoá tài khoản người dùng hiện tại
 
 	// DeleteUserById(w http.ResponseWriter, r *http.Request)		// Xoá người dùng theo ID

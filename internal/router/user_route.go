@@ -22,6 +22,7 @@ func NewUserRouter(mux *http.ServeMux, userHandler user.UserHandler) http.Handle
 
 	userGroup.HandleFunc("POST", "/auth/logout", userHandler.Logout)         // Logout
 	userGroup.HandleFunc("PUT", "/users/me", userHandler.UpdateUserProfile)  // Cập nhật profile
+	userGroup.HandleFunc("PUT", "/users/me/password", userHandler.ChangePassword) // Đổi mật khẩu
 	userGroup.HandleFunc("DELETE", "/users/me", userHandler.DeleteMyAccount) // Xoá tài khoản cá nhân
 
 	// =================================================================

@@ -43,6 +43,9 @@ type UserController interface {
 	// Cập nhật tài khoản người dùng hiện tại
 	UpdateUserProfile(id int64, req model.UserUpdateProfileRequest) (model.UserProfileResponse, error)
 
+	// Đổi mật khẩu người dùng hiện tại
+	ChangePassword(id int64, req model.UserChangePasswordRequest) error
+
 	// Xoá tài khoản người dùng hiện tại
 	DeleteMyAccount(id int64) error
 

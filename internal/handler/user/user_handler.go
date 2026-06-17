@@ -384,6 +384,36 @@ func (h *userHandler) UpdateUserProfile(w http.ResponseWriter, r *http.Request) 
 	utils.WriteJSON(w, http.StatusOK, "Cập nhật thông tin cá nhân thành công", res)
 }
 
+// ChangePassword - Người dùng đổi mật khẩu
+func (h *userHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	if !ok || userID == 0 {
+		utils.WriteError(w, http.StatusUnauthorized, "Không xác định được người dùng", nil)
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
+
+	var req model.UserChangePasswordRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu JSON không hợp lệ", nil)
+		return
+	}
+
+	if errs := validator.Validate(req); errs != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu đầu vào không hợp lệ", errs)
+		return
+	}
+
+	err := h.UserController.ChangePassword(userID, req)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err.Error(), nil)
+		return
+	}
+
+	utils.WriteJSON(w, http.StatusOK, "Đổi mật khẩu thành công", nil)
+}
+
 // DeleteMyAccount - Người dùng tự xóa tài khoản của mình
 func (h *userHandler) DeleteMyAccount(w http.ResponseWriter, r *http.Request) {
 	userID, ok := middleware.GetUserIDFromContext(r.Context())

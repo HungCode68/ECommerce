@@ -153,7 +153,16 @@ export function ProfilePage() {
       toast.success('Đổi mật khẩu thành công!')
       resetPass()
     },
-    onError: () => toast.error('Mật khẩu cũ không đúng'),
+    onError: (error: unknown) => {
+      const message =
+        typeof error === 'object' &&
+        error !== null &&
+        'response' in error &&
+        typeof (error as any).response?.data?.message === 'string'
+          ? (error as any).response?.data?.message
+          : 'Mật khẩu cũ không đúng'
+      toast.error(message)
+    },
   })
 
   const { mutate: sendOtp, isPending: sendingOtp } = useMutation({

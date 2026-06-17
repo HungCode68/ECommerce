@@ -596,6 +596,44 @@ func (c *userController) UpdateUserProfile(id int64, req model.UserUpdateProfile
 	return toUserProfileResponse(updatedUser), nil
 }
 
+// Hàm User đổi mật khẩu
+func (c *userController) ChangePassword(id int64, req model.UserChangePasswordRequest) error {
+	logger.InfoLogger.Printf("User ID %d yêu cầu đổi mật khẩu", id)
+
+	user, err := c.UserRepo.GetUserByID(id)
+	if err != nil {
+		return errors.New("không tìm thấy người dùng")
+	}
+
+	if user.PasswordHash == nil {
+		return errors.New("tài khoản chưa được cấu hình mật khẩu")
+	}
+
+	// So sánh mật khẩu cũ
+	err = bcrypt.CompareHashAndPassword([]byte(*user.PasswordHash), []byte(req.OldPassword))
+	if err != nil {
+		return errors.New("mật khẩu cũ không đúng")
+	}
+
+	// Mã hóa mật khẩu mới
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+	hashedString := string(hashedPassword)
+
+	// Update DB (dùng chung UserUpdateProfileRequest để update pass)
+	updateReq := model.UserUpdateProfileRequest{
+		Password: &hashedString,
+	}
+	_, err = c.UserRepo.UpdateUserProfile(id, updateReq)
+	if err != nil {
+		return errors.New("lỗi khi cập nhật mật khẩu")
+	}
+
+	return nil
+}
+
 // Hàm User tự xóa tài khoản (Xóa mềm chính mình)
 func (c *userController) DeleteMyAccount(id int64) error {
 	logger.WarnLogger.Printf("User ID %d yêu cầu tự xóa tài khoản", id)
