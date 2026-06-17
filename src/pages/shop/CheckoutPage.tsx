@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -87,10 +87,20 @@ export function CheckoutPage() {
     enabled: subtotal > 0,
   })
 
-  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<CheckoutFormData>({
+  const { register, handleSubmit, watch, setValue, getValues, formState: { errors } } = useForm<CheckoutFormData>({
     resolver: zodResolver(checkoutSchema),
     defaultValues: { payment_method: buyNowItem?.is_preorder ? 'bank_transfer' : 'cod' },
   })
+
+  useEffect(() => {
+    if (addresses && addresses.length > 0) {
+      const currentAddressId = getValues('address_id')
+      if (!currentAddressId) {
+        const defaultAddress = addresses.find((a) => a.is_default) || addresses[0]
+        setValue('address_id', defaultAddress.id)
+      }
+    }
+  }, [addresses, setValue, getValues])
 
   const {
     register: registerAddr,

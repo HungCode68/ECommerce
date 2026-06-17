@@ -58,8 +58,8 @@ export function ProductTrashPage() {
       ) : products.length === 0 ? (
         <EmptyState title="Thùng rác trống" description="Không có sản phẩm nào trong thùng rác" />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-sm">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto overflow-y-hidden rounded-xl border border-slate-100 bg-white shadow-sm w-full">
+          <table className="w-full min-w-[800px] text-sm">
             <thead className="bg-slate-50 border-b border-slate-100">
               <tr>
                 <th className="px-4 py-3 text-left font-medium text-slate-600">Tên sản phẩm</th>

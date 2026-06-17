@@ -105,6 +105,8 @@ export const useCartStore = create<CartState>()(
       name: 'cart-storage',
       partialize: (state) => ({
         totalCount: state.totalCount,
+        selectedIds: state.selectedIds,
+        buyNowItem: state.buyNowItem,
       }),
     },
   ),

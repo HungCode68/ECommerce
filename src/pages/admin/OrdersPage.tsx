@@ -235,7 +235,7 @@ export function OrdersPage() {
         </div>
 
         {/* Table Content */}
-        <div className="overflow-x-auto p-2">
+        <div className="overflow-x-auto w-full p-2">
           {isLoading ? (
             <div className="p-4"><TableSkeleton rows={8} cols={6} /></div>
           ) : orders.length === 0 ? (
@@ -247,7 +247,7 @@ export function OrdersPage() {
               />
             </div>
           ) : (
-            <table className="w-full text-left border-collapse">
+            <table className="w-full min-w-[800px] text-left border-collapse">
               <thead>
                 <tr className="bg-surface-container-low/50">
                   <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Mã Đơn Hàng</th>

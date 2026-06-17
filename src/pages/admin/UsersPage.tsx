@@ -193,7 +193,7 @@ export function UsersPage() {
         <p className="text-sm text-slate-500">{total} tài khoản</p>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <SearchInput
           onSearch={(value) => {
             setSearch(value)
@@ -262,8 +262,8 @@ export function UsersPage() {
           description="Không có người dùng nào khớp với bộ lọc hiện tại"
         />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-sm">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto overflow-y-hidden rounded-xl border border-slate-100 bg-white shadow-sm w-full">
+          <table className="w-full min-w-[800px] text-sm">
             <thead className="border-b border-slate-100 bg-slate-50">
               <tr>
                 <th className="w-10 px-4 py-3 text-left">

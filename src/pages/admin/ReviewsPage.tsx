@@ -69,8 +69,8 @@ export function ReviewsPage() {
       </div>
 
       <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-600">
+        <div className="overflow-x-auto w-full">
+          <table className="w-full min-w-[800px] text-left text-sm text-slate-600">
             <thead className="bg-slate-50/50 text-xs font-semibold uppercase text-slate-500">
               <tr>
                 <th className="px-6 py-4">Khách hàng</th>

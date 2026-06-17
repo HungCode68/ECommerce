@@ -369,10 +369,10 @@ export function ProductFormPage() {
                 />
               </div>
 
-              <div className="mt-6 overflow-hidden rounded-3xl border border-slate-100 bg-white">
+              <div className="mt-6 overflow-x-auto overflow-y-hidden rounded-3xl border border-slate-100 bg-white">
                 {variants.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full text-sm">
+                  <div className="overflow-x-auto w-full">
+                    <table className="w-full min-w-[800px] text-sm">
                       <thead className="border-b border-slate-100 bg-surface-container-low/50">
                         <tr>
                           <th className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">

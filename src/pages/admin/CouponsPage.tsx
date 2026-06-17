@@ -80,8 +80,8 @@ export function CouponsPage() {
         <EmptyState title="Chưa có mã giảm giá" description="Tạo mã giảm giá để khuyến khích khách hàng mua sắm nhiều hơn" />
       ) : (
         <div className="overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto w-full">
+            <table className="w-full min-w-[800px] text-sm">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
                   <th className="px-5 py-4 text-left font-bold text-slate-600 uppercase tracking-wider">Mã coupon</th>

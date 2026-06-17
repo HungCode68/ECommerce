@@ -70,7 +70,7 @@ export function CallbackRequestsPage() {
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex gap-2 border-b border-slate-200 pb-1">
+      <div className="flex gap-2 border-b border-slate-200 pb-1 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {[
           { key: '', label: 'Tất cả' },
           { key: 'pending', label: 'Chờ xử lý' },
@@ -106,8 +106,8 @@ export function CallbackRequestsPage() {
             <p className="text-sm">Không có yêu cầu gọi lại nào.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+          <div className="overflow-x-auto w-full">
+            <table className="w-full min-w-[800px] text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50 text-xs font-bold uppercase tracking-wider text-slate-500">
                   <th className="px-6 py-4">Số điện thoại</th>

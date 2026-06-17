@@ -633,8 +633,8 @@ function RecentOrdersTable({
                     }
                 />
             ) : (
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left">
+                <div className="overflow-x-auto w-full">
+                    <table className="w-full min-w-[800px] text-left">
                         <thead>
                             <tr className="bg-surface-container-low/50">
                                 <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">
@@ -757,7 +757,7 @@ export function DashboardPage() {
 
     return (
         <div className="space-y-8">
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                 <div>
                     <h1 className="font-headline text-3xl font-bold text-slate-900">
                         Tổng quan vận hành

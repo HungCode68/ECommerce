@@ -172,7 +172,7 @@ function HomeProductCard({
 
 function CategorySectionSkeleton() {
   return (
-    <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
       {Array.from({ length: 5 }).map((_, index) => (
         <div key={index} className="rounded-xl border border-[#e5e2e1] bg-white p-3">
           <div className="mb-3 h-40 rounded-lg bg-slate-200" />
@@ -247,7 +247,7 @@ function HomeBannerCarousel({ banners }: { banners: Banner[] }) {
   if (banners.length === 0) return null
 
   return (
-    <div className="group relative h-[400px] w-full overflow-hidden rounded-2xl border border-[#e5e2e1] bg-[#eae7e7] shadow-sm">
+    <div className="group relative h-[200px] sm:h-[300px] lg:h-[400px] w-full overflow-hidden rounded-2xl border border-[#e5e2e1] bg-[#eae7e7] shadow-sm">
       {/* Slides */}
       <div
         className="flex h-full w-full transition-transform duration-500 ease-out"
@@ -511,7 +511,7 @@ export function HomePage() {
           </section>
         )}
 
-        <section className="grid grid-cols-2 gap-4 rounded-xl border border-[#e5e2e1] bg-white p-6 shadow-sm md:grid-cols-4">
+        <section className="grid grid-cols-2 gap-4 rounded-xl border border-[#e5e2e1] bg-white p-6 shadow-sm lg:grid-cols-4">
           {[
             ['local_shipping', 'Miễn phí giao hàng', 'Cho đơn từ 500k'],
             ['verified_user', 'Thanh toán an toàn', '100% bảo mật'],
@@ -536,7 +536,7 @@ export function HomePage() {
             </Link>
           </div>
 
-          <div className="flex gap-6 overflow-x-auto py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:justify-center">
+          <div className="flex gap-4 sm:gap-6 overflow-x-auto py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:justify-center snap-x snap-mandatory">
             {isCategoriesLoading && effectiveCategories.length === 0
               ? Array.from({ length: 5 }).map((_, index) => (
                   <div key={index} className="min-w-[100px]">
@@ -550,7 +550,7 @@ export function HomePage() {
                     <a
                       key={category.id}
                       href={`#${getCategoryAnchor(showcaseMatch)}`}
-                      className="group flex min-w-[100px] flex-col items-center gap-2"
+                      className="group flex min-w-[80px] sm:min-w-[100px] flex-col items-center gap-2 snap-start"
                     >
                       <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#eae7e7] transition-colors group-hover:bg-[#7c3aed]">
                         <span className="material-symbols-outlined text-3xl text-[#4a4455] transition-colors group-hover:text-white">
@@ -563,7 +563,7 @@ export function HomePage() {
                     <Link
                       key={category.id}
                       to={`/${category.slug}`}
-                      className="group flex min-w-[100px] flex-col items-center gap-2"
+                      className="group flex min-w-[80px] sm:min-w-[100px] flex-col items-center gap-2 snap-start"
                     >
                       <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#eae7e7] transition-colors group-hover:bg-[#7c3aed]">
                         <span className="material-symbols-outlined text-3xl text-[#4a4455] transition-colors group-hover:text-white">
@@ -586,7 +586,7 @@ export function HomePage() {
           const anchor = getCategoryAnchor(category)
 
           return (
-            <section id={anchor} key={category.id}>
+            <section id={anchor} key={category.id} className="scroll-mt-24">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-2xl font-bold leading-[1.3] text-[#1c1b1b]">
                   {getSectionTitle(category.name)}
@@ -602,7 +602,7 @@ export function HomePage() {
               {query?.isLoading ? (
                 <CategorySectionSkeleton />
               ) : products.length > 0 ? (
-                <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
                   {products.map((product) => (
                     <HomeProductCard
                       key={product.id}
@@ -621,7 +621,7 @@ export function HomePage() {
         })}
 
         {showcaseCategories.length === 0 && (
-          <section id="san-pham-noi-bat">
+          <section id="san-pham-noi-bat" className="scroll-mt-24">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-2xl font-bold leading-[1.3] text-[#1c1b1b]">Sản phẩm nổi bật</h2>
               <Link to={ROUTES.PRODUCTS} className="text-sm font-semibold text-[#630ed4] hover:underline">
@@ -632,7 +632,7 @@ export function HomePage() {
             {isFeaturedProductsLoading ? (
               <CategorySectionSkeleton />
             ) : featuredFallbackProducts.length > 0 ? (
-              <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
                 {featuredFallbackProducts.map((product) => (
                   <HomeProductCard
                     key={product.id}
@@ -651,7 +651,7 @@ export function HomePage() {
 
         <section
           id={accessoryCategory ? getCategoryAnchor(accessoryCategory) : 'phu-kien'}
-          className="overflow-hidden rounded-2xl bg-[#f0eded]"
+          className="overflow-hidden rounded-2xl bg-[#f0eded] scroll-mt-24"
         >
           <div className="flex flex-col items-center md:flex-row">
             <div className="flex-1 space-y-4 p-10">

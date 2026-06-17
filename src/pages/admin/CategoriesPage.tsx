@@ -240,8 +240,8 @@ export function CategoriesPage() {
           )}
 
           {/* Data Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-left font-body">
+          <div className="overflow-x-auto w-full">
+            <table className="w-full min-w-[800px] border-collapse text-left font-body">
               <thead>
                 <tr className="bg-surface-container-low/30">
                   <th className="p-5 w-12">
