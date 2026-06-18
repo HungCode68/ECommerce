@@ -295,9 +295,10 @@ export function ProfilePage() {
         </form>
       </div>
       {/* Change password */}
-      <div className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
-        <h2 className="mb-4 font-semibold text-slate-800">Đổi mật khẩu</h2>
-        <form
+      {user?.has_password && (
+        <div className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
+          <h2 className="mb-4 font-semibold text-slate-800">Đổi mật khẩu</h2>
+          <form
           onSubmit={submitPass(({ old_password, new_password }) =>
             changePassword({ old_password, new_password })
           )}
@@ -329,7 +330,8 @@ export function ProfilePage() {
             </button>
           </div>
         </form>
-      </div>
+        </div>
+      )}
     </div>
   )
 }

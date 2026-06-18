@@ -26,7 +26,7 @@ export function ProductListingCard({
 
   return (
     <Link
-      to={ROUTES.PRODUCT_DETAIL(product.id)}
+      to={ROUTES.PRODUCT_DETAIL(product.slug || product.id)}
       className={cn(
         'group overflow-hidden rounded-xl border border-[#ccc3d8] bg-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0px_4px_20px_rgba(0,0,0,0.05)]',
         viewMode === 'list' && 'flex gap-4 p-4',

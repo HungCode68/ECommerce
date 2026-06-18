@@ -93,7 +93,7 @@ function RecommendedProductCard({ product }: { product: Product }) {
         </span>
       ) : null}
 
-      <Link to={ROUTES.PRODUCT_DETAIL(product.id)} className="block">
+      <Link to={ROUTES.PRODUCT_DETAIL(product.slug || product.id)} className="block">
         <div className="mb-3 aspect-square overflow-hidden rounded-lg bg-[#f6f3f2]">
           <ProductImage
             src={product.thumbnail_url}

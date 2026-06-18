@@ -134,7 +134,7 @@ function HomeProductCard({
 
   return (
     <Link
-      to={ROUTES.PRODUCT_DETAIL(product.id)}
+      to={ROUTES.PRODUCT_DETAIL(product.slug || product.id)}
       className={cn(
         'group relative flex h-full flex-col overflow-hidden rounded-xl border border-[#e5e2e1] bg-white p-3 transition-shadow hover:shadow-lg',
         emphasized && 'md:col-span-2',

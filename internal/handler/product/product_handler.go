@@ -494,15 +494,18 @@ func (h *productHandler) UserGetProductHandlerDetail(w http.ResponseWriter, r *h
 	queryID := r.URL.Query().Get("id")     // Fallback lấy từ query param (?id=123)
 	nameStr := r.URL.Query().Get("name")   // Tìm theo tên
 	brandStr := r.URL.Query().Get("brand") // [BẠN CỦA BẠN THÊM]: Tìm theo brand nếu cần
+	slugStr := r.URL.Query().Get("slug")   // Thêm lấy slug từ query param
 
 	var parsedErr error
 	req := &model.GetProductRequest{}
 
-	// 1. Xử lý ID (Path hoặc Query)
+	// 1. Xử lý ID (Path hoặc Query) hoặc Slug
 	if idStr != "" {
 		req.ID, parsedErr = strconv.ParseInt(idStr, 10, 64)
 	} else if queryID != "" {
 		req.ID, parsedErr = strconv.ParseInt(queryID, 10, 64)
+	} else if slugStr != "" {
+		req.Slug = slugStr
 	} else if r.PathValue("slug") != "" {
 		req.Slug = r.PathValue("slug")
 	}

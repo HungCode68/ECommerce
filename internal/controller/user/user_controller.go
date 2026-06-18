@@ -84,6 +84,7 @@ func toUserProfileResponse(user model.User) model.UserProfileResponse {
 		EmailVerified: user.EmailVerified,
 		Role:          user.Role,
 		IsActive:      user.IsActive,
+		HasPassword:   user.PasswordHash != nil,
 		CreatedAt:     user.CreatedAt,
 		UpdatedAt:     user.UpdatedAt,
 		LastActiveAt:  user.LastActiveAt,

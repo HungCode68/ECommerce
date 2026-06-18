@@ -58,7 +58,7 @@ export function ProductCard({ product, isHero = false }: ProductCardProps) {
   if (isHero) {
     return (
       <article className="product-card col-span-1 md:col-span-2 xl:col-span-2 bg-surface-container-lowest rounded-[24px] overflow-hidden ghost-border flex flex-col md:flex-row relative group ambient-shadow p-6 gap-8">
-        <Link to={ROUTES.PRODUCT_DETAIL(product.id)} className="w-full md:w-1/2 relative bg-surface rounded-2xl p-8 flex items-center justify-center overflow-hidden">
+        <Link to={ROUTES.PRODUCT_DETAIL(product.slug || product.id)} className="w-full md:w-1/2 relative bg-surface rounded-2xl p-8 flex items-center justify-center overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-primary-container/5 to-transparent"></div>
           <ProductImage
             src={product.thumbnail_url}
@@ -75,7 +75,7 @@ export function ProductCard({ product, isHero = false }: ProductCardProps) {
           )}
         </Link>
         <div className="w-full md:w-1/2 flex flex-col justify-center gap-4 py-4">
-          <Link to={ROUTES.PRODUCT_DETAIL(product.id)}>
+          <Link to={ROUTES.PRODUCT_DETAIL(product.slug || product.id)}>
             <h3 className="font-headline text-2xl font-bold tracking-tight text-on-surface group-hover:text-primary transition-colors line-clamp-2">
               {formatProductName(product.name)}
             </h3>
@@ -108,7 +108,7 @@ export function ProductCard({ product, isHero = false }: ProductCardProps) {
   // Regular Card Layout
   return (
     <article className="product-card bg-surface-container-lowest rounded-[24px] overflow-hidden ghost-border flex flex-col relative group ambient-shadow p-5 lg:p-6 gap-4 lg:gap-6">
-      <Link to={ROUTES.PRODUCT_DETAIL(product.id)} className="w-full aspect-[4/5] relative bg-surface rounded-2xl p-6 flex items-center justify-center overflow-hidden">
+      <Link to={ROUTES.PRODUCT_DETAIL(product.slug || product.id)} className="w-full aspect-[4/5] relative bg-surface rounded-2xl p-6 flex items-center justify-center overflow-hidden">
         <ProductImage
           src={product.thumbnail_url}
           alt={formatProductName(product.name)}
@@ -121,7 +121,7 @@ export function ProductCard({ product, isHero = false }: ProductCardProps) {
         )}
       </Link>
       <div className="flex flex-col flex-grow gap-2">
-        <Link to={ROUTES.PRODUCT_DETAIL(product.id)}>
+        <Link to={ROUTES.PRODUCT_DETAIL(product.slug || product.id)}>
           <h3 className="font-headline text-lg font-bold tracking-tight text-on-surface group-hover:text-primary transition-colors line-clamp-2">
             {formatProductName(product.name)}
           </h3>

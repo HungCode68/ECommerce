@@ -117,6 +117,7 @@ type UserProfileResponse struct {
 	EmailVerified bool       `json:"email_verified"`
 	Role          string     `json:"role"`
 	IsActive      bool       `json:"is_active"`
+	HasPassword   bool       `json:"has_password"`
 	CreatedAt     time.Time  `json:"created_at"`
 	UpdatedAt     time.Time  `json:"updated_at"`
 	LastActiveAt  *time.Time `json:"last_active_at,omitempty"`

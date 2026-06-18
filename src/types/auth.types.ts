@@ -10,6 +10,7 @@ export type User = {
   phone?: string
   role: UserRole
   status: string
+  has_password?: boolean
   created_at: string
 }
 

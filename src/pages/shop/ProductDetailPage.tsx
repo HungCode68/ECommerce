@@ -197,22 +197,22 @@ export function ProductDetailPage() {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const { setCart, setBuyNow } = useCartStore()
-  const productId = Number(id)
+  const slugOrId = id as string
 
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const [selectedAttributes, setSelectedAttributes] = useState<VariantAttributes>({})
   const [qty, setQty] = useState(1)
 
   const { data: product, isLoading } = useQuery({
-    queryKey: queryKeys.products.detail(productId),
-    queryFn: () => productApi.getDetail(productId),
-    enabled: Number.isFinite(productId),
+    queryKey: queryKeys.products.detail(slugOrId),
+    queryFn: () => productApi.getDetail(slugOrId),
+    enabled: !!slugOrId,
   })
 
   const { data: reviews } = useQuery({
-    queryKey: queryKeys.products.reviews(productId),
-    queryFn: () => reviewApi.getByProduct(productId),
-    enabled: Number.isFinite(productId),
+    queryKey: queryKeys.products.reviews(product?.id as number),
+    queryFn: () => reviewApi.getByProduct(product?.id as number),
+    enabled: !!product?.id,
   })
 
   const primaryCategoryId = product?.category_id ?? product?.categories?.[0]?.id
@@ -246,7 +246,7 @@ export function ProductDetailPage() {
       : product?.min_price ?? displayPrice
 
   const specs = useMemo(() => buildSpecs(product, selectedVariant), [product, selectedVariant])
-  const relatedProducts = (relatedProductsData?.data ?? []).filter((item) => item.id !== productId).slice(0, 4)
+  const relatedProducts = (relatedProductsData?.data ?? []).filter((item) => item.id !== product?.id).slice(0, 4)
 
   const handleGalleryItemSelect = (item: GalleryItem) => {
     setSelectedImage(item.image)
@@ -348,7 +348,7 @@ export function ProductDetailPage() {
     }
 
     setBuyNow({
-      product_id: productId,
+      product_id: product?.id as number,
       variant_id: variant.id,
       quantity: qty,
       price: displayPrice,
@@ -373,7 +373,7 @@ export function ProductDetailPage() {
       }
 
       await cartApi.addItem({
-        product_id: productId,
+        product_id: product?.id as number,
         variant_id: variant.id,
         quantity: qty,
       })
@@ -392,8 +392,8 @@ export function ProductDetailPage() {
     },
   })
 
-  if (!Number.isFinite(productId)) {
-    return <div className="mx-auto max-w-[1200px] px-4 py-20 text-center text-[#4a4455]">ID sản phẩm không hợp lệ.</div>
+  if (!slugOrId) {
+    return <div className="mx-auto max-w-[1200px] px-4 py-20 text-center text-[#4a4455]">ID hoặc Slug sản phẩm không hợp lệ.</div>
   }
 
   if (isLoading) {

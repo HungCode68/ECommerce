@@ -23,10 +23,11 @@ export const productApi = {
     return res.data
   },
 
-  getDetail: async (id: number) => {
+  getDetail: async (idOrSlug: number | string) => {
+    const isId = !isNaN(Number(idOrSlug))
     const res = await axiosClient.get<Product>(
       '/api/products/detail/search',
-      { params: { id } },
+      { params: isId ? { id: idOrSlug } : { slug: idOrSlug } },
     )
     return res.data
   },
