@@ -5,6 +5,10 @@ on:
     branches:
       - Update-Backend-Eco  # Mỗi khi push vào nhánh main, nó tự chạy
 
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -18,6 +22,6 @@ jobs:
           script: |
             cd ~/ECommerce
             git pull origin Update-Backend-Eco
-            docker-compose down
+            docker-compose build
+            docker-compose up -d
             docker system prune -f
-            docker-compose up -d --build

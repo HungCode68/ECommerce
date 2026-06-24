@@ -32,7 +32,7 @@ type ResetFormData = z.infer<typeof resetSchema>
 
 export function ForgotPasswordPage() {
   const navigate = useNavigate()
-  const [step, setStep] = useState<1 | 2>(1)
+  const [step, setStep] = useState<1 | 2 | 3>(1)
   const [email, setEmail] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -96,6 +96,13 @@ export function ForgotPasswordPage() {
 
   const onEmailSubmit = (data: EmailFormData) => sendOtp(data)
   const onResetSubmit = (data: ResetFormData) => resetPassword(data)
+
+  const handleOtpNext = async () => {
+    const isOtpValid = await resetForm.trigger('otp')
+    if (isOtpValid) {
+      setStep(3)
+    }
+  }
 
   return (
     <div className="light bg-background text-on-background min-h-screen overflow-x-hidden font-body">
@@ -161,7 +168,7 @@ export function ForgotPasswordPage() {
               <header className="mb-8">
                 <h1 className="font-headline text-4xl font-bold text-on-surface tracking-tight mb-2">Quên Mật Khẩu?</h1>
                 <p className="text-on-surface-variant font-medium">
-                  {step === 1 ? 'Nhập email đã đăng ký để nhận mã khôi phục.' : `Mã xác thực đã được gửi tới ${email}`}
+                  {step === 1 ? 'Nhập email đã đăng ký để nhận mã khôi phục.' : step === 2 ? `Mã xác thực đã được gửi tới ${email}` : 'Tạo mật khẩu mới an toàn.'}
                 </p>
               </header>
 
@@ -199,7 +206,7 @@ export function ForgotPasswordPage() {
               )}
 
               {step === 2 && (
-                <form className="space-y-6" onSubmit={resetForm.handleSubmit(onResetSubmit)}>
+                <div className="space-y-6">
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider block ml-1">MÃ OTP</label>
                     <div className="relative group">
@@ -225,6 +232,19 @@ export function ForgotPasswordPage() {
                     </div>
                   </div>
 
+                  <button
+                    type="button"
+                    onClick={handleOtpNext}
+                    className="w-full bg-primary-container text-on-primary-container font-headline font-bold py-5 rounded-xl flex items-center justify-center gap-3 shadow-lg shadow-primary-container/20 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 group"
+                  >
+                    Xác nhận OTP
+                    <span className="material-symbols-outlined transition-transform group-hover:translate-x-1">arrow_forward</span>
+                  </button>
+                </div>
+              )}
+
+              {step === 3 && (
+                <form className="space-y-6" onSubmit={resetForm.handleSubmit(onResetSubmit)}>
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider block ml-1">MẬT KHẨU MỚI</label>
                     <div className="relative group">
