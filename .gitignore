@@ -46,3 +46,4 @@ Thumbs.db
 scratch/
 .agent/
 *.log
+*.pem
