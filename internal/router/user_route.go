@@ -15,6 +15,8 @@ func NewUserRouter(mux *http.ServeMux, userHandler user.UserHandler) http.Handle
 	authGroup.HandleFunc("POST", "/facebook", userHandler.FacebookLogin)
 	authGroup.HandleFunc("POST", "/email-verification/send", userHandler.SendEmailVerificationOTP)
 	authGroup.HandleFunc("POST", "/email-verification/verify", userHandler.VerifyEmailVerificationOTP)
+	authGroup.HandleFunc("POST", "/forgot-password/send-otp", userHandler.SendForgotPasswordOTP)
+	authGroup.HandleFunc("POST", "/forgot-password/reset", userHandler.ResetPassword)
 	authGroup.HandleFunc("POST", "/refresh", userHandler.RefreshToken)
 
 	// =================================================================

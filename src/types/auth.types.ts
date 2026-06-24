@@ -43,6 +43,16 @@ export type VerifyEmailVerificationOtpRequest = {
   otp: string
 }
 
+export type ForgotPasswordRequest = {
+  email: string
+}
+
+export type ResetPasswordRequest = {
+  email: string
+  otp: string
+  new_password: string
+}
+
 export type AuthTokens = {
   access_token: string
   refresh_token: string

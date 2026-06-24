@@ -16,6 +16,8 @@ type UserRepo interface {
 	GetUserByRefreshToken(refreshToken string) (model.User, error)
 	GetLatestPendingEmailVerificationOTP(userID int64, email string) (model.EmailVerificationOTP, error)
 	GetPendingEmailVerificationOTPByHash(userID int64, email string, otpHash string) (model.EmailVerificationOTP, error)
+	GetLatestPendingPasswordResetOTP(userID int64, email string) (model.PasswordResetOTP, error)
+	GetPendingPasswordResetOTPByHash(userID int64, email string, otpHash string) (model.PasswordResetOTP, error)
 
 	// Write Methods
 	CreateUser(user model.User) (model.User, error)
@@ -28,6 +30,9 @@ type UserRepo interface {
 	ConsumeEmailVerificationOTP(id int64) error
 	IncrementEmailVerificationAttempts(id int64) error
 	MarkEmailVerified(userID int64) error
+	CreatePasswordResetOTP(userID int64, email string, otpHash string, expiresAt time.Time) error
+	ConsumePasswordResetOTP(id int64) error
+	IncrementPasswordResetAttempts(id int64) error
 
 	// Delete Methods
 	DeleteSoftUsers(ids []int64, reason string) error

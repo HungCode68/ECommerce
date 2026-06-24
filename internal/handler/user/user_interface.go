@@ -16,6 +16,10 @@ type UserHandler interface {
 
 	VerifyEmailVerificationOTP(w http.ResponseWriter, r *http.Request) // Xác minh OTP email
 
+	SendForgotPasswordOTP(w http.ResponseWriter, r *http.Request) // Gửi OTP quên mật khẩu
+
+	ResetPassword(w http.ResponseWriter, r *http.Request) // Đặt lại mật khẩu
+
 	Logout(w http.ResponseWriter, r *http.Request) // Đăng xuất tài khoản người dùng
 
 	CreateAdmin(w http.ResponseWriter, r *http.Request) // Tạo tài khoản admin mới

@@ -204,7 +204,7 @@ export function LoginPage() {
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider block ml-1">Mật khẩu</label>
-                    <button type="button" onClick={handleSocialClick} className="text-xs font-bold text-primary hover:text-cyan-600 transition-colors">Quên mật khẩu?</button>
+                    <Link to="/forgot-password" className="text-xs font-bold text-primary hover:text-cyan-600 transition-colors">Quên mật khẩu?</Link>
                   </div>
                   <div className="relative group">
                     <input

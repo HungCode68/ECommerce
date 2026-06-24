@@ -629,3 +629,85 @@ func (u *UserDb) MarkEmailVerified(userID int64) error {
 	_, err := u.db.Exec(`UPDATE users SET email_verified = 1, updated_at = NOW() WHERE id = ?`, userID)
 	return err
 }
+
+func (u *UserDb) GetLatestPendingPasswordResetOTP(userID int64, email string) (model.PasswordResetOTP, error) {
+	query := `SELECT id, user_id, email, otp_hash, expires_at, attempts, consumed_at, created_at
+		FROM password_reset_otps
+		WHERE user_id = ? AND email = ? AND consumed_at IS NULL
+		ORDER BY created_at DESC
+		LIMIT 1`
+
+	var otp model.PasswordResetOTP
+	err := u.db.QueryRow(query, userID, email).Scan(
+		&otp.ID,
+		&otp.UserID,
+		&otp.Email,
+		&otp.OTPHash,
+		&otp.ExpiresAt,
+		&otp.Attempts,
+		&otp.ConsumedAt,
+		&otp.CreatedAt,
+	)
+	if err != nil {
+		return model.PasswordResetOTP{}, err
+	}
+	return otp, nil
+}
+
+func (u *UserDb) GetPendingPasswordResetOTPByHash(userID int64, email string, otpHash string) (model.PasswordResetOTP, error) {
+	query := `SELECT id, user_id, email, otp_hash, expires_at, attempts, consumed_at, created_at
+		FROM password_reset_otps
+		WHERE user_id = ? AND email = ? AND otp_hash = ? AND consumed_at IS NULL AND expires_at > NOW()
+		ORDER BY created_at DESC
+		LIMIT 1`
+
+	var otp model.PasswordResetOTP
+	err := u.db.QueryRow(query, userID, email, otpHash).Scan(
+		&otp.ID,
+		&otp.UserID,
+		&otp.Email,
+		&otp.OTPHash,
+		&otp.ExpiresAt,
+		&otp.Attempts,
+		&otp.ConsumedAt,
+		&otp.CreatedAt,
+	)
+	if err != nil {
+		return model.PasswordResetOTP{}, err
+	}
+	return otp, nil
+}
+
+func (u *UserDb) CreatePasswordResetOTP(userID int64, email string, otpHash string, expiresAt time.Time) error {
+	tx, err := u.db.Begin()
+	if err != nil {
+		return err
+	}
+
+	invalidateQuery := `UPDATE password_reset_otps
+		SET consumed_at = NOW()
+		WHERE user_id = ? AND email = ? AND consumed_at IS NULL`
+	if _, err := tx.Exec(invalidateQuery, userID, email); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	insertQuery := `INSERT INTO password_reset_otps (user_id, email, otp_hash, expires_at, attempts, created_at)
+		VALUES (?, ?, ?, ?, 0, NOW())`
+	if _, err := tx.Exec(insertQuery, userID, email, otpHash, expiresAt); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func (u *UserDb) ConsumePasswordResetOTP(id int64) error {
+	_, err := u.db.Exec(`UPDATE password_reset_otps SET consumed_at = NOW() WHERE id = ?`, id)
+	return err
+}
+
+func (u *UserDb) IncrementPasswordResetAttempts(id int64) error {
+	_, err := u.db.Exec(`UPDATE password_reset_otps SET attempts = attempts + 1 WHERE id = ?`, id)
+	return err
+}

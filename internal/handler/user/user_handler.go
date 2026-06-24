@@ -170,6 +170,50 @@ func (h *userHandler) VerifyEmailVerificationOTP(w http.ResponseWriter, r *http.
 	utils.WriteJSON(w, http.StatusOK, "Xác minh email thành công", nil)
 }
 
+func (h *userHandler) SendForgotPasswordOTP(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
+
+	var req model.ForgotPasswordRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu JSON không hợp lệ", nil)
+		return
+	}
+
+	if errs := validator.Validate(req); errs != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu đầu vào không hợp lệ", errs)
+		return
+	}
+
+	if err := h.UserController.SendForgotPasswordOTP(req); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err.Error(), nil)
+		return
+	}
+
+	utils.WriteJSON(w, http.StatusOK, "Đã gửi mã OTP. Vui lòng kiểm tra email của bạn.", nil)
+}
+
+func (h *userHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
+
+	var req model.ResetPasswordRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu JSON không hợp lệ", nil)
+		return
+	}
+
+	if errs := validator.Validate(req); errs != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu đầu vào không hợp lệ", errs)
+		return
+	}
+
+	if err := h.UserController.ResetPassword(req); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err.Error(), nil)
+		return
+	}
+
+	utils.WriteJSON(w, http.StatusOK, "Đặt lại mật khẩu thành công", nil)
+}
+
 // Logout - Đăng xuất tài khoản
 func (h *userHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	userID, ok := middleware.GetUserIDFromContext(r.Context())

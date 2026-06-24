@@ -10,6 +10,8 @@ import type {
   UpdateProfileRequest,
   User,
   VerifyEmailVerificationOtpRequest,
+  ForgotPasswordRequest,
+  ResetPasswordRequest,
 } from '@/types/auth.types'
 
 export const authApi = {
@@ -51,6 +53,14 @@ export const authApi = {
 
   verifyEmailVerificationOtp: async (data: VerifyEmailVerificationOtpRequest) => {
     await axiosClient.post('/api/auth/email-verification/verify', data)
+  },
+
+  sendForgotPasswordOtp: async (data: ForgotPasswordRequest) => {
+    await axiosClient.post('/api/auth/forgot-password/send-otp', data)
+  },
+
+  resetPassword: async (data: ResetPasswordRequest) => {
+    await axiosClient.post('/api/auth/forgot-password/reset', data)
   },
 
   logout: async () => {

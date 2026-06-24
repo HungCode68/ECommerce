@@ -4,6 +4,7 @@ export const ROUTES = {
   HOME: '/',
   LOGIN: '/dang-nhap',
   REGISTER: '/dang-ky',
+  FORGOT_PASSWORD: '/forgot-password',
 
   // Admin Routes
   ADMIN_DASHBOARD: '/admin',

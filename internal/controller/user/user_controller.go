@@ -433,6 +433,102 @@ func (c *userController) VerifyEmailVerificationOTP(req model.VerifyEmailVerific
 	return nil
 }
 
+func (c *userController) SendForgotPasswordOTP(req model.ForgotPasswordRequest) error {
+	userData, err := c.UserRepo.GetUserByIdentifier(req.Email)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return errors.New("email chưa được đăng ký")
+		}
+		return err
+	}
+
+	if userData.DeletedAt != nil {
+		return errors.New("tài khoản này đã bị xóa")
+	}
+	if !userData.IsActive {
+		return errors.New("tài khoản này đã bị chặn. Vui lòng liên hệ chăm sóc khách hàng để được xử lý.")
+	}
+
+	latestOTP, err := c.UserRepo.GetLatestPendingPasswordResetOTP(userData.ID, userData.Email)
+	if err == nil && time.Since(latestOTP.CreatedAt) < emailVerificationOTPCooldown {
+		remaining := int((emailVerificationOTPCooldown - time.Since(latestOTP.CreatedAt)).Seconds())
+		if remaining < 1 {
+			remaining = 1
+		}
+		return fmt.Errorf("vui lòng chờ %d giây trước khi gửi lại OTP", remaining)
+	}
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+
+	otpCode, err := generateOTPCode()
+	if err != nil {
+		return err
+	}
+	otpHash := hashOTP(otpCode)
+
+	expireMinStr := os.Getenv("OTP_EXPIRE_MINUTES")
+	expireMinutes := 5
+	if m, err := strconv.Atoi(expireMinStr); err == nil && m > 0 {
+		expireMinutes = m
+	}
+	expiresAt := time.Now().Add(time.Duration(expireMinutes) * time.Minute)
+
+	if err := c.UserRepo.CreatePasswordResetOTP(userData.ID, userData.Email, otpHash, expiresAt); err != nil {
+		return err
+	}
+
+	if err := sendPasswordResetEmail(userData.Email, otpCode); err != nil {
+		logger.ErrorLogger.Printf("Failed to send password reset email to %s: %v", userData.Email, err)
+		return fmt.Errorf("lỗi gửi mail: %v", err)
+	}
+
+	return nil
+}
+
+func (c *userController) ResetPassword(req model.ResetPasswordRequest) error {
+	userData, err := c.UserRepo.GetUserByIdentifier(req.Email)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return errors.New("email chưa được đăng ký")
+		}
+		return err
+	}
+
+	otpHash := hashOTP(req.OTP)
+	otpRecord, err := c.UserRepo.GetPendingPasswordResetOTPByHash(userData.ID, userData.Email, otpHash)
+	if err != nil {
+		if latestOTP, latestErr := c.UserRepo.GetLatestPendingPasswordResetOTP(userData.ID, userData.Email); latestErr == nil {
+			_ = c.UserRepo.IncrementPasswordResetAttempts(latestOTP.ID)
+		}
+		if errors.Is(err, sql.ErrNoRows) {
+			return errors.New("otp không đúng hoặc đã hết hạn")
+		}
+		return err
+	}
+
+	// Mã hóa mật khẩu mới
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+	hashedString := string(hashedPassword)
+
+	// Update password
+	updateReq := model.UserUpdateProfileRequest{
+		Password: &hashedString,
+	}
+	if _, err := c.UserRepo.UpdateUserProfile(userData.ID, updateReq); err != nil {
+		return errors.New("lỗi khi cập nhật mật khẩu")
+	}
+
+	if err := c.UserRepo.ConsumePasswordResetOTP(otpRecord.ID); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // Hàm Logout: Hủy refresh token của user
 func (c *userController) Logout(userID int64) error {
 	logger.InfoLogger.Printf("User ID %d yêu cầu đăng xuất", userID)
@@ -1042,6 +1138,45 @@ func sendVerificationEmail(toEmail string, otpCode string) error {
 	subject := "Mã OTP xác minh email"
 	body := fmt.Sprintf(
 		"Xin chao,\r\n\r\nMa OTP xac minh email cua ban la: %s\r\nMa nay co hieu luc trong %d phut.\r\n\r\nNeu ban khong yeu cau, hay bo qua email nay.\r\n",
+		otpCode, expireMinutes,
+	)
+
+	fromHeader := smtpFrom
+	if smtpFromName != "" {
+		fromHeader = fmt.Sprintf("%s <%s>", smtpFromName, smtpFrom)
+	}
+
+	message := []byte(
+		fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n%s",
+			fromHeader, toEmail, subject, body),
+	)
+
+	addr := net.JoinHostPort(smtpHost, smtpPort)
+	return smtp.SendMail(addr, auth, smtpFrom, []string{toEmail}, message)
+}
+
+func sendPasswordResetEmail(toEmail string, otpCode string) error {
+	smtpHost := os.Getenv("SMTP_HOST")
+	smtpPort := os.Getenv("SMTP_PORT")
+	smtpUsername := os.Getenv("SMTP_USERNAME")
+	smtpPassword := os.Getenv("SMTP_PASSWORD")
+	smtpFrom := os.Getenv("SMTP_FROM")
+	smtpFromName := os.Getenv("SMTP_FROM_NAME")
+
+	if smtpHost == "" || smtpPort == "" || smtpUsername == "" || smtpPassword == "" || smtpFrom == "" {
+		return errors.New("missing SMTP env config")
+	}
+
+	expireMinStr := os.Getenv("OTP_EXPIRE_MINUTES")
+	expireMinutes := 5
+	if m, err := strconv.Atoi(expireMinStr); err == nil && m > 0 {
+		expireMinutes = m
+	}
+
+	auth := smtp.PlainAuth("", smtpUsername, smtpPassword, smtpHost)
+	subject := "Mã OTP quên mật khẩu"
+	body := fmt.Sprintf(
+		"Xin chao,\r\n\r\nMa OTP de dat lai mat khau cua ban la: %s\r\nMa nay co hieu luc trong %d phut.\r\n\r\nNeu ban khong yeu cau dat lai mat khau, vui long bao cao hoac bo qua email nay.\r\n",
 		otpCode, expireMinutes,
 	)
 

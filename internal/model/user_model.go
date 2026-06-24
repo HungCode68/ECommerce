@@ -82,6 +82,16 @@ type VerifyEmailVerificationOTPRequest struct {
 	OTP   string `json:"otp" validate:"required,len=6,numeric"`
 }
 
+type ForgotPasswordRequest struct {
+	Email string `json:"email" validate:"required,email"`
+}
+
+type ResetPasswordRequest struct {
+	Email       string `json:"email" validate:"required,email"`
+	OTP         string `json:"otp" validate:"required,len=6,numeric"`
+	NewPassword string `json:"new_password" validate:"required,min=6,max=30"`
+}
+
 // AdminUpdateUserRequest: Dùng khi admin cập nhật thông tin user
 type AdminUpdateUserRequest struct {
 	Role          *string   `json:"role,omitempty" validate:"omitempty,oneof=user admin"`
@@ -153,6 +163,17 @@ type RefreshTokenResponse struct {
 }
 
 type EmailVerificationOTP struct {
+	ID         int64      `db:"id"`
+	UserID     int64      `db:"user_id"`
+	Email      string     `db:"email"`
+	OTPHash    string     `db:"otp_hash"`
+	ExpiresAt  time.Time  `db:"expires_at"`
+	Attempts   int        `db:"attempts"`
+	ConsumedAt *time.Time `db:"consumed_at"`
+	CreatedAt  time.Time  `db:"created_at"`
+}
+
+type PasswordResetOTP struct {
 	ID         int64      `db:"id"`
 	UserID     int64      `db:"user_id"`
 	Email      string     `db:"email"`

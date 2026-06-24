@@ -22,6 +22,12 @@ type UserController interface {
 	// Xác minh OTP email
 	VerifyEmailVerificationOTP(req model.VerifyEmailVerificationOTPRequest) error
 
+	// Gửi OTP quên mật khẩu
+	SendForgotPasswordOTP(req model.ForgotPasswordRequest) error
+
+	// Đặt lại mật khẩu
+	ResetPassword(req model.ResetPasswordRequest) error
+
 	// Đăng xuất người dùng
 	Logout(userID int64) error
 

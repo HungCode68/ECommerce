@@ -16,6 +16,10 @@ const RegisterPage = lazy(() =>
   import('@/pages/Register/RegisterPage').then((module) => ({ default: module.RegisterPage })),
 )
 
+const ForgotPasswordPage = lazy(() =>
+  import('@/pages/auth/ForgotPasswordPage').then((module) => ({ default: module.ForgotPasswordPage })),
+)
+
 const HomePage = lazy(() =>
   import('@/pages/shop/HomePage').then((module) => ({ default: module.HomePage })),
 )
@@ -137,6 +141,14 @@ export function AppRoutes() {
           element={
             <SuspensePage>
               <RegisterPage />
+            </SuspensePage>
+          }
+        />
+        <Route
+          path={ROUTES.FORGOT_PASSWORD}
+          element={
+            <SuspensePage>
+              <ForgotPasswordPage />
             </SuspensePage>
           }
         />
