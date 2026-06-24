@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -84,6 +84,15 @@ type OTPFormData = z.infer<typeof otpSchema>
 
 export function ProfilePage() {
   const { user, setUser } = useAuthStore()
+  const [countdown, setCountdown] = useState(0)
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout
+    if (countdown > 0) {
+      timer = setInterval(() => setCountdown((c) => c - 1), 1000)
+    }
+    return () => clearInterval(timer)
+  }, [countdown])
 
   const {
     register: regProfile,
@@ -167,7 +176,10 @@ export function ProfilePage() {
 
   const { mutate: sendOtp, isPending: sendingOtp } = useMutation({
     mutationFn: () => authApi.sendEmailVerificationOtp({ email: user?.email ?? '' }),
-    onSuccess: () => toast.success('Đã gửi OTP về email của bạn'),
+    onSuccess: () => {
+      toast.success('Đã gửi OTP về email của bạn')
+      setCountdown(60)
+    },
     onError: (error: unknown) => {
       const message =
         typeof error === 'object' &&
@@ -240,11 +252,11 @@ export function ProfilePage() {
                 <button
                   type="button"
                   onClick={() => sendOtp()}
-                  disabled={sendingOtp || !user?.email}
+                  disabled={sendingOtp || !user?.email || countdown > 0}
                   className="flex items-center gap-1 rounded-full bg-amber-500 px-3 py-1 font-semibold text-white hover:bg-amber-600 disabled:opacity-60 transition-colors"
                 >
                   {sendingOtp && <Loader2 className="h-3 w-3 animate-spin" />}
-                  Gửi OTP
+                  {countdown > 0 ? `Gửi lại sau ${countdown}s` : 'Gửi OTP'}
                 </button>
               )}
             </div>

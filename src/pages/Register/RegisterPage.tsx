@@ -326,7 +326,7 @@ export function RegisterPage() {
                 </button>
 
                 <p className="text-[11px] text-on-surface-variant text-center mt-4 px-2 leading-relaxed">
-                  Bằng việc đăng ký, bạn đồng ý với <button type="button" onClick={() => { }} className="text-[#f97316] font-bold hover:underline">Điều khoản dịch vụ</button> & <button type="button" onClick={() => { }} className="text-[#f97316] font-bold hover:underline">Chính sách bảo mật</button> của <button type="button" onClick={() => navigate('/')} className="text-[#f97316] font-bold hover:underline"></button> KC TECH
+                  Bằng việc đăng ký, bạn đồng ý với <a href="/DKSD.pdf" target="_blank" rel="noopener noreferrer" className="text-[#f97316] font-bold hover:underline">Điều khoản dịch vụ</a> & <a href="/CSBM.pdf" target="_blank" rel="noopener noreferrer" className="text-[#f97316] font-bold hover:underline">Chính sách bảo mật</a> của KC TECH
                 </p>
 
                 <div className="mt-8 text-center">
@@ -353,8 +353,8 @@ export function RegisterPage() {
         </Link>
         <p className="text-[10px] font-medium text-slate-500 uppercase tracking-widest text-center">SINCE 2021 KC29 TECHNOLOGY . BEYOND TECHNOLOGY.</p>
         <div className="flex gap-6 mt-4">
-          <a className="text-[10px] font-bold text-slate-500 hover:text-cyan-400" href="#">Privacy Policy</a>
-          <a className="text-[10px] font-bold text-slate-500 hover:text-cyan-400" href="#">Terms of Service</a>
+          <a className="text-[10px] font-bold text-slate-500 hover:text-cyan-400" href="/CSBM.pdf" target="_blank" rel="noopener noreferrer">Privacy Policy</a>
+          <a className="text-[10px] font-bold text-slate-500 hover:text-cyan-400" href="/DKSD.pdf" target="_blank" rel="noopener noreferrer">Terms of Service</a>
         </div>
       </footer>
     </div>

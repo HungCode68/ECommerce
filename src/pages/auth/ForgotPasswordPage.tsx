@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -36,6 +36,15 @@ export function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [countdown, setCountdown] = useState(0)
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout
+    if (countdown > 0) {
+      timer = setInterval(() => setCountdown((c) => c - 1), 1000)
+    }
+    return () => clearInterval(timer)
+  }, [countdown])
 
   // -- Forms --
   const emailForm = useForm<EmailFormData>({
@@ -55,6 +64,7 @@ export function ForgotPasswordPage() {
       toast.success('Đã gửi mã OTP thành công. Vui lòng kiểm tra email.')
       setEmail(variables.email)
       setStep(2)
+      setCountdown(60)
     },
     onError: (error) => {
       if (axios.isAxiosError(error)) {
@@ -203,6 +213,16 @@ export function ForgotPasswordPage() {
                       <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0 h-[2px] bg-primary-container transition-all duration-300 group-focus-within:w-full"></div>
                     </div>
                     {resetForm.formState.errors.otp && <p className="text-xs text-error mt-1 ml-1">{resetForm.formState.errors.otp.message}</p>}
+                    <div className="flex justify-end mt-2">
+                      <button
+                        type="button"
+                        onClick={() => sendOtp({ email })}
+                        disabled={countdown > 0 || isSendingOtp}
+                        className="text-xs font-semibold text-primary hover:text-primary-container-dark transition-colors disabled:opacity-50"
+                      >
+                        {countdown > 0 ? `Gửi lại mã sau ${countdown}s` : 'Gửi lại mã OTP'}
+                      </button>
+                    </div>
                   </div>
 
                   <div className="space-y-2">

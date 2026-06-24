@@ -321,7 +321,8 @@ export function ShopLayout() {
               <Link to="#" className="block hover:text-[#630ed4]">Chính sách bảo hành</Link>
               <Link to="#" className="block hover:text-[#630ed4]">Chính sách đổi trả</Link>
               <Link to="#" className="block hover:text-[#630ed4]">Chính sách vận chuyển</Link>
-              <Link to="#" className="block hover:text-[#630ed4]">Chính sách bảo mật</Link>
+              <a href="/CSBM.pdf" target="_blank" rel="noopener noreferrer" className="block hover:text-[#630ed4]">Chính sách bảo mật</a>
+              <a href="/DKSD.pdf" target="_blank" rel="noopener noreferrer" className="block hover:text-[#630ed4]">Điều khoản sử dụng</a>
             </div>
           </div>
           <div className="space-y-3">
