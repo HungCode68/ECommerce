@@ -118,7 +118,8 @@ function RecommendedProductCard({ product }: { product: Product }) {
         type="button"
         onClick={(e) => {
           e.preventDefault();
-          if (!useAuthStore.getState().isAuthenticated) {
+          const { isAuthenticated, accessToken } = useAuthStore.getState()
+          if (!isAuthenticated || !accessToken) {
             toast.error('Bạn cần đăng nhập trước khi thêm sản phẩm vào giỏ hàng!')
             setTimeout(() => navigate(ROUTES.LOGIN, { state: { from: window.location.pathname } }), 1500)
             return

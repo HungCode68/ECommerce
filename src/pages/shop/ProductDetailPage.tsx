@@ -327,7 +327,8 @@ export function ProductDetailPage() {
   }, [galleryItems, selectedAttributes, selectedImage, variantGroups, product])
 
   const handleBuyNow = () => {
-    if (!useAuthStore.getState().isAuthenticated) {
+    const { isAuthenticated, accessToken } = useAuthStore.getState()
+    if (!isAuthenticated || !accessToken) {
       toast.error('Bạn cần đăng nhập trước khi mua hàng!')
       setTimeout(() => {
         navigate(ROUTES.LOGIN, { state: { from: window.location.pathname } })
@@ -450,7 +451,8 @@ export function ProductDetailPage() {
           onIncreaseQty={() => setQty((current) => current + 1)}
           onBuyNow={handleBuyNow}
           onAddToCart={() => {
-            if (!useAuthStore.getState().isAuthenticated) {
+            const { isAuthenticated, accessToken } = useAuthStore.getState()
+            if (!isAuthenticated || !accessToken) {
               toast.error('Bạn cần đăng nhập trước khi thêm sản phẩm vào giỏ hàng!')
               setTimeout(() => {
                 navigate(ROUTES.LOGIN, { state: { from: window.location.pathname } })
