@@ -51,7 +51,7 @@ export const useAuthStore = create<AuthState>()(
         console.log('[AUTH_DEBUG] logout called')
         localStorage.removeItem('refresh_token')
         set({ user: null, accessToken: null, isAuthenticated: false })
-        window.location.href = ROUTES.HOME
+        window.location.href = ROUTES.LOGIN
       },
     }),
     {
