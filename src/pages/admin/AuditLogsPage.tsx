@@ -8,7 +8,7 @@ import { usePagination } from '@/hooks/usePagination'
 import { formatDateTime } from '@/utils/formatters/format'
 import { ShieldAlert, Database, ArrowRight } from 'lucide-react'
 
-export function AuditLogsPage() {
+export function AuditLogsPage({ hideHeader = false }: { hideHeader?: boolean }) {
   const { page, limit, totalPages, goToPage } = usePagination(1, 20)
   const [entityType, setEntityType] = useState('')
   const [actionFilter, setActionFilter] = useState('')
@@ -70,28 +70,30 @@ export function AuditLogsPage() {
 
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
-        <div className="grid gap-6 p-6 lg:grid-cols-[minmax(0,1fr)_300px] lg:p-8">
-          <div>
-            <h1 className="text-3xl font-black tracking-tight text-slate-900">Nhật ký hoạt động</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">
-              Lưu trữ mọi thao tác thay đổi dữ liệu của toàn bộ quản trị viên trên hệ thống. 
-              Giúp truy vết ai đã thay đổi thông tin gì vào lúc nào.
-            </p>
-          </div>
-          <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-5">
-            <div className="flex items-center gap-3 text-slate-700">
-              <div className="rounded-2xl bg-white p-3 shadow-sm">
-                <ShieldAlert className="h-5 w-5 text-indigo-600" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-slate-800">Tính năng bảo mật</p>
-                <p className="text-xs text-slate-500">Lịch sử được lưu trữ vĩnh viễn và không thể xoá.</p>
+      {!hideHeader && (
+        <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
+          <div className="grid gap-6 p-6 lg:grid-cols-[minmax(0,1fr)_300px] lg:p-8">
+            <div>
+              <h1 className="text-3xl font-black tracking-tight text-slate-900">Nhật ký hoạt động</h1>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">
+                Lưu trữ mọi thao tác thay đổi dữ liệu của toàn bộ quản trị viên trên hệ thống. 
+                Giúp truy vết ai đã thay đổi thông tin gì vào lúc nào.
+              </p>
+            </div>
+            <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-5">
+              <div className="flex items-center gap-3 text-slate-700">
+                <div className="rounded-2xl bg-white p-3 shadow-sm">
+                  <ShieldAlert className="h-5 w-5 text-indigo-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-slate-800">Tính năng bảo mật</p>
+                  <p className="text-xs text-slate-500">Lịch sử được lưu trữ vĩnh viễn và không thể xoá.</p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       <div className="flex flex-wrap items-center gap-3">
         <select
@@ -130,7 +132,7 @@ export function AuditLogsPage() {
         <EmptyState
           title="Chưa có lịch sử nào"
           description="Chưa có hành động thay đổi nào được ghi nhận với bộ lọc hiện tại."
-          icon={Database}
+          icon={<Database className="h-8 w-8" />}
         />
       ) : (
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">

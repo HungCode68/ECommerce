@@ -5,9 +5,12 @@ import { toast } from 'sonner'
 import { settingApi } from '@/api/setting.api'
 import { adminUserApi } from '@/api/admin/adminUser.api'
 import { queryKeys } from '@/lib/queryKeys'
+import { AuditLogsPage } from './AuditLogsPage'
+import { cn } from '@/lib/utils'
 
 export function GeneralSettingsPage() {
   const queryClient = useQueryClient()
+  const [activeTab, setActiveTab] = useState<'general' | 'audit'>('general')
   const [zaloLink, setZaloLink] = useState('')
   const [hotline, setHotline] = useState('')
 
@@ -74,11 +77,36 @@ export function GeneralSettingsPage() {
         </div>
       </section>
 
-      {isLoading ? (
-        <div className="flex h-64 items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-cyan-600" />
-        </div>
-      ) : (
+      {/* Tabs */}
+      <div className="flex border-b border-slate-200 gap-6">
+        <button
+          type="button"
+          onClick={() => setActiveTab('general')}
+          className={cn(
+            "pb-3 font-semibold text-sm border-b-2 transition-all",
+            activeTab === 'general' ? "border-cyan-600 text-cyan-600" : "border-transparent text-slate-500 hover:text-slate-700"
+          )}
+        >
+          Cài đặt chung & Phân quyền
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('audit')}
+          className={cn(
+            "pb-3 font-semibold text-sm border-b-2 transition-all",
+            activeTab === 'audit' ? "border-cyan-600 text-cyan-600" : "border-transparent text-slate-500 hover:text-slate-700"
+          )}
+        >
+          Nhật ký hoạt động
+        </button>
+      </div>
+
+      {activeTab === 'general' ? (
+        isLoading ? (
+          <div className="flex h-64 items-center justify-center">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-cyan-600" />
+          </div>
+        ) : (
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Main Settings Form */}
           <form onSubmit={handleSubmit} className="lg:col-span-2 space-y-6">
@@ -167,6 +195,9 @@ export function GeneralSettingsPage() {
             <CreateAdminForm />
           </div>
         </div>
+        )
+      ) : (
+        <AuditLogsPage hideHeader={true} />
       )}
     </div>
   )

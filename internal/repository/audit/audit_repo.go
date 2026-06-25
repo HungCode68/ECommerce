@@ -72,11 +72,10 @@ func (r *auditRepo) GetLogs(page, limit int, entityType, action string) ([]model
 	var logs []model.AdminAuditLog
 	for rows.Next() {
 		var log model.AdminAuditLog
-		var oldValues, newValues sql.NullString
-		var adminName sql.NullString
+		var oldValues, newValues, entityID, adminName sql.NullString
 		
 		err := rows.Scan(
-			&log.ID, &log.AdminID, &adminName, &log.Action, &log.EntityType, &log.EntityID,
+			&log.ID, &log.AdminID, &adminName, &log.Action, &log.EntityType, &entityID,
 			&oldValues, &newValues, &log.CreatedAt,
 		)
 		if err != nil {
@@ -85,6 +84,10 @@ func (r *auditRepo) GetLogs(page, limit int, entityType, action string) ([]model
 		
 		if adminName.Valid {
 			log.AdminName = adminName.String
+		}
+		if entityID.Valid {
+			val := entityID.String
+			log.EntityID = &val
 		}
 		if oldValues.Valid {
 			val := oldValues.String
