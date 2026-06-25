@@ -8,6 +8,46 @@ import { usePagination } from '@/hooks/usePagination'
 import { formatDateTime } from '@/utils/formatters/format'
 import { ShieldAlert, Database, ArrowRight } from 'lucide-react'
 
+const formatValue = (val: any): string => {
+  if (val === null || val === undefined) return 'Trống'
+  
+  if (Array.isArray(val)) {
+    if (val.length === 0) return 'Trống'
+    return val.map(v => formatValue(v)).join(' | ')
+  }
+  
+  if (typeof val === 'object') {
+    if (val.name) return String(val.name)
+    if (val.title) return String(val.title)
+    if (val.code) return String(val.code)
+    
+    if (val.id && Object.keys(val).length === 1) return `ID: ${val.id}`
+
+    try {
+      return JSON.stringify(val)
+    } catch {
+      return 'Dữ liệu phức tạp'
+    }
+  }
+  
+  if (typeof val === 'boolean') {
+    return val ? 'Có (True)' : 'Không (False)'
+  }
+
+  if (typeof val === 'string') {
+    if (val === '') return 'Trống'
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(val)) {
+      try {
+        return new Date(val).toLocaleString('vi-VN')
+      } catch {
+        return val
+      }
+    }
+  }
+
+  return String(val)
+}
+
 export function AuditLogsPage({ hideHeader = false }: { hideHeader?: boolean }) {
   const { page, limit, totalPages, goToPage } = usePagination(1, 20)
   const [entityType, setEntityType] = useState('')
@@ -35,13 +75,13 @@ export function AuditLogsPage({ hideHeader = false }: { hideHeader?: boolean }) 
             <div key={key} className="flex flex-wrap items-center gap-1.5">
               <span className="font-semibold text-slate-700">{key}:</span>
               {oldObj[key] !== undefined && (
-                <span className="text-rose-600 line-through truncate max-w-[150px]" title={String(oldObj[key])}>
-                  {String(oldObj[key])}
+                <span className="text-rose-600 line-through truncate max-w-[200px]" title={formatValue(oldObj[key])}>
+                  {formatValue(oldObj[key])}
                 </span>
               )}
-              {oldObj[key] !== undefined && <ArrowRight className="h-3 w-3 text-slate-400" />}
-              <span className="text-emerald-600 font-medium truncate max-w-[150px]" title={String(newObj[key])}>
-                {String(newObj[key])}
+              {oldObj[key] !== undefined && <ArrowRight className="h-3 w-3 text-slate-400 shrink-0" />}
+              <span className="text-emerald-600 font-medium truncate max-w-[200px]" title={formatValue(newObj[key])}>
+                {formatValue(newObj[key])}
               </span>
             </div>
           ))}
