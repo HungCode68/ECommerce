@@ -6,6 +6,7 @@ import (
 	settingController "golang/internal/controller/setting"
 	"golang/internal/model"
 	"golang/internal/validator"
+	"golang/internal/middleware"
 	"net/http"
 )
 
@@ -52,7 +53,9 @@ func (h *settingHandler) UpdateSettings(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	err := h.ctrl.UpdateSettings(req)
+	adminID, _ := middleware.GetUserIDFromContext(r.Context())
+
+	err := h.ctrl.UpdateSettings(adminID, req)
 	if err != nil {
 		h.errJson(w, http.StatusInternalServerError, "Failed to update settings")
 		return

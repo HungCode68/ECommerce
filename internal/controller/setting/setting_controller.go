@@ -4,14 +4,16 @@ import (
 	"database/sql"
 	"golang/internal/model"
 	settingRepo "golang/internal/repository/setting"
+	"golang/internal/controller/audit"
 )
 
 type settingController struct {
-	repo settingRepo.SettingRepository
+	repo      settingRepo.SettingRepository
+	AuditCtrl audit.AuditController
 }
 
-func NewSettingController(repo settingRepo.SettingRepository) SettingController {
-	return &settingController{repo: repo}
+func NewSettingController(repo settingRepo.SettingRepository, auditCtrl audit.AuditController) SettingController {
+	return &settingController{repo: repo, AuditCtrl: auditCtrl}
 }
 
 func (c *settingController) GetSettings() (*model.PublicSettingsResponse, error) {
@@ -38,7 +40,11 @@ func (c *settingController) GetSettings() (*model.PublicSettingsResponse, error)
 	}, nil
 }
 
-func (c *settingController) UpdateSettings(req model.UpdateSettingsRequest) error {
+func (c *settingController) UpdateSettings(adminID int64, req model.UpdateSettingsRequest) error {
+	// Ghi log
+	c.AuditCtrl.LogAction(adminID, "UPDATE", "SETTING", "zalo_link", nil, &req.ZaloLink)
+	c.AuditCtrl.LogAction(adminID, "UPDATE", "SETTING", "hotline", nil, &req.Hotline)
+
 	err := c.repo.Upsert(&model.SystemSetting{
 		Key:   "zalo_link",
 		Value: req.ZaloLink,

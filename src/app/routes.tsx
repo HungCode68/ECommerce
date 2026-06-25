@@ -88,6 +88,9 @@ const GeneralSettingsPage = lazy(() =>
 const CallbackRequestsPage = lazy(() =>
   import('@/pages/admin/CallbackRequestsPage').then((module) => ({ default: module.CallbackRequestsPage })),
 )
+const AuditLogsPage = lazy(() =>
+  import('@/pages/admin/AuditLogsPage').then((module) => ({ default: module.AuditLogsPage })),
+)
 
 function PageLoader() {
   return (
@@ -263,6 +266,14 @@ export function AppRoutes() {
             element={
               <SuspensePage>
                 <CallbackRequestsPage />
+              </SuspensePage>
+            }
+          />
+          <Route
+            path="audit-logs"
+            element={
+              <SuspensePage>
+                <AuditLogsPage />
               </SuspensePage>
             }
           />

@@ -32,10 +32,9 @@ type AdminUserApiItem = {
 }
 
 type CreateUserRequest = {
-  name: string
+  username: string
   email: string
   password: string
-  role: string
 }
 
 type UpdateUserRequest = {

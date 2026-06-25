@@ -27,7 +27,9 @@ func main() {
 	mux := http.NewServeMux()
 
 	// KHỞI TẠO CÁC MODULE
-	module.InitUserModule(db.Connection, mux)
+	auditCtrl := module.InitAuditModule(db.Connection, mux)
+
+	module.InitUserModule(db.Connection, mux, auditCtrl)
 
 	module.InitAddressModule(db.Connection, mux)
 
@@ -47,7 +49,7 @@ func main() {
 
 	module.InitCallbackModule(db.Connection, mux)
 
-	module.InitSettingModule(db.Connection, mux)
+	module.InitSettingModule(db.Connection, mux, auditCtrl)
 
 	cronManager := module.InitStatsModule(db.Connection, mux)
 

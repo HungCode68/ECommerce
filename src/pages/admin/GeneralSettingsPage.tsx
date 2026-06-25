@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Settings, Store, Truck, ShieldCheck, Save, Loader2 } from 'lucide-react'
+import { Settings, Store, Truck, ShieldCheck, Save, Loader2, UserPlus } from 'lucide-react'
 import { toast } from 'sonner'
 import { settingApi } from '@/api/setting.api'
+import { adminUserApi } from '@/api/admin/adminUser.api'
+import { queryKeys } from '@/lib/queryKeys'
 
 export function GeneralSettingsPage() {
   const queryClient = useQueryClient()
@@ -77,9 +79,9 @@ export function GeneralSettingsPage() {
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-cyan-600" />
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-6 lg:grid-cols-3">
           {/* Main Settings Form */}
-          <div className="lg:col-span-2 space-y-6">
+          <form onSubmit={handleSubmit} className="lg:col-span-2 space-y-6">
             <div className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">
               <div className="mb-6 flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
@@ -143,7 +145,7 @@ export function GeneralSettingsPage() {
                 </button>
               </div>
             </div>
-          </div>
+          </form>
 
           {/* Placeholders Sections */}
           <div className="space-y-6">
@@ -161,22 +163,103 @@ export function GeneralSettingsPage() {
               </div>
             </div>
 
-            {/* Security section placeholder */}
-            <div className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm opacity-85">
-              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-600">
-                <ShieldCheck className="h-5 w-5" />
-              </div>
-              <h2 className="text-md font-bold text-slate-800">Bảo mật và phân quyền</h2>
-              <p className="mt-2 text-xs leading-5 text-slate-500">
-                Quy tắc đăng nhập, quyền quản trị và các thiết lập an toàn hệ thống.
-              </p>
-              <div className="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
-                Khu vực đang phát triển.
-              </div>
-            </div>
+            {/* Create Admin Form */}
+            <CreateAdminForm />
           </div>
-        </form>
+        </div>
       )}
     </div>
+  )
+}
+
+function CreateAdminForm() {
+  const queryClient = useQueryClient()
+  const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+
+  const createMutation = useMutation({
+    mutationFn: (data: Parameters<typeof adminUserApi.create>[0]) => adminUserApi.create(data),
+    onSuccess: () => {
+      toast.success('Đã tạo tài khoản Quản trị viên mới!')
+      setUsername('')
+      setEmail('')
+      setPassword('')
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.users.all })
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || 'Có lỗi xảy ra khi tạo admin')
+    },
+  })
+
+  const handleCreate = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!username.trim() || !email.trim() || !password) {
+      toast.error('Vui lòng điền đầy đủ thông tin')
+      return
+    }
+    createMutation.mutate({ username: username.trim(), email: email.trim(), password })
+  }
+
+  return (
+    <form onSubmit={handleCreate} className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-600">
+        <ShieldCheck className="h-5 w-5" />
+      </div>
+      <h2 className="text-md font-bold text-slate-800">Bảo mật và phân quyền</h2>
+      <p className="mt-2 text-xs leading-5 text-slate-500">
+        Cấp quyền quản trị viên cho một tài khoản mới. Người này sẽ có toàn quyền truy cập trang quản trị.
+      </p>
+
+      <div className="mt-4 space-y-3">
+        <div>
+          <label className="block text-xs font-bold text-slate-700 mb-1">Tên đăng nhập</label>
+          <input
+            type="text"
+            required
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="Ví dụ: admin_thu2"
+            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-cyan-500 focus:bg-white focus:ring-1 focus:ring-cyan-500"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-bold text-slate-700 mb-1">Email</label>
+          <input
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="admin@example.com"
+            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-cyan-500 focus:bg-white focus:ring-1 focus:ring-cyan-500"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-bold text-slate-700 mb-1">Mật khẩu</label>
+          <input
+            type="password"
+            required
+            minLength={6}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Ít nhất 6 ký tự"
+            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-cyan-500 focus:bg-white focus:ring-1 focus:ring-cyan-500"
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={createMutation.isPending}
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 px-4 py-2.5 font-semibold text-white text-sm shadow-md transition-all active:scale-[0.98] disabled:opacity-50"
+        >
+          {createMutation.isPending ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : (
+            <UserPlus size={16} />
+          )}
+          Tạo tài khoản Admin
+        </button>
+      </div>
+    </form>
   )
 }

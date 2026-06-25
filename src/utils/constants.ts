@@ -21,6 +21,7 @@ export const ROUTES = {
   ADMIN_BANNER_SETTINGS: '/admin/banner-settings',
   ADMIN_SETTINGS: '/admin/settings',
   ADMIN_CALLBACK_REQUESTS: '/admin/callback-requests',
+  ADMIN_AUDIT_LOGS: '/admin/audit-logs',
 
   // Shop Routes
   PRODUCTS: '/san-pham',

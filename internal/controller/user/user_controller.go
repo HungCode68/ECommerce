@@ -13,6 +13,7 @@ import (
 	"golang/internal/logger"
 	"golang/internal/model"
 	"golang/internal/repository/user"
+	"golang/internal/controller/audit"
 	"net"
 	"net/http"
 	"net/smtp"
@@ -27,7 +28,8 @@ import (
 )
 
 type userController struct {
-	UserRepo user.UserRepo
+	UserRepo        user.UserRepo
+	AuditController audit.AuditController
 }
 
 type googleTokenInfoResponse struct {
@@ -59,9 +61,10 @@ const (
 	maxRegistrationAgeYears      = 100
 )
 
-func NewUserController(userRepo user.UserRepo) UserController {
+func NewUserController(userRepo user.UserRepo, auditCtrl audit.AuditController) UserController {
 	return &userController{
-		UserRepo: userRepo,
+		UserRepo:        userRepo,
+		AuditController: auditCtrl,
 	}
 }
 
@@ -200,7 +203,7 @@ func (c *userController) Login(req model.LoginRequest) (model.LoginResponse, err
 	user, err := c.UserRepo.GetUserByIdentifier(req.Identifier)
 	if err != nil {
 		logger.ErrorLogger.Printf("Login thất bại (User not found): %v", err)
-		return model.LoginResponse{}, errors.New("tài khoản hoặc mật khẩu không đúng")
+		return model.LoginResponse{}, errors.New("Tài khoản hoặc mật khẩu không đúng")
 	}
 
 	//  Check khóa
@@ -211,7 +214,7 @@ func (c *userController) Login(req model.LoginRequest) (model.LoginResponse, err
 	//  Check nếu user bị xóa
 	if user.DeletedAt != nil {
 		logger.WarnLogger.Printf("Login thất bại (User deleted) cho user: %s", user.Username)
-		return model.LoginResponse{}, errors.New("tài khoản này đã bị xóa")
+		return model.LoginResponse{}, errors.New("Tài khoản này đã bị xóa")
 	}
 
 	if user.PasswordHash == nil {
@@ -346,19 +349,19 @@ func (c *userController) SendEmailVerificationOTP(req model.SendEmailVerificatio
 	userData, err := c.UserRepo.GetUserByIdentifier(req.Email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return errors.New("email chưa được đăng ký")
+			return errors.New("Email chưa được đăng ký")
 		}
 		return err
 	}
 
-	if userData.DeletedAt != nil {
-		return errors.New("tài khoản này đã bị xóa")
-	}
 	if !userData.IsActive {
-		return errors.New("tài khoản này đã bị chặn. Vui lòng liên hệ chăm sóc khách hàng để được xử lý.")
+		return errors.New("Tài khoản này đã bị chặn. Vui lòng liên hệ chăm sóc khách hàng để được xử lý.")
+	}
+	if userData.DeletedAt != nil {
+		return errors.New("Tài khoản này đã bị xóa")
 	}
 	if userData.EmailVerified {
-		return errors.New("email này đã được xác minh")
+		return errors.New("Email này đã được xác minh")
 	}
 
 	latestOTP, err := c.UserRepo.GetLatestPendingEmailVerificationOTP(userData.ID, userData.Email)
@@ -367,7 +370,7 @@ func (c *userController) SendEmailVerificationOTP(req model.SendEmailVerificatio
 		if remaining < 1 {
 			remaining = 1
 		}
-		return fmt.Errorf("vui lòng chờ %d giây trước khi gửi lại OTP", remaining)
+		return fmt.Errorf("Vui lòng chờ %d giây trước khi gửi lại OTP", remaining)
 	}
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return err
@@ -402,13 +405,13 @@ func (c *userController) VerifyEmailVerificationOTP(req model.VerifyEmailVerific
 	userData, err := c.UserRepo.GetUserByIdentifier(req.Email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return errors.New("email chưa được đăng ký")
+			return errors.New("Email chưa được đăng ký")
 		}
 		return err
 	}
 
 	if userData.EmailVerified {
-		return errors.New("email này đã được xác minh")
+		return errors.New("Email này đã được xác minh")
 	}
 
 	otpHash := hashOTP(req.OTP)
@@ -418,7 +421,7 @@ func (c *userController) VerifyEmailVerificationOTP(req model.VerifyEmailVerific
 			_ = c.UserRepo.IncrementEmailVerificationAttempts(latestOTP.ID)
 		}
 		if errors.Is(err, sql.ErrNoRows) {
-			return errors.New("otp không đúng hoặc đã hết hạn")
+			return errors.New("OTP không đúng hoặc đã hết hạn")
 		}
 		return err
 	}
@@ -437,16 +440,16 @@ func (c *userController) SendForgotPasswordOTP(req model.ForgotPasswordRequest) 
 	userData, err := c.UserRepo.GetUserByIdentifier(req.Email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return errors.New("email chưa được đăng ký")
+			return errors.New("Email chưa được đăng ký")
 		}
 		return err
 	}
 
-	if userData.DeletedAt != nil {
-		return errors.New("tài khoản này đã bị xóa")
-	}
 	if !userData.IsActive {
-		return errors.New("tài khoản này đã bị chặn. Vui lòng liên hệ chăm sóc khách hàng để được xử lý.")
+		return errors.New("Tài khoản này đã bị chặn. Vui lòng liên hệ chăm sóc khách hàng để được xử lý.")
+	}
+	if userData.DeletedAt != nil {
+		return errors.New("Tài khoản này đã bị xóa")
 	}
 
 	latestOTP, err := c.UserRepo.GetLatestPendingPasswordResetOTP(userData.ID, userData.Email)
@@ -455,7 +458,7 @@ func (c *userController) SendForgotPasswordOTP(req model.ForgotPasswordRequest) 
 		if remaining < 1 {
 			remaining = 1
 		}
-		return fmt.Errorf("vui lòng chờ %d giây trước khi gửi lại OTP", remaining)
+		return fmt.Errorf("Vui lòng chờ %d giây trước khi gửi lại OTP", remaining)
 	}
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return err
@@ -480,7 +483,7 @@ func (c *userController) SendForgotPasswordOTP(req model.ForgotPasswordRequest) 
 
 	if err := sendPasswordResetEmail(userData.Email, otpCode); err != nil {
 		logger.ErrorLogger.Printf("Failed to send password reset email to %s: %v", userData.Email, err)
-		return fmt.Errorf("lỗi gửi mail: %v", err)
+		return fmt.Errorf("Lỗi gửi mail: %v", err)
 	}
 
 	return nil
@@ -490,7 +493,7 @@ func (c *userController) ResetPassword(req model.ResetPasswordRequest) error {
 	userData, err := c.UserRepo.GetUserByIdentifier(req.Email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return errors.New("email chưa được đăng ký")
+			return errors.New("Email chưa được đăng ký")
 		}
 		return err
 	}
@@ -502,7 +505,7 @@ func (c *userController) ResetPassword(req model.ResetPasswordRequest) error {
 			_ = c.UserRepo.IncrementPasswordResetAttempts(latestOTP.ID)
 		}
 		if errors.Is(err, sql.ErrNoRows) {
-			return errors.New("otp không đúng hoặc đã hết hạn")
+			return errors.New("OTP không đúng hoặc đã hết hạn")
 		}
 		return err
 	}
@@ -519,7 +522,7 @@ func (c *userController) ResetPassword(req model.ResetPasswordRequest) error {
 		Password: &hashedString,
 	}
 	if _, err := c.UserRepo.UpdateUserProfile(userData.ID, updateReq); err != nil {
-		return errors.New("lỗi khi cập nhật mật khẩu")
+		return errors.New("Lỗi khi cập nhật mật khẩu")
 	}
 
 	if err := c.UserRepo.ConsumePasswordResetOTP(otpRecord.ID); err != nil {
@@ -549,12 +552,12 @@ func (c *userController) CreateAdmin(req model.RegisterRequest) (model.AdminUser
 
 	existingUser, _ := c.UserRepo.GetUserByIdentifier(req.Username)
 	if existingUser.ID != 0 {
-		return model.AdminUserResponse{}, errors.New("tên đăng nhập đã tồn tại")
+		return model.AdminUserResponse{}, errors.New("Tên đăng nhập đã tồn tại")
 	}
 
 	existingEmail, _ := c.UserRepo.GetUserByIdentifier(req.Email)
 	if existingEmail.ID != 0 {
-		return model.AdminUserResponse{}, errors.New("email đã tồn tại")
+		return model.AdminUserResponse{}, errors.New("Email đã tồn tại")
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
@@ -699,17 +702,17 @@ func (c *userController) ChangePassword(id int64, req model.UserChangePasswordRe
 
 	user, err := c.UserRepo.GetUserByID(id)
 	if err != nil {
-		return errors.New("không tìm thấy người dùng")
+		return errors.New("Không tìm thấy người dùng")
 	}
 
 	if user.PasswordHash == nil {
-		return errors.New("tài khoản chưa được cấu hình mật khẩu")
+		return errors.New("Tài khoản chưa được cấu hình mật khẩu")
 	}
 
 	// So sánh mật khẩu cũ
 	err = bcrypt.CompareHashAndPassword([]byte(*user.PasswordHash), []byte(req.OldPassword))
 	if err != nil {
-		return errors.New("mật khẩu cũ không đúng")
+		return errors.New("Mật khẩu cũ không đúng")
 	}
 
 	// Mã hóa mật khẩu mới
@@ -725,7 +728,7 @@ func (c *userController) ChangePassword(id int64, req model.UserChangePasswordRe
 	}
 	_, err = c.UserRepo.UpdateUserProfile(id, updateReq)
 	if err != nil {
-		return errors.New("lỗi khi cập nhật mật khẩu")
+		return errors.New("Lỗi khi cập nhật mật khẩu")
 	}
 
 	return nil
@@ -762,7 +765,7 @@ func (c *userController) DeleteSoftUsers(req model.AdminDeleteManyUsersRequest) 
 	logger.WarnLogger.Printf("Admin yêu cầu xóa %d users", len(req.IDs))
 	reason := strings.TrimSpace(req.Reason)
 	if reason == "" {
-		return errors.New("lý do bị chặn là bắt buộc")
+		return errors.New("Lý do bị chặn là bắt buộc")
 	}
 	return c.UserRepo.DeleteSoftUsers(req.IDs, reason)
 }
@@ -825,17 +828,17 @@ func (c *userController) RefreshToken(req model.RefreshTokenRequest) (model.Refr
 	})
 	if err != nil || !parsed.Valid {
 		logger.WarnLogger.Printf("Refresh token không hợp lệ: %v", err)
-		return model.RefreshTokenResponse{}, errors.New("refresh token không hợp lệ hoặc đã hết hạn")
+		return model.RefreshTokenResponse{}, errors.New("Refresh token không hợp lệ hoặc đã hết hạn")
 	}
 
 	// Tìm User đang giữ token này (đảm bảo token chưa bị revoke)
 	user, err := c.UserRepo.GetUserByRefreshToken(req.RefreshToken)
 	if err != nil {
-		return model.RefreshTokenResponse{}, errors.New("refresh token không hợp lệ hoặc đã hết hạn")
+		return model.RefreshTokenResponse{}, errors.New("Refresh token không hợp lệ hoặc đã hết hạn")
 	}
 
 	if !user.IsActive {
-		return model.RefreshTokenResponse{}, errors.New("tài khoản đã bị khóa")
+		return model.RefreshTokenResponse{}, errors.New("Tài khoản đã bị khóa")
 	}
 
 	// TẠO CẶP TOKEN MỚI
