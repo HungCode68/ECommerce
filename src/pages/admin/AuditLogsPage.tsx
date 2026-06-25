@@ -49,7 +49,7 @@ const formatValue = (val: any): string => {
 }
 
 export function AuditLogsPage({ hideHeader = false }: { hideHeader?: boolean }) {
-  const { page, limit, totalPages, goToPage } = usePagination(1, 20)
+  const { page, limit, totalPages, goToPage } = usePagination({ initialPage: 1, initialLimit: 20 })
   const [entityType, setEntityType] = useState('')
   const [actionFilter, setActionFilter] = useState('')
 
@@ -68,23 +68,36 @@ export function AuditLogsPage({ hideHeader = false }: { hideHeader?: boolean }) 
       
       const oldObj = JSON.parse(oldVal)
       const newObj = JSON.parse(newVal)
+      const allKeys = Array.from(new Set([...Object.keys(oldObj), ...Object.keys(newObj)]))
       
       return (
         <div className="flex flex-col gap-1 text-xs">
-          {Object.keys(newObj).map((key) => (
-            <div key={key} className="flex flex-wrap items-center gap-1.5">
-              <span className="font-semibold text-slate-700">{key}:</span>
-              {oldObj[key] !== undefined && (
-                <span className="text-rose-600 line-through truncate max-w-[200px]" title={formatValue(oldObj[key])}>
-                  {formatValue(oldObj[key])}
-                </span>
-              )}
-              {oldObj[key] !== undefined && <ArrowRight className="h-3 w-3 text-slate-400 shrink-0" />}
-              <span className="text-emerald-600 font-medium truncate max-w-[200px]" title={formatValue(newObj[key])}>
-                {formatValue(newObj[key])}
-              </span>
-            </div>
-          ))}
+          {allKeys.map((key) => {
+            const oldItem = oldObj[key]
+            const newItem = newObj[key]
+            
+            // Skip rendering if both are identical (no change)
+            if (JSON.stringify(oldItem) === JSON.stringify(newItem)) return null;
+
+            return (
+              <div key={key} className="flex flex-wrap items-center gap-1.5">
+                <span className="font-semibold text-slate-700">{key}:</span>
+                {oldItem !== undefined && (
+                  <span className="text-rose-600 line-through truncate max-w-[200px]" title={formatValue(oldItem)}>
+                    {formatValue(oldItem)}
+                  </span>
+                )}
+                {oldItem !== undefined && newItem !== undefined && (
+                  <ArrowRight className="h-3 w-3 text-slate-400 shrink-0" />
+                )}
+                {newItem !== undefined && (
+                  <span className="text-emerald-600 font-medium truncate max-w-[200px]" title={formatValue(newItem)}>
+                    {formatValue(newItem)}
+                  </span>
+                )}
+              </div>
+            )
+          })}
         </div>
       )
     } catch (e) {
