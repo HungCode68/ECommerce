@@ -16,7 +16,9 @@ import (
 	"golang/internal/repository/product"
 	"golang/internal/repository/productvariant"
 	notificationrepo "golang/internal/repository/notification"
+	"golang/internal/controller/audit"
 	"golang/internal/utils"
+	"strconv"
 )
 
 type orderController struct {
@@ -26,6 +28,7 @@ type orderController struct {
 	AddressRepo        address.AddressRepo
 	CouponRepo         couponrepo.CouponsRepository
 	NotificationRepo   notificationrepo.NotificationRepository
+	AuditCtrl          audit.AuditController
 }
 
 func NewOrderController(
@@ -35,6 +38,7 @@ func NewOrderController(
 	addrRepo address.AddressRepo,
 	couponRepo couponrepo.CouponsRepository,
 	notificationRepo notificationrepo.NotificationRepository,
+	auditCtrl audit.AuditController,
 ) OrderController {
 	return &orderController{
 		OrderRepo:          orderRepo,
@@ -43,6 +47,7 @@ func NewOrderController(
 		AddressRepo:        addrRepo,
 		CouponRepo:         couponRepo,
 		NotificationRepo:   notificationRepo,
+		AuditCtrl:          auditCtrl,
 	}
 }
 
@@ -716,6 +721,10 @@ func (c *orderController) UpdateOrderStatus(ctx context.Context, orderID int64, 
 			logger.ErrorLogger.Printf("UpdateOrderStatus failed. Error: %v", err)
 			return err
 		}
+		
+		reqJSON, _ := json.Marshal(req)
+		reqStr := string(reqJSON)
+		c.AuditCtrl.LogAction(adminID, "UPDATE_STATUS", "ORDER", strconv.FormatInt(orderID, 10), nil, &reqStr)
 	}
 	logger.InfoLogger.Printf("UpdateOrderStatus success. OrderID: %d", orderID)
 	return nil
@@ -771,6 +780,10 @@ func (c *orderController) ConfirmPayment(ctx context.Context, orderID int64, sta
 		logger.ErrorLogger.Printf("ConfirmPayment: Transaction failed. Error: %v", err)
 		return err
 	}
+
+	newPaymentJSON, _ := json.Marshal(newPaymentLog)
+	newPaymentStr := string(newPaymentJSON)
+	c.AuditCtrl.LogAction(adminID, "CONFIRM_PAYMENT", "ORDER", strconv.FormatInt(orderID, 10), nil, &newPaymentStr)
 
 	logger.InfoLogger.Printf("ConfirmPayment success. OrderID: %d confirmed by AdminID: %d", orderID, adminID)
 	return nil

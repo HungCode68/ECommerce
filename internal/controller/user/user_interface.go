@@ -32,7 +32,7 @@ type UserController interface {
 	Logout(userID int64) error
 
 	// Tạo tài khoản admin mới
-	CreateAdmin(req model.RegisterRequest) (model.AdminUserResponse, error)
+	CreateAdmin(adminID int64, req model.RegisterRequest) (model.AdminUserResponse, error)
 
 	// Lấy tất cả người dùng
 	GetAllUsers() ([]model.AdminUserResponse, error)
@@ -44,7 +44,7 @@ type UserController interface {
 	SearchUsers(filter model.UserFilter) ([]model.AdminUserResponse, int, error)
 
 	// Cập nhật thông tin người dùng theo ID
-	UpdateUser(id int64, req model.AdminUpdateUserRequest) (model.AdminUserResponse, error)
+	UpdateUser(adminID int64, id int64, req model.AdminUpdateUserRequest) (model.AdminUserResponse, error)
 
 	// Cập nhật tài khoản người dùng hiện tại
 	UpdateUserProfile(id int64, req model.UserUpdateProfileRequest) (model.UserProfileResponse, error)
@@ -59,13 +59,13 @@ type UserController interface {
 	// DeleteUserById(id int64) error
 
 	// Xoá nhiều người dùng theo danh sách ID
-	DeleteSoftUsers(req model.AdminDeleteManyUsersRequest) error
+	DeleteSoftUsers(adminID int64, req model.AdminDeleteManyUsersRequest) error
 
 	// Xóa cứng nhiều người dùng theo danh sách ID
-	HardDeleteUsers(req model.AdminDeleteManyUsersRequest) error
+	HardDeleteUsers(adminID int64, req model.AdminDeleteManyUsersRequest) error
 
 	// Bỏ chặn nhiều người dùng theo danh sách ID
-	RestoreSoftUsers(req model.AdminDeleteManyUsersRequest) error
+	RestoreSoftUsers(adminID int64, req model.AdminDeleteManyUsersRequest) error
 
 	// Làm mới token
 	RefreshToken(req model.RefreshTokenRequest) (model.RefreshTokenResponse, error)

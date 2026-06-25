@@ -17,10 +17,11 @@ import (
 	productVariant "golang/internal/repository/productvariant"
 	notificationrepo "golang/internal/repository/notification"
 	"golang/internal/router"
+	"golang/internal/controller/audit"
 	"net/http"
 )
 
-func InitProductModule(db *sql.DB, mux *http.ServeMux) {
+func InitProductModule(db *sql.DB, mux *http.ServeMux, auditCtrl audit.AuditController) {
 	// khởi tạo repo
 	repoProduct := product.NewProductRepo(db)
 	repoVariant := productVariant.NewVariantRepo(db)
@@ -30,7 +31,7 @@ func InitProductModule(db *sql.DB, mux *http.ServeMux) {
 	notifRepo := notificationrepo.NewNotificationRepo(db)
 
 	// khởi tạo Controller
-	ctrlProduct := productController.NewProductController(repoProduct, repoVariant, repoHistory, repoReview)
+	ctrlProduct := productController.NewProductController(repoProduct, repoVariant, repoHistory, repoReview, auditCtrl)
 	ctrlVariant := productVariantController.NewProductVariantController(repoVariant)
 	ctrlHistory := producthistoryController.NewProductHistoryController(repoHistory)
 	ctrlReview := productReviewsController.NewProductReviewsController(repoReview, orderRepo, notifRepo)

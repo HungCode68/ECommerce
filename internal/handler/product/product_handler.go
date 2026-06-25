@@ -12,6 +12,7 @@ import (
 	"golang/internal/logger"
 	"golang/internal/model"
 	"golang/internal/validator"
+	"golang/internal/middleware"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -75,7 +76,8 @@ func (h *productHandler) CreateProductHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	productResponse, err := h.PrtController.CreateProductController(req)
+	adminID, _ := middleware.GetUserIDFromContext(r.Context())
+	productResponse, err := h.PrtController.CreateProductController(adminID, req)
 	if err != nil {
 		if err.Error() == "Product name already exists" || err.Error() == "Product slug already exists" {
 			h.errJson(w, http.StatusConflict, "Product already exists")
@@ -160,7 +162,8 @@ func (h *productHandler) AdminImportProductsCSVHandler(w http.ResponseWriter, r 
 		reqs = append(reqs, req)
 	}
 
-	response, err := h.PrtController.AdminImportProductsController(reqs)
+	adminID, _ := middleware.GetUserIDFromContext(r.Context())
+	response, err := h.PrtController.AdminImportProductsController(adminID, reqs)
 	if err != nil {
 		logger.ErrorLogger.Printf("AdminImportProductsCSVHandler error: %v", err)
 		h.errJson(w, http.StatusInternalServerError, "Failed to import products")
@@ -792,7 +795,8 @@ func (h *productHandler) AdminDeleteSoftProductHandler(w http.ResponseWriter, r 
 		h.errJson(w, http.StatusBadRequest, "Invalid product ID in path")
 		return
 	}
-	err = h.PrtController.AdminDeleteSoftProductController(id)
+	adminID, _ := middleware.GetUserIDFromContext(r.Context())
+	err = h.PrtController.AdminDeleteSoftProductController(adminID, id)
 	if err != nil {
 		logger.ErrorLogger.Printf("AdminDeleteSoftProductHandler error (id=%d): %v", id, err)
 		h.errJson(w, http.StatusInternalServerError, "Internal server error")
@@ -814,7 +818,8 @@ func (h *productHandler) AdminBulkDeleteSoftProductsHandler(w http.ResponseWrite
 		return
 	}
 
-	err := h.PrtController.AdminBulkDeleteSoftProductsController(req.IDs)
+	adminID, _ := middleware.GetUserIDFromContext(r.Context())
+	err := h.PrtController.AdminBulkDeleteSoftProductsController(adminID, req.IDs)
 	if err != nil {
 		h.errJson(w, http.StatusInternalServerError, "Cannot delete products")
 		return
@@ -836,7 +841,8 @@ func (h *productHandler) AdminGetAllSoftDeletedProductsHandler(w http.ResponseWr
 
 // AdminDeleteAllProductsHandler - Xóa cứng tất cả (Nguy hiểm)
 func (h *productHandler) AdminDeleteAllProductsHandler(w http.ResponseWriter, r *http.Request) {
-	err := h.PrtController.AdminDeleteAllProductsController()
+	adminID, _ := middleware.GetUserIDFromContext(r.Context())
+	err := h.PrtController.AdminDeleteAllProductsController(adminID)
 	if err != nil {
 		h.errJson(w, http.StatusInternalServerError, "Cannot delete all products")
 		return

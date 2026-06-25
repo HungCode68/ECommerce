@@ -547,7 +547,7 @@ func (c *userController) Logout(userID int64) error {
 }
 
 // Hàm CreateAdmin để Admin tạo tài khoản Admin mới
-func (c *userController) CreateAdmin(req model.RegisterRequest) (model.AdminUserResponse, error) {
+func (c *userController) CreateAdmin(adminID int64, req model.RegisterRequest) (model.AdminUserResponse, error) {
 	logger.InfoLogger.Printf("ADMIN đang tạo tài khoản Admin mới: %s", req.Username)
 
 	existingUser, _ := c.UserRepo.GetUserByIdentifier(req.Username)
@@ -582,8 +582,14 @@ func (c *userController) CreateAdmin(req model.RegisterRequest) (model.AdminUser
 		return model.AdminUserResponse{}, err
 	}
 
+	res := toAdminUserResponse(created)
+
+	newValuesJSON, _ := json.Marshal(res)
+	newValuesStr := string(newValuesJSON)
+	c.AuditController.LogAction(adminID, "CREATE", "ADMIN_USER", strconv.FormatInt(created.ID, 10), nil, &newValuesStr)
+
 	// Map sang Response
-	return toAdminUserResponse(created), nil
+	return res, nil
 }
 
 // Hàm lấy tất cả Users
@@ -635,7 +641,7 @@ func (c *userController) SearchUsers(filter model.UserFilter) ([]model.AdminUser
 }
 
 // Hàm cập nhật thông tin user
-func (c *userController) UpdateUser(id int64, req model.AdminUpdateUserRequest) (model.AdminUserResponse, error) {
+func (c *userController) UpdateUser(adminID int64, id int64, req model.AdminUpdateUserRequest) (model.AdminUserResponse, error) {
 	logger.InfoLogger.Printf("Cập nhật user ID: %d", id)
 
 	updatedUser, err := c.UserRepo.UpdateUser(id, req)
@@ -644,7 +650,13 @@ func (c *userController) UpdateUser(id int64, req model.AdminUpdateUserRequest) 
 		return model.AdminUserResponse{}, err
 	}
 
-	return toAdminUserResponse(updatedUser), nil
+	res := toAdminUserResponse(updatedUser)
+
+	newValuesJSON, _ := json.Marshal(res)
+	newValuesStr := string(newValuesJSON)
+	c.AuditController.LogAction(adminID, "UPDATE", "USER", strconv.FormatInt(id, 10), nil, &newValuesStr)
+
+	return res, nil
 }
 
 // Hàm User tự cập nhật thông tin cá nhân
@@ -760,26 +772,44 @@ func (c *userController) DeleteMyAccount(id int64) error {
 // }
 
 // Hàm xóa nhiều user cùng lúc
-func (c *userController) DeleteSoftUsers(req model.AdminDeleteManyUsersRequest) error {
+func (c *userController) DeleteSoftUsers(adminID int64, req model.AdminDeleteManyUsersRequest) error {
 	// Gọi Repo
 	logger.WarnLogger.Printf("Admin yêu cầu xóa %d users", len(req.IDs))
 	reason := strings.TrimSpace(req.Reason)
 	if reason == "" {
 		return errors.New("Lý do bị chặn là bắt buộc")
 	}
-	return c.UserRepo.DeleteSoftUsers(req.IDs, reason)
+	err := c.UserRepo.DeleteSoftUsers(req.IDs, reason)
+	if err == nil {
+		reqJSON, _ := json.Marshal(req)
+		reqStr := string(reqJSON)
+		c.AuditController.LogAction(adminID, "DELETE_SOFT_MANY", "USER", "bulk", nil, &reqStr)
+	}
+	return err
 }
 
 // Hàm xóa cứng nhiều user cùng lúc
-func (c *userController) HardDeleteUsers(req model.AdminDeleteManyUsersRequest) error {
+func (c *userController) HardDeleteUsers(adminID int64, req model.AdminDeleteManyUsersRequest) error {
 	logger.WarnLogger.Printf("Admin yêu cầu xóa cứng %d users", len(req.IDs))
-	return c.UserRepo.HardDeleteUsers(req.IDs)
+	err := c.UserRepo.HardDeleteUsers(req.IDs)
+	if err == nil {
+		reqJSON, _ := json.Marshal(req)
+		reqStr := string(reqJSON)
+		c.AuditController.LogAction(adminID, "DELETE_HARD_MANY", "USER", "bulk", nil, &reqStr)
+	}
+	return err
 }
 
 // Hàm bỏ chặn nhiều user cùng lúc
-func (c *userController) RestoreSoftUsers(req model.AdminDeleteManyUsersRequest) error {
+func (c *userController) RestoreSoftUsers(adminID int64, req model.AdminDeleteManyUsersRequest) error {
 	logger.WarnLogger.Printf("Admin yêu cầu bỏ chặn %d users", len(req.IDs))
-	return c.UserRepo.RestoreSoftUsers(req.IDs)
+	err := c.UserRepo.RestoreSoftUsers(req.IDs)
+	if err == nil {
+		reqJSON, _ := json.Marshal(req)
+		reqStr := string(reqJSON)
+		c.AuditController.LogAction(adminID, "RESTORE_MANY", "USER", "bulk", nil, &reqStr)
+	}
+	return err
 }
 
 // Hàm tạo Access Token và Refresh Token

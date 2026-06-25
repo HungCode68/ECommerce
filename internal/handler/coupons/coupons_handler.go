@@ -30,7 +30,8 @@ func (h *couponsHandler) CreateCoupon(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu đầu vào không hợp lệ", errs)
 		return
 	}
-	res, err := h.CouponsController.CreateCoupon(r.Context(), req)
+	adminID, _ := middleware.GetUserIDFromContext(r.Context())
+	res, err := h.CouponsController.CreateCoupon(r.Context(), adminID, req)
 	if err != nil {
 		logger.ErrorLogger.Printf("CreateCoupon error: %v", err)
 		utils.WriteError(w, http.StatusInternalServerError, "Lỗi tạo mã giảm giá", nil)
@@ -57,7 +58,8 @@ func (h *couponsHandler) UpdateCoupon(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := h.CouponsController.UpdateCoupon(r.Context(), id, req)
+	adminID, _ := middleware.GetUserIDFromContext(r.Context())
+	res, err := h.CouponsController.UpdateCoupon(r.Context(), adminID, id, req)
 	if err != nil {
 		logger.ErrorLogger.Printf("UpdateCoupon error (id=%d): %v", id, err)
 		utils.WriteError(w, http.StatusInternalServerError, "Lỗi cập nhật mã giảm giá", nil)
@@ -73,7 +75,8 @@ func (h *couponsHandler) DeleteCoupon(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, http.StatusBadRequest, "ID không hợp lệ", "ID phải là số nguyên")
 		return
 	}
-	err = h.CouponsController.DeleteCoupon(r.Context(), id)
+	adminID, _ := middleware.GetUserIDFromContext(r.Context())
+	err = h.CouponsController.DeleteCoupon(r.Context(), adminID, id)
 	if err != nil {
 		logger.ErrorLogger.Printf("DeleteCoupon error (id=%d): %v", id, err)
 		utils.WriteError(w, http.StatusInternalServerError, "Lỗi xóa mã giảm giá", nil)
@@ -92,7 +95,8 @@ func (h *couponsHandler) BulkDeleteCoupon(w http.ResponseWriter, r *http.Request
 		utils.WriteError(w, http.StatusBadRequest, "Dữ liệu đầu vào không hợp lệ", errs)
 		return
 	}
-	err := h.CouponsController.BulkDeleteCoupon(r.Context(), req)
+	adminID, _ := middleware.GetUserIDFromContext(r.Context())
+	err := h.CouponsController.BulkDeleteCoupon(r.Context(), adminID, req)
 	if err != nil {
 		logger.ErrorLogger.Printf("BulkDeleteCoupon error: %v", err)
 		utils.WriteError(w, http.StatusInternalServerError, "Lỗi xóa nhiều mã giảm giá", nil)

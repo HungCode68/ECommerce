@@ -6,15 +6,16 @@ import (
 	couponsHandler "golang/internal/handler/coupons"
 	"golang/internal/repository/coupons"
 	"golang/internal/router"
+	"golang/internal/controller/audit"
 	"net/http"
 )
 
-func InitCouponsModule(db *sql.DB, mux *http.ServeMux) {
+func InitCouponsModule(db *sql.DB, mux *http.ServeMux, auditCtrl audit.AuditController) {
 	// Khởi tạo Repository
 	repo := coupons.NewCouponsRepository(db)
 
 	// Khởi tạo Controller
-	ctrl := couponsController.NewCouponsController(repo)
+	ctrl := couponsController.NewCouponsController(repo, auditCtrl)
 
 	// Khởi tạo Handler
 	hdl := couponsHandler.NewCouponsHandler(ctrl)

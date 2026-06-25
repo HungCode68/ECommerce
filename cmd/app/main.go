@@ -24,6 +24,9 @@ func main() {
 	}
 	log.Println("Kết nối database thành công")
 
+	// Auto-migrate: tạo các bảng mới nếu chưa có (callback_requests, system_settings, admin_audit_logs)
+	config.Migrate(db.Connection)
+
 	mux := http.NewServeMux()
 
 	// KHỞI TẠO CÁC MODULE
@@ -33,17 +36,17 @@ func main() {
 
 	module.InitAddressModule(db.Connection, mux)
 
-	module.InitProductModule(db.Connection, mux)
+	module.InitProductModule(db.Connection, mux, auditCtrl)
 
-	module.InitCategoryModule(db.Connection, mux)
+	module.InitCategoryModule(db.Connection, mux, auditCtrl)
 
 	module.InitBannerModule(db.Connection, mux)
 
 	module.InitCartModule(db.Connection, mux)
 
-	module.InitOrderModule(db.Connection, mux)
+	module.InitOrderModule(db.Connection, mux, auditCtrl)
 
-	module.InitCouponsModule(db.Connection, mux)
+	module.InitCouponsModule(db.Connection, mux, auditCtrl)
 
 	module.InitNotificationModule(db.Connection, mux)
 

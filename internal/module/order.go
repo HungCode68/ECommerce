@@ -6,6 +6,7 @@ import (
 
 	orderController "golang/internal/controller/order"
 	orderHandler "golang/internal/handler/order"
+	"golang/internal/controller/audit"
 
 	"golang/internal/repository/address"
 	order "golang/internal/repository/order"
@@ -19,7 +20,7 @@ import (
 	"golang/internal/router"
 )
 
-func InitOrderModule(db *sql.DB, mux *http.ServeMux) {
+func InitOrderModule(db *sql.DB, mux *http.ServeMux, auditCtrl audit.AuditController) {
 	orderRepo := order.NewOrderRepository(db)
 	productRepo := product.NewProductRepo(db)
 	variantRepo := productvariant.NewVariantRepo(db)
@@ -37,6 +38,7 @@ func InitOrderModule(db *sql.DB, mux *http.ServeMux) {
 		addressRepo,
 		couponRepo,
 		notifRepo,
+		auditCtrl,
 	)
 
 	//  Khởi tạo Handler

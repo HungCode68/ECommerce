@@ -6,19 +6,19 @@ import "golang/internal/model"
 type CategoryController interface {
 	// Admin Methods
 	// tạo mới danh mục
-	CreateCategory(req model.CreateCategoryRequest) (model.AdminCategoryResponse, error)
+	CreateCategory(adminID int64, req model.CreateCategoryRequest) (model.AdminCategoryResponse, error)
 
 	// Cập nhật danh mục
-	UpdateCategory(id int64, req model.UpdateCategoryRequest) (model.AdminCategoryResponse, error)
+	UpdateCategory(adminID int64, id int64, req model.UpdateCategoryRequest) (model.AdminCategoryResponse, error)
 
 	// Xoá danh mục mềm
 	// DeleteCategory(id int64) error
 
 	// Xoá nhiều danh mục mềm
-	DeleteSoftCategories(req model.DeleteManyCategoriesRequest) error
+	DeleteSoftCategories(adminID int64, req model.DeleteManyCategoriesRequest) error
 
 	// Xoá danh mục cứng
-	DeleteCategoryHard(id int64) error
+	DeleteCategoryHard(adminID int64, id int64) error
 
 	// Lấy tất cả danh mục (kể cả đã xoá mềm)
 	AdminGetAllCategories(req model.AdminGetCategoriesRequest) ([]model.AdminCategoryResponse, int, error)

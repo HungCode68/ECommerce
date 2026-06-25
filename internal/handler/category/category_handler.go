@@ -7,6 +7,7 @@ import (
 	"golang/internal/model"
 	"golang/internal/utils"
 	"golang/internal/validator"
+	"golang/internal/middleware"
 	"net/http"
 	"strconv"
 	"strings"
@@ -40,8 +41,10 @@ func (h *categoryHandler) CreateCategory(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	adminID, _ := middleware.GetUserIDFromContext(r.Context())
+
 	// Call Controller
-	res, err := h.CategoryController.CreateCategory(req)
+	res, err := h.CategoryController.CreateCategory(adminID, req)
 	if err != nil {
 		if strings.Contains(err.Error(), "đã tồn tại") {
 			utils.WriteError(w, http.StatusConflict, "Dữ liệu trùng lặp", nil)
@@ -77,8 +80,10 @@ func (h *categoryHandler) UpdateCategory(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	adminID, _ := middleware.GetUserIDFromContext(r.Context())
+
 	// Call Controller
-	res, err := h.CategoryController.UpdateCategory(id, req)
+	res, err := h.CategoryController.UpdateCategory(adminID, id, req)
 	if err != nil {
 		logger.ErrorLogger.Printf("UpdateCategory error (id=%d): %v", id, err)
 		utils.WriteError(w, http.StatusInternalServerError, "Lỗi cập nhật danh mục", nil)
@@ -121,7 +126,9 @@ func (h *categoryHandler) DeleteSoftCategories(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	err := h.CategoryController.DeleteSoftCategories(req)
+	adminID, _ := middleware.GetUserIDFromContext(r.Context())
+
+	err := h.CategoryController.DeleteSoftCategories(adminID, req)
 	if err != nil {
 		logger.ErrorLogger.Printf("DeleteSoftCategories error: %v", err)
 		utils.WriteError(w, http.StatusInternalServerError, "Lỗi xóa danh sách danh mục", nil)
@@ -141,8 +148,10 @@ func (h *categoryHandler) DeleteCategoryHard(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	adminID, _ := middleware.GetUserIDFromContext(r.Context())
+
 	// Gọi Controller xử lý
-	err = h.CategoryController.DeleteCategoryHard(id)
+	err = h.CategoryController.DeleteCategoryHard(adminID, id)
 	if err != nil {
 		logger.ErrorLogger.Printf("DeleteCategoryHard error (id=%d): %v", id, err)
 		utils.WriteError(w, http.StatusBadRequest, "Không thể xóa danh mục", nil)

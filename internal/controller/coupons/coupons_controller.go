@@ -9,15 +9,20 @@ import (
 	"golang/internal/logger"
 	"golang/internal/model"
 	"golang/internal/repository/coupons"
+	"golang/internal/controller/audit"
+	"encoding/json"
+	"strconv"
 )
 
 type couponsController struct {
 	CouponsRepo coupons.CouponsRepository
+	AuditCtrl   audit.AuditController
 }
 
-func NewCouponsController(repo coupons.CouponsRepository) CouponsController {
+func NewCouponsController(repo coupons.CouponsRepository, auditCtrl audit.AuditController) CouponsController {
 	return &couponsController{
 		CouponsRepo: repo,
+		AuditCtrl:   auditCtrl,
 	}
 }
 
@@ -43,7 +48,7 @@ func mapCouponToResponse(c *model.Coupons) model.CouponResponse {
 	}
 }
 
-func (c *couponsController) CreateCoupon(ctx context.Context, req model.CreateCouponRequest) (model.CouponResponse, error) {
+func (c *couponsController) CreateCoupon(ctx context.Context, adminID int64, req model.CreateCouponRequest) (model.CouponResponse, error) {
 	logger.InfoLogger.Printf("Admin tạo mã giảm giá mới: %s", req.Code)
 
 	startDate, err := normalizeCouponDateTime(req.StartDate)
@@ -69,10 +74,16 @@ func (c *couponsController) CreateCoupon(ctx context.Context, req model.CreateCo
 		return model.CouponResponse{}, err
 	}
 
-	return mapCouponToResponse(coupon), nil
+	res := mapCouponToResponse(coupon)
+
+	newValuesJSON, _ := json.Marshal(res)
+	newValuesStr := string(newValuesJSON)
+	c.AuditCtrl.LogAction(adminID, "CREATE", "COUPON", strconv.FormatInt(coupon.ID, 10), nil, &newValuesStr)
+
+	return res, nil
 }
 
-func (c *couponsController) UpdateCoupon(ctx context.Context, id int64, req model.UpdateCouponRequest) (model.CouponResponse, error) {
+func (c *couponsController) UpdateCoupon(ctx context.Context, adminID int64, id int64, req model.UpdateCouponRequest) (model.CouponResponse, error) {
 	logger.InfoLogger.Printf("Admin cập nhật mã giảm giá ID: %d", id)
 
 	startDate, err := normalizeCouponDateTime(req.StartDate)
@@ -98,7 +109,13 @@ func (c *couponsController) UpdateCoupon(ctx context.Context, id int64, req mode
 		return model.CouponResponse{}, err
 	}
 
-	return mapCouponToResponse(updated), nil
+	res := mapCouponToResponse(updated)
+
+	newValuesJSON, _ := json.Marshal(res)
+	newValuesStr := string(newValuesJSON)
+	c.AuditCtrl.LogAction(adminID, "UPDATE", "COUPON", strconv.FormatInt(id, 10), nil, &newValuesStr)
+
+	return res, nil
 }
 
 func normalizeCouponDateTime(value *string) (*string, error) {
@@ -127,14 +144,24 @@ func normalizeCouponDateTime(value *string) (*string, error) {
 	return nil, fmt.Errorf("invalid datetime")
 }
 
-func (c *couponsController) DeleteCoupon(ctx context.Context, id int64) error {
+func (c *couponsController) DeleteCoupon(ctx context.Context, adminID int64, id int64) error {
 	logger.WarnLogger.Printf("Admin xoá mã giảm giá ID: %d", id)
-	return c.CouponsRepo.DeleteCoupon(ctx, id)
+	err := c.CouponsRepo.DeleteCoupon(ctx, id)
+	if err == nil {
+		c.AuditCtrl.LogAction(adminID, "DELETE", "COUPON", strconv.FormatInt(id, 10), nil, nil)
+	}
+	return err
 }
 
-func (c *couponsController) BulkDeleteCoupon(ctx context.Context, req model.BulkDeleteCouponsRequest) error {
+func (c *couponsController) BulkDeleteCoupon(ctx context.Context, adminID int64, req model.BulkDeleteCouponsRequest) error {
 	logger.WarnLogger.Printf("Admin xoá nhiều mã giảm giá (%d items)", len(req.IDs))
-	return c.CouponsRepo.BulkDeleteCoupon(ctx, req)
+	err := c.CouponsRepo.BulkDeleteCoupon(ctx, req)
+	if err == nil {
+		reqJSON, _ := json.Marshal(req)
+		reqStr := string(reqJSON)
+		c.AuditCtrl.LogAction(adminID, "DELETE_MANY", "COUPON", "bulk", nil, &reqStr)
+	}
+	return err
 }
 
 func (c *couponsController) GetCouponByID(ctx context.Context, id int64) (model.CouponResponse, error) {

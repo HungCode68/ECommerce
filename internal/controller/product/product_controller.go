@@ -11,7 +11,9 @@ import (
 	producthistory "golang/internal/repository/producthistory"
 	productreview "golang/internal/repository/productreview"
 	productVariant "golang/internal/repository/productvariant"
+	"golang/internal/controller/audit"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gosimple/slug"
@@ -22,15 +24,17 @@ type productController struct {
 	RepoVariants productVariant.ProductVariantsRepository
 	HistoryRepo  producthistory.ProductHistoryRepository
 	ReviewRepo   productreview.ProductReviewRepository
+	AuditCtrl    audit.AuditController
 }
 
 // NewProductController - Khởi tạo product controller
-func NewProductController(repo product.ProductRepository, repoVariants productVariant.ProductVariantsRepository, repoHistory producthistory.ProductHistoryRepository, repoReview productreview.ProductReviewRepository) ProductController {
+func NewProductController(repo product.ProductRepository, repoVariants productVariant.ProductVariantsRepository, repoHistory producthistory.ProductHistoryRepository, repoReview productreview.ProductReviewRepository, auditCtrl audit.AuditController) ProductController {
 	return &productController{
 		Repo:         repo,
 		RepoVariants: repoVariants,
 		HistoryRepo:  repoHistory,
 		ReviewRepo:   repoReview,
+		AuditCtrl:    auditCtrl,
 	}
 }
 
@@ -134,7 +138,7 @@ func (prt *productController) getProductVariantStats(productID int64, activeOnly
 }
 
 // CreateProductController - Tạo sản phẩm mới kèm danh mục
-func (prt *productController) CreateProductController(product model.CreateProductRequest) (*model.AdminCreateProductResponse, error) {
+func (prt *productController) CreateProductController(adminID int64, product model.CreateProductRequest) (*model.AdminCreateProductResponse, error) {
 	// 1. Check trùng tên
 	existingByName, err := prt.Repo.GetConflictProductByName(product.Name)
 	if err != nil && err != sql.ErrNoRows {
@@ -245,15 +249,21 @@ func (prt *productController) CreateProductController(product model.CreateProduc
 		}(),
 	}
 
-	return &model.AdminCreateProductResponse{
+	resData := &model.AdminCreateProductResponse{
 		Code:    http.StatusCreated,
 		Message: "Sản phẩm đã được tạo",
 		Data:    *adminRes,
-	}, nil
+	}
+
+	newValuesJSON, _ := json.Marshal(resData.Data)
+	newValuesStr := string(newValuesJSON)
+	prt.AuditCtrl.LogAction(adminID, "CREATE", "PRODUCT", strconv.FormatInt(createdProduct.ID, 10), nil, &newValuesStr)
+
+	return resData, nil
 }
 
 // AdminImportProductsController - Xử lý mảng dữ liệu sản phẩm từ CSV
-func (prt *productController) AdminImportProductsController(reqs []model.CreateProductRequest) (*model.AdminImportProductsResponse, error) {
+func (prt *productController) AdminImportProductsController(adminID int64, reqs []model.CreateProductRequest) (*model.AdminImportProductsResponse, error) {
 	var errDetails []string
 	var productsToInsert []*model.Product
 	var categoryMappings [][]int64
@@ -328,11 +338,17 @@ func (prt *productController) AdminImportProductsController(reqs []model.CreateP
 		return nil, fmt.Errorf("bulk insert failed: %w", err)
 	}
 
-	return &model.AdminImportProductsResponse{
+	res := &model.AdminImportProductsResponse{
 		Message:      "Products imported successfully",
 		TotalCreated: len(productsToInsert),
 		Errors:       nil,
-	}, nil
+	}
+
+	reqsJSON, _ := json.Marshal(reqs)
+	reqsStr := string(reqsJSON)
+	prt.AuditCtrl.LogAction(adminID, "IMPORT_CSV", "PRODUCT", "bulk", nil, &reqsStr)
+
+	return res, nil
 }
 
 // getProductCommon - Lấy thông tin sản phẩm theo ID, Name hoặc Slug
@@ -821,11 +837,22 @@ func (prt *productController) UpdateProductController(ctx context.Context, req m
 		}(),
 	}
 
-	return &model.AdminUpdateProductResponse{
+	adminUpdateRes := &model.AdminUpdateProductResponse{
 		Code:    http.StatusOK,
 		Message: "Sản phẩm đã được cập nhật",
 		Data:    *reponse,
-	}, nil
+	}
+
+	// Audit log update product
+	if len(changes) > 0 {
+		if adminIDStr, ok := middleware.GetUserIDFromContext(ctx); ok {
+			changesJSON, _ := json.Marshal(changes)
+			changesStr := string(changesJSON)
+			prt.AuditCtrl.LogAction(adminIDStr, "UPDATE", "PRODUCT", strconv.FormatInt(id, 10), nil, &changesStr)
+		}
+	}
+
+	return adminUpdateRes, nil
 }
 
 // AdminGetAllProductsController - Lấy tất cả sản phẩm kèm danh mục cho Admin
@@ -1101,8 +1128,12 @@ func (prt *productController) UserGetProductController(reqProduct *model.GetProd
 }
 
 // AdminDeleteSoftProductController - Xóa mềm sản phẩm
-func (prt *productController) AdminDeleteSoftProductController(id int64) error {
-	return prt.Repo.DeleteSoftProduct(id)
+func (prt *productController) AdminDeleteSoftProductController(adminID int64, id int64) error {
+	err := prt.Repo.DeleteSoftProduct(id)
+	if err == nil {
+		prt.AuditCtrl.LogAction(adminID, "DELETE_SOFT", "PRODUCT", strconv.FormatInt(id, 10), nil, nil)
+	}
+	return err
 }
 
 // AdminGetAllSoftDeletedProductsController - Lấy danh sách sản phẩm đã xóa mềm
@@ -1169,16 +1200,30 @@ func (prt *productController) AdminGetAllSoftDeletedProductsController() (*model
 }
 
 // AdminBulkDeleteSoftProductsController - Xóa mềm nhiều SP theo danh sách ID
-func (prt *productController) AdminBulkDeleteSoftProductsController(ids []int64) error {
-	return prt.Repo.BulkDeleteSoftProducts(ids)
+func (prt *productController) AdminBulkDeleteSoftProductsController(adminID int64, ids []int64) error {
+	err := prt.Repo.BulkDeleteSoftProducts(ids)
+	if err == nil {
+		idsJSON, _ := json.Marshal(ids)
+		idsStr := string(idsJSON)
+		prt.AuditCtrl.LogAction(adminID, "DELETE_SOFT_MANY", "PRODUCT", "bulk", nil, &idsStr)
+	}
+	return err
 }
 
 // AdminDeleteAllActiveProductsController - Xóa mềm TẤT CẢ sản phẩm (Dùng cẩn thận!)
-func (prt *productController) AdminDeleteAllActiveProductsController() error {
-	return prt.Repo.DeleteAllProductsSoftDeleted()
+func (prt *productController) AdminDeleteAllActiveProductsController(adminID int64) error {
+	err := prt.Repo.DeleteAllProductsSoftDeleted()
+	if err == nil {
+		prt.AuditCtrl.LogAction(adminID, "DELETE_SOFT_ALL_ACTIVE", "PRODUCT", "all", nil, nil)
+	}
+	return err
 }
 
 // AdminDeleteAllProductsController - Xóa cứng tất cả sản phẩm
-func (prt *productController) AdminDeleteAllProductsController() error {
-	return prt.Repo.DeleteAllProducts()
+func (prt *productController) AdminDeleteAllProductsController(adminID int64) error {
+	err := prt.Repo.DeleteAllProducts()
+	if err == nil {
+		prt.AuditCtrl.LogAction(adminID, "DELETE_HARD_ALL", "PRODUCT", "all", nil, nil)
+	}
+	return err
 }

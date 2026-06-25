@@ -6,22 +6,27 @@ import (
 	"golang/internal/logger"
 	"golang/internal/model"
 	"golang/internal/repository/category"
+	"golang/internal/controller/audit"
+	"encoding/json"
+	"strconv"
 
 	"github.com/gosimple/slug"
 )
 
 type categoryController struct {
 	CategoryRepo category.CategoryRepo
+	AuditCtrl    audit.AuditController
 }
 
-func NewCategoryController(catRepo category.CategoryRepo) CategoryController {
+func NewCategoryController(catRepo category.CategoryRepo, auditCtrl audit.AuditController) CategoryController {
 	return &categoryController{
 		CategoryRepo: catRepo,
+		AuditCtrl:    auditCtrl,
 	}
 }
 
 // CreateCategory - Tạo danh mục mới
-func (c *categoryController) CreateCategory(req model.CreateCategoryRequest) (model.AdminCategoryResponse, error) {
+func (c *categoryController) CreateCategory(adminID int64, req model.CreateCategoryRequest) (model.AdminCategoryResponse, error) {
 	logger.InfoLogger.Printf("Admin yêu cầu tạo danh mục mới: %s", req.Name)
 
 	//  Xử lý Slug (Nếu rỗng thì tự tạo từ Name)
@@ -77,12 +82,17 @@ func (c *categoryController) CreateCategory(req model.CreateCategoryRequest) (mo
 		UpdatedAt:   createdCat.UpdatedAt,
 	}
 
+	// Audit Log
+	newValuesJSON, _ := json.Marshal(res)
+	newValuesStr := string(newValuesJSON)
+	c.AuditCtrl.LogAction(adminID, "CREATE", "CATEGORY", strconv.FormatInt(res.ID, 10), nil, &newValuesStr)
+
 	logger.InfoLogger.Printf("Tạo thành công danh mục ID: %d", createdCat.ID)
 	return res, nil
 }
 
 // UpdateCategory - Cập nhật danh mục
-func (c *categoryController) UpdateCategory(id int64, req model.UpdateCategoryRequest) (model.AdminCategoryResponse, error) {
+func (c *categoryController) UpdateCategory(adminID int64, id int64, req model.UpdateCategoryRequest) (model.AdminCategoryResponse, error) {
 	logger.InfoLogger.Printf("Admin cập nhật danh mục ID: %d", id)
 
 	//  Kiểm tra Slug nếu có thay đổi
@@ -107,7 +117,7 @@ func (c *categoryController) UpdateCategory(id int64, req model.UpdateCategoryRe
 		}
 	}
 
-	//  Gọi Repo Update
+	// Gọi Repo Update
 	updatedCat, err := c.CategoryRepo.UpdateCategory(id, req)
 	if err != nil {
 		logger.ErrorLogger.Printf("Lỗi update danh mục: %v", err)
@@ -125,6 +135,11 @@ func (c *categoryController) UpdateCategory(id int64, req model.UpdateCategoryRe
 		UpdatedAt:   updatedCat.UpdatedAt,
 	}
 
+	// Audit Log
+	reqJSON, _ := json.Marshal(req)
+	reqStr := string(reqJSON)
+	c.AuditCtrl.LogAction(adminID, "UPDATE", "CATEGORY", strconv.FormatInt(id, 10), nil, &reqStr)
+
 	return res, nil
 }
 
@@ -140,18 +155,22 @@ func (c *categoryController) UpdateCategory(id int64, req model.UpdateCategoryRe
 // }
 
 // DeleteManyCategories - Xóa mềm nhiều danh mục
-func (c *categoryController) DeleteSoftCategories(req model.DeleteManyCategoriesRequest) error {
+func (c *categoryController) DeleteSoftCategories(adminID int64, req model.DeleteManyCategoriesRequest) error {
 	logger.WarnLogger.Printf("Admin yêu cầu xóa %d danh mục", len(req.IDs))
 	err := c.CategoryRepo.DeleteSoftCategories(req.IDs)
 	if err != nil {
 		logger.ErrorLogger.Printf("Lỗi xóa nhiều danh mục: %v", err)
 		return err
 	}
+	reqJSON, _ := json.Marshal(req.IDs)
+	reqStr := string(reqJSON)
+	c.AuditCtrl.LogAction(adminID, "DELETE_SOFT_MANY", "CATEGORY", "many", nil, &reqStr)
+
 	return nil
 }
 
 // DeleteCategoryHard - Xóa cứng 1 danh mục
-func (c *categoryController) DeleteCategoryHard(id int64) error {
+func (c *categoryController) DeleteCategoryHard(adminID int64, id int64) error {
 	logger.WarnLogger.Printf("Admin yêu cầu xóa cứng danh mục ID: %d", id)
 	// Gọi Repo Xóa cứng
 	err := c.CategoryRepo.DeleteCategoryHard(id)
@@ -159,6 +178,7 @@ func (c *categoryController) DeleteCategoryHard(id int64) error {
 		logger.ErrorLogger.Printf("Lỗi xóa cứng danh mục: %v", err)
 		return err
 	}
+	c.AuditCtrl.LogAction(adminID, "DELETE_HARD", "CATEGORY", strconv.FormatInt(id, 10), nil, nil)
 	return nil
 }
 

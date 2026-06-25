@@ -246,7 +246,8 @@ func (h *userHandler) CreateAdmin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := h.UserController.CreateAdmin(req)
+	adminID, _ := middleware.GetUserIDFromContext(r.Context())
+	res, err := h.UserController.CreateAdmin(adminID, req)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err.Error(), nil)
 		return
@@ -385,7 +386,8 @@ func (h *userHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := h.UserController.UpdateUser(id, req)
+	adminID, _ := middleware.GetUserIDFromContext(r.Context())
+	res, err := h.UserController.UpdateUser(adminID, id, req)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Lỗi cập nhật user", err.Error())
 		return
@@ -507,7 +509,8 @@ func (h *userHandler) DeleteSoftUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := h.UserController.DeleteSoftUsers(req)
+	adminID, _ := middleware.GetUserIDFromContext(r.Context())
+	err := h.UserController.DeleteSoftUsers(adminID, req)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Lỗi xóa danh sách user", err.Error())
 		return
@@ -530,7 +533,8 @@ func (h *userHandler) HardDeleteUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := h.UserController.HardDeleteUsers(req)
+	adminID, _ := middleware.GetUserIDFromContext(r.Context())
+	err := h.UserController.HardDeleteUsers(adminID, req)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Lỗi xóa cứng danh sách user", err.Error())
 		return
@@ -553,7 +557,8 @@ func (h *userHandler) RestoreSoftUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := h.UserController.RestoreSoftUsers(req)
+	adminID, _ := middleware.GetUserIDFromContext(r.Context())
+	err := h.UserController.RestoreSoftUsers(adminID, req)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Lỗi bỏ chặn danh sách user", err.Error())
 		return
