@@ -540,7 +540,7 @@ func (pr *ProductRepo) GetAllProductsSoftDeleted() ([]model.Product, error) {
 }
 
 func (pr *ProductRepo) DeleteAllProductsSoftDeleted() error {
-	_, err := pr.DB.Exec("UPDATE products SET deleted_at = CURRENT_TIMESTAMP, status = 'archived' WHERE status='active' AND deleted_at IS  NULL")
+	_, err := pr.DB.Exec("UPDATE products SET deleted_at = CURRENT_TIMESTAMP, status = 'archived' WHERE status='active' AND deleted_at IS NULL")
 	if err != nil {
 		return fmt.Errorf("Cannot delete all soft deleted products: %w", err)
 	}
@@ -548,9 +548,70 @@ func (pr *ProductRepo) DeleteAllProductsSoftDeleted() error {
 }
 
 func (pr *ProductRepo) DeleteAllProducts() error {
-	_, err := pr.DB.Exec("DELETE FROM products")
+	_, err := pr.DB.Exec("DELETE FROM products WHERE deleted_at IS NOT NULL")
 	if err != nil {
 		return fmt.Errorf("Cannot delete all products: %w", err)
 	}
+	return nil
+}
+
+func (pr *ProductRepo) RestoreProducts(ids []int64) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	placeholders := strings.Repeat("?,", len(ids))
+	placeholders = placeholders[:len(placeholders)-1]
+
+	query := fmt.Sprintf(`
+		UPDATE products 
+		SET deleted_at = NULL, status = 'active'
+		WHERE id IN (%s) AND deleted_at IS NOT NULL
+	`, placeholders)
+
+	params := make([]interface{}, len(ids))
+	for i, id := range ids {
+		params[i] = id
+	}
+
+	result, err := pr.DB.Exec(query, params...)
+	if err != nil {
+		return fmt.Errorf("cannot restore products: %w", err)
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		return fmt.Errorf("no soft deleted products found to restore")
+	}
+
+	return nil
+}
+
+func (pr *ProductRepo) DeleteHardProducts(ids []int64) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	placeholders := strings.Repeat("?,", len(ids))
+	placeholders = placeholders[:len(placeholders)-1]
+
+	query := fmt.Sprintf(`
+		DELETE FROM products 
+		WHERE id IN (%s) AND deleted_at IS NOT NULL
+	`, placeholders)
+
+	params := make([]interface{}, len(ids))
+	for i, id := range ids {
+		params[i] = id
+	}
+
+	result, err := pr.DB.Exec(query, params...)
+	if err != nil {
+		return fmt.Errorf("cannot hard delete products: %w", err)
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		return fmt.Errorf("no soft deleted products found to hard delete")
+	}
+
 	return nil
 }

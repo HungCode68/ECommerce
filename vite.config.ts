@@ -19,5 +19,8 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+    watch: {
+      ignored: ['**/internal/**', '**/cmd/**', '**/pkg/**', '**/.agent/**', '**/docs/**', '**/dist/**'],
+    },
   },
 })

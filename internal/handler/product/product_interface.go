@@ -27,4 +27,6 @@ type ProductHandler interface {
 	AdminBulkDeleteSoftProductsHandler(w http.ResponseWriter, r *http.Request)	// Xóa mềm nhiều sản phẩm
 	AdminGetAllSoftDeletedProductsHandler(w http.ResponseWriter, r *http.Request)	// Lấy tất cả sản phẩm đã xóa mềm 
 	AdminDeleteAllProductsHandler(w http.ResponseWriter, r *http.Request)			// Xóa cứng tất cả sản phẩm
+	AdminRestoreProductsHandler(w http.ResponseWriter, r *http.Request)			// Khôi phục sản phẩm đã xóa mềm
+	AdminDeleteHardProductsHandler(w http.ResponseWriter, r *http.Request)		// Xóa vĩnh viễn sản phẩm đã xóa mềm
 }

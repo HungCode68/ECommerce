@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Trash2 } from 'lucide-react'
+import { Trash2, RotateCcw } from 'lucide-react'
 import { adminProductApi } from '@/api/admin/adminProduct.api'
 import { queryKeys } from '@/lib/queryKeys'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
@@ -15,17 +15,41 @@ export function ProductTrashPage() {
   const qc = useQueryClient()
   const { page, limit, totalPages, goToPage } = usePagination()
   const [hardDeleteOpen, setHardDeleteOpen] = useState(false)
+  const [selectedProductId, setSelectedProductId] = useState<number | null>(null)
+  const [actionType, setActionType] = useState<'restore' | 'hardDelete' | null>(null)
 
   const { data, isLoading } = useQuery({
     queryKey: queryKeys.admin.products.deleted({ page, limit }),
     queryFn: () => adminProductApi.getDeleted({ page, limit }),
   })
 
-  const { mutate: hardDeleteAll, isPending: deleting } = useMutation({
+  const { mutate: hardDeleteAll, isPending: deletingAll } = useMutation({
     mutationFn: adminProductApi.hardDeleteAll,
     onSuccess: () => {
       toast.success('Đã xóa vĩnh viễn tất cả sản phẩm trong thùng rác!')
       setHardDeleteOpen(false)
+      qc.invalidateQueries({ queryKey: queryKeys.admin.products.all })
+    },
+    onError: () => toast.error('Xóa thất bại'),
+  })
+
+  const { mutate: restore, isPending: restoring } = useMutation({
+    mutationFn: (id: number) => adminProductApi.restore([id]),
+    onSuccess: () => {
+      toast.success('Đã khôi phục sản phẩm!')
+      setActionType(null)
+      setSelectedProductId(null)
+      qc.invalidateQueries({ queryKey: queryKeys.admin.products.all })
+    },
+    onError: () => toast.error('Khôi phục thất bại'),
+  })
+
+  const { mutate: hardDelete, isPending: deleting } = useMutation({
+    mutationFn: (id: number) => adminProductApi.hardDelete([id]),
+    onSuccess: () => {
+      toast.success('Đã xóa vĩnh viễn sản phẩm!')
+      setActionType(null)
+      setSelectedProductId(null)
       qc.invalidateQueries({ queryKey: queryKeys.admin.products.all })
     },
     onError: () => toast.error('Xóa thất bại'),
@@ -65,6 +89,7 @@ export function ProductTrashPage() {
                 <th className="px-4 py-3 text-left font-medium text-slate-600">Tên sản phẩm</th>
                 <th className="px-4 py-3 text-left font-medium text-slate-600">Danh mục</th>
                 <th className="px-4 py-3 text-right font-medium text-slate-600">Giá</th>
+                <th className="px-4 py-3 text-right font-medium text-slate-600">Thao tác</th>
               </tr>
             </thead>
             <tbody>
@@ -77,6 +102,30 @@ export function ProductTrashPage() {
                       : product.category_name ?? '-'}
                   </td>
                   <td className="px-4 py-3 text-right font-mono">{formatVND(product.final_price)}</td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => {
+                          setSelectedProductId(product.id)
+                          setActionType('restore')
+                        }}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="Khôi phục"
+                      >
+                        <RotateCcw className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSelectedProductId(product.id)
+                          setActionType('hardDelete')
+                        }}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Xóa vĩnh viễn"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -94,6 +143,36 @@ export function ProductTrashPage() {
         description="Hành động này không thể hoàn tác. Tất cả sản phẩm trong thùng rác sẽ bị xóa vĩnh viễn."
         confirmLabel="Xóa vĩnh viễn"
         onConfirm={() => hardDeleteAll()}
+        loading={deletingAll}
+      />
+
+      <ConfirmDialog
+        open={!!(selectedProductId && actionType === 'restore')}
+        onOpenChange={() => {
+          if (!restoring) {
+            setSelectedProductId(null)
+            setActionType(null)
+          }
+        }}
+        title="Khôi phục sản phẩm"
+        description="Bạn có muốn khôi phục sản phẩm này trở lại hệ thống không?"
+        confirmLabel="Khôi phục"
+        onConfirm={() => selectedProductId && restore(selectedProductId)}
+        loading={restoring}
+      />
+
+      <ConfirmDialog
+        open={!!(selectedProductId && actionType === 'hardDelete')}
+        onOpenChange={() => {
+          if (!deleting) {
+            setSelectedProductId(null)
+            setActionType(null)
+          }
+        }}
+        title="Xóa vĩnh viễn sản phẩm"
+        description="Hành động này không thể hoàn tác. Sản phẩm sẽ bị xóa vĩnh viễn khỏi hệ thống."
+        confirmLabel="Xóa vĩnh viễn"
+        onConfirm={() => selectedProductId && hardDelete(selectedProductId)}
         loading={deleting}
       />
     </div>

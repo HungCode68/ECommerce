@@ -849,3 +849,47 @@ func (h *productHandler) AdminDeleteAllProductsHandler(w http.ResponseWriter, r 
 	}
 	h.writeJson(w, http.StatusOK, map[string]string{"message": "All products deleted successfully"})
 }
+
+// AdminRestoreProductsHandler - Khôi phục sản phẩm đã xóa mềm
+func (h *productHandler) AdminRestoreProductsHandler(w http.ResponseWriter, r *http.Request) {
+	var req model.BulkDeleteProductRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.errJson(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+
+	if err := validator.Validate(req); err != nil {
+		h.errJson(w, http.StatusBadRequest, fmt.Sprintf("Validation failed: %v", err))
+		return
+	}
+
+	adminID, _ := middleware.GetUserIDFromContext(r.Context())
+	err := h.PrtController.AdminRestoreProductsController(adminID, req.IDs)
+	if err != nil {
+		h.errJson(w, http.StatusInternalServerError, "Cannot restore products")
+		return
+	}
+	h.writeJson(w, http.StatusOK, map[string]string{"message": "Products restored successfully"})
+}
+
+// AdminDeleteHardProductsHandler - Xóa vĩnh viễn sản phẩm đã xóa mềm
+func (h *productHandler) AdminDeleteHardProductsHandler(w http.ResponseWriter, r *http.Request) {
+	var req model.BulkDeleteProductRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.errJson(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+
+	if err := validator.Validate(req); err != nil {
+		h.errJson(w, http.StatusBadRequest, fmt.Sprintf("Validation failed: %v", err))
+		return
+	}
+
+	adminID, _ := middleware.GetUserIDFromContext(r.Context())
+	err := h.PrtController.AdminDeleteHardProductsController(adminID, req.IDs)
+	if err != nil {
+		h.errJson(w, http.StatusInternalServerError, "Cannot hard delete products")
+		return
+	}
+	h.writeJson(w, http.StatusOK, map[string]string{"message": "Products permanently deleted successfully"})
+}

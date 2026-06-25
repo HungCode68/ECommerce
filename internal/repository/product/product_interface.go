@@ -33,4 +33,6 @@ type ProductRepository interface {
 	GetAllProductsSoftDeleted() ([]model.Product, error)
 	DeleteAllProductsSoftDeleted() error
 	DeleteAllProducts() error
+	RestoreProducts(ids []int64) error
+	DeleteHardProducts(ids []int64) error
 }

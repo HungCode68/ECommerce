@@ -100,12 +100,26 @@ export function AuditLogsPage({ hideHeader = false }: { hideHeader?: boolean }) 
   }
 
   const getActionBadge = (action: string) => {
-    switch (action.toUpperCase()) {
-      case 'CREATE': return <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-[11px] font-bold">CREATE</span>
-      case 'UPDATE': return <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-[11px] font-bold">UPDATE</span>
-      case 'DELETE': return <span className="bg-rose-100 text-rose-700 px-2 py-0.5 rounded text-[11px] font-bold">DELETE</span>
-      default: return <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[11px] font-bold">{action}</span>
+    const actionMap: Record<string, { label: string, color: string }> = {
+      'CREATE': { label: 'Tạo mới', color: 'bg-emerald-100 text-emerald-700' },
+      'UPDATE': { label: 'Cập nhật', color: 'bg-amber-100 text-amber-700' },
+      'DELETE': { label: 'Xóa', color: 'bg-rose-100 text-rose-700' },
+      'DELETE_SOFT': { label: 'Xóa mềm', color: 'bg-orange-100 text-orange-700' },
+      'DELETE_SOFT_MANY': { label: 'Đã xóa mềm sản phẩm', color: 'bg-orange-100 text-orange-700' },
+      'DELETE_SOFT_ALL_ACTIVE': { label: 'Đã xóa mềm tất cả', color: 'bg-orange-100 text-orange-700' },
+      'DELETE_HARD': { label: 'Xóa vĩnh viễn', color: 'bg-rose-100 text-rose-700' },
+      'DELETE_HARD_MANY': { label: 'Đã xóa vĩnh viễn sản phẩm', color: 'bg-rose-100 text-rose-700' },
+      'DELETE_HARD_ALL': { label: 'Đã dọn sạch thùng rác', color: 'bg-rose-100 text-rose-700' },
+      'RESTORE_SOFT': { label: 'Khôi phục', color: 'bg-blue-100 text-blue-700' },
+      'RESTORE_SOFT_MANY': { label: 'Đã khôi phục sản phẩm', color: 'bg-blue-100 text-blue-700' },
     }
+
+    const config = actionMap[action.toUpperCase()]
+    if (config) {
+      return <span className={`${config.color} px-2 py-0.5 rounded text-[11px] font-bold`}>{config.label}</span>
+    }
+    
+    return <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[11px] font-bold">{action}</span>
   }
 
   return (

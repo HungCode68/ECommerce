@@ -1200,12 +1200,25 @@ func (prt *productController) AdminGetAllSoftDeletedProductsController() (*model
 }
 
 // AdminBulkDeleteSoftProductsController - Xóa mềm nhiều SP theo danh sách ID
+func (prt *productController) getProductNamesForAudit(ids []int64) string {
+	details := make(map[string]string)
+	for _, id := range ids {
+		p, err := prt.Repo.GetProductByID(id)
+		if err == nil && p != nil {
+			details[fmt.Sprintf("Sản phẩm ID %d", id)] = p.Name
+		} else {
+			details[fmt.Sprintf("Sản phẩm ID %d", id)] = "Không xác định (Đã xóa)"
+		}
+	}
+	b, _ := json.Marshal(details)
+	return string(b)
+}
+
 func (prt *productController) AdminBulkDeleteSoftProductsController(adminID int64, ids []int64) error {
+	namesStr := prt.getProductNamesForAudit(ids)
 	err := prt.Repo.BulkDeleteSoftProducts(ids)
 	if err == nil {
-		idsJSON, _ := json.Marshal(ids)
-		idsStr := string(idsJSON)
-		prt.AuditCtrl.LogAction(adminID, "DELETE_SOFT_MANY", "PRODUCT", "bulk", nil, &idsStr)
+		prt.AuditCtrl.LogAction(adminID, "DELETE_SOFT_MANY", "PRODUCT", "bulk", nil, &namesStr)
 	}
 	return err
 }
@@ -1224,6 +1237,26 @@ func (prt *productController) AdminDeleteAllProductsController(adminID int64) er
 	err := prt.Repo.DeleteAllProducts()
 	if err == nil {
 		prt.AuditCtrl.LogAction(adminID, "DELETE_HARD_ALL", "PRODUCT", "all", nil, nil)
+	}
+	return err
+}
+
+// AdminRestoreProductsController - Khôi phục sản phẩm đã xóa mềm
+func (prt *productController) AdminRestoreProductsController(adminID int64, ids []int64) error {
+	namesStr := prt.getProductNamesForAudit(ids)
+	err := prt.Repo.RestoreProducts(ids)
+	if err == nil {
+		prt.AuditCtrl.LogAction(adminID, "RESTORE_SOFT_MANY", "PRODUCT", "bulk", nil, &namesStr)
+	}
+	return err
+}
+
+// AdminDeleteHardProductsController - Xóa vĩnh viễn sản phẩm đã xóa mềm
+func (prt *productController) AdminDeleteHardProductsController(adminID int64, ids []int64) error {
+	namesStr := prt.getProductNamesForAudit(ids)
+	err := prt.Repo.DeleteHardProducts(ids)
+	if err == nil {
+		prt.AuditCtrl.LogAction(adminID, "DELETE_HARD_MANY", "PRODUCT", "bulk", nil, &namesStr)
 	}
 	return err
 }

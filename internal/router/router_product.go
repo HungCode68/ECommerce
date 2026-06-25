@@ -26,6 +26,8 @@ func NewProductRouter(mux *http.ServeMux, h product.ProductHandler) http.Handler
 	adminGroup.HandleFunc("GET", "/products/deleted", h.AdminGetAllSoftDeletedProductsHandler)      // Lấy thùng rác
 	adminGroup.HandleFunc("POST", "/products/delesoft", h.AdminBulkDeleteSoftProductsHandler) 		// Xóa mềm 
 	adminGroup.HandleFunc("DELETE", "/products/deleall", h.AdminDeleteAllProductsHandler)           // Dọn sạch thùng rác (Hard delete)
+	adminGroup.HandleFunc("POST", "/products/restore", h.AdminRestoreProductsHandler)				// Khôi phục thùng rác
+	adminGroup.HandleFunc("DELETE", "/products/delehard", h.AdminDeleteHardProductsHandler)			// Xóa cứng theo IDs
 
 
 	// adminGroup.HandleFunc("GET", "/product/", h.AdminGetProductHandler)

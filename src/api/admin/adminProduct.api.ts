@@ -111,6 +111,15 @@ export const adminProductApi = {
     await axiosClient.delete('/api/admin/products/deleall')
   },
 
+  restore: async (ids: number[]) => {
+    await axiosClient.post('/api/admin/products/restore', { ids })
+  },
+
+  hardDelete: async (ids: number[]) => {
+    // Axios delete with body needs { data: payload }
+    await axiosClient.delete('/api/admin/products/delehard', { data: { ids } })
+  },
+
   // Variants
   createVariant: async (productId: number, data: CreateVariantRequest) => {
     const res = await axiosClient.post<CreateVariantResponse>(

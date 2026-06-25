@@ -58,4 +58,10 @@ type ProductController interface {
 	
 	// Xóa cứng tất cả sản phẩm
 	AdminDeleteAllProductsController(adminID int64) error
+
+	// Khôi phục sản phẩm đã xóa mềm
+	AdminRestoreProductsController(adminID int64, ids []int64) error
+
+	// Xóa vĩnh viễn sản phẩm đã xóa mềm
+	AdminDeleteHardProductsController(adminID int64, ids []int64) error
 }
