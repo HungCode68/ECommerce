@@ -140,7 +140,7 @@ func TestValidateCoupon(t *testing.T) {
 				},
 			}
 			
-			ctrl := NewCouponsController(mockRepo)
+			ctrl := NewCouponsController(mockRepo, nil)
 			resp, err := ctrl.ValidateCoupon(context.Background(), tt.req)
 			if err != nil {
 				t.Fatalf("Unexpected error: %v", err)
