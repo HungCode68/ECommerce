@@ -934,6 +934,7 @@ func (prt *productController) UserGetAllProductsController(req *model.SearchProd
 		responses = append(responses, model.UserProductResponse{
 			ID:               pro.ID,
 			Name:             pro.Name,
+			Slug:             &pro.Slug,
 			ThumbnailURL:     pro.ThumbnailURL,
 			ShortDescription: pro.ShortDescription,
 			Brand:            pro.Brand,
@@ -965,6 +966,7 @@ func (prt *productController) UserSearchProductByNameController(req *model.Searc
 		res = append(res, model.UserProductResponse{
 			ID:               pro.ID,
 			Name:             pro.Name,
+			Slug:             &pro.Slug,
 			ThumbnailURL:     pro.ThumbnailURL,
 			ShortDescription: pro.ShortDescription,
 			Brand:            pro.Brand,
@@ -1117,6 +1119,7 @@ func (prt *productController) UserGetProductController(reqProduct *model.GetProd
 	return &model.UserProductResponse{
 		ID:               pro.ID,
 		Name:             pro.Name,
+		Slug:             &pro.Slug,
 		ThumbnailURL:     pro.ThumbnailURL,
 		ShortDescription: pro.ShortDescription,
 		Brand:            pro.Brand,

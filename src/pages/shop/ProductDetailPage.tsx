@@ -449,7 +449,16 @@ export function ProductDetailPage() {
           onDecreaseQty={() => setQty((current) => Math.max(1, current - 1))}
           onIncreaseQty={() => setQty((current) => current + 1)}
           onBuyNow={handleBuyNow}
-          onAddToCart={() => addToCart()}
+          onAddToCart={() => {
+            if (!useAuthStore.getState().isAuthenticated) {
+              toast.error('Bạn cần đăng nhập trước khi thêm sản phẩm vào giỏ hàng!')
+              setTimeout(() => {
+                navigate(ROUTES.LOGIN, { state: { from: window.location.pathname } })
+              }, 1500)
+              return
+            }
+            addToCart()
+          }}
           disableBuyNow={disableBuyNow}
           disableAddToCart={disableAddToCart}
         />

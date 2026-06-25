@@ -129,6 +129,7 @@ type PaginationMeta struct {
 type UserProductResponse struct {
 	ID               int64   `json:"id"`
 	Name             string  `json:"name"`
+	Slug             *string `json:"slug,omitempty"`
 	ThumbnailURL     *string `json:"thumbnail_url,omitempty"`
 	ShortDescription *string `json:"short_description,omitempty"`
 	Brand            *string `json:"brand,omitempty"`

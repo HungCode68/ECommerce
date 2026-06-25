@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { ShoppingCart } from 'lucide-react'
@@ -11,6 +11,7 @@ import { formatVND } from '@/utils/formatters/format'
 import { getErrorMessage } from '@/utils/httpError'
 import { getCheapestVariant, getVariantStock } from '@/utils/productVariant'
 import type { Product } from '@/types/product.types'
+import { useAuthStore } from '@/store/authStore'
 
 type RecommendedProductsProps = {
   products: Product[]
@@ -55,6 +56,7 @@ export function RecommendedProducts({ products, isLoading }: RecommendedProducts
 
 function RecommendedProductCard({ product }: { product: Product }) {
   const qc = useQueryClient()
+  const navigate = useNavigate()
   const displayPrice = product.final_price ?? product.min_price ?? 0
   const originalPrice =
     product.discount_percent > 0
@@ -114,7 +116,15 @@ function RecommendedProductCard({ product }: { product: Product }) {
 
       <button
         type="button"
-        onClick={() => addToCart()}
+        onClick={(e) => {
+          e.preventDefault();
+          if (!useAuthStore.getState().isAuthenticated) {
+            toast.error('Bạn cần đăng nhập trước khi thêm sản phẩm vào giỏ hàng!')
+            setTimeout(() => navigate(ROUTES.LOGIN, { state: { from: window.location.pathname } }), 1500)
+            return
+          }
+          addToCart();
+        }}
         disabled={isPending}
         className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-[#630ed4] py-2 text-sm font-semibold text-[#630ed4] transition hover:bg-[#630ed4] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
       >

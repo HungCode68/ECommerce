@@ -7,8 +7,8 @@ export const queryKeys = {
     all: ['products'] as const,
     list: (params: Record<string, unknown>) =>
       ['products', 'list', params] as const,
-    detail: (id: number) => ['products', 'detail', id] as const,
-    reviews: (id: number) => ['products', 'reviews', id] as const,
+    detail: (id: number | string) => ['products', 'detail', id] as const,
+    reviews: (id: number | string) => ['products', 'reviews', id] as const,
   },
 
   // Categories (public)

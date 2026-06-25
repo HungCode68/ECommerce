@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { cartApi } from '@/api/cart.api'
@@ -11,6 +11,7 @@ import { ROUTES } from '@/utils/constants'
 import type { Product } from '@/types/product.types'
 import { cn } from '@/lib/utils'
 import { ProductImage } from '@/components/shared/ProductImage'
+import { useAuthStore } from '@/store/authStore'
 
 type ProductCardProps = {
   product: Product
@@ -19,6 +20,7 @@ type ProductCardProps = {
 
 export function ProductCard({ product, isHero = false }: ProductCardProps) {
   const qc = useQueryClient()
+  const navigate = useNavigate()
   const stock = typeof product.stock === 'number' ? product.stock : undefined
   const basePrice = product.final_price ?? product.min_price ?? 0;
   const cheapestVariant = getCheapestVariant(product.variants, { basePrice });
@@ -91,7 +93,15 @@ export function ProductCard({ product, isHero = false }: ProductCardProps) {
               <span className="font-headline text-xl font-bold text-on-surface">{formatVND(displayPrice)}</span>
             </div>
             <button 
-              onClick={(e) => { e.preventDefault(); addToCart(); }}
+              onClick={(e) => { 
+                e.preventDefault(); 
+                if (!useAuthStore.getState().isAuthenticated) {
+                  toast.error('Bạn cần đăng nhập trước khi thêm sản phẩm vào giỏ hàng!')
+                  setTimeout(() => navigate(ROUTES.LOGIN, { state: { from: window.location.pathname } }), 1500)
+                  return
+                }
+                addToCart(); 
+              }}
               disabled={isPending || stock === 0}
               className="w-12 h-12 rounded-xl gradient-bg text-white flex items-center justify-center hover:shadow-[0_0_20px_-5px_rgba(6,182,212,0.5)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -134,7 +144,15 @@ export function ProductCard({ product, isHero = false }: ProductCardProps) {
             <span className="font-headline text-base lg:text-lg font-bold text-on-surface">{formatVND(displayPrice)}</span>
           </div>
           <button 
-            onClick={(e) => { e.preventDefault(); addToCart(); }}
+            onClick={(e) => { 
+              e.preventDefault(); 
+              if (!useAuthStore.getState().isAuthenticated) {
+                toast.error('Bạn cần đăng nhập trước khi thêm sản phẩm vào giỏ hàng!')
+                setTimeout(() => navigate(ROUTES.LOGIN, { state: { from: window.location.pathname } }), 1500)
+                return
+              }
+              addToCart(); 
+            }}
             disabled={isPending || stock === 0}
             className="w-10 h-10 rounded-xl bg-surface-container-high text-on-surface hover:bg-primary-container hover:text-white transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-surface-container-high disabled:hover:text-on-surface shrink-0"
           >
