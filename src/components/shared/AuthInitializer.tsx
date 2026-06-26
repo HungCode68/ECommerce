@@ -74,6 +74,10 @@ export const AuthInitializer = ({ children }: { children: React.ReactNode }) => 
 
       const refreshToken = localStorage.getItem('refresh_token')
       if (!refreshToken) {
+        if (useAuthStore.getState().isAuthenticated) {
+          console.warn('[AUTH_DEBUG] Clearing zombie auth state (no refresh token)')
+          logout()
+        }
         return
       }
 
