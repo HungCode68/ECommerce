@@ -71,7 +71,7 @@ func (c *productReviewsController) CreateReview(ctx context.Context, req model.C
 		return nil, errors.New("lỗi hệ thống khi kiểm tra dữ liệu đánh giá")
 	}
 	if hasReviewed {
-		return nil, errors.New("bạn đã đánh giá sản phẩm này cho đơn hàng trên rồi")
+		return nil, errors.New("bạn đã đánh giá đơn hàng này rồi")
 	}
 
 	toCreate := &model.ProductReview{
@@ -259,20 +259,20 @@ func (c *productReviewsController) EditUserReview(ctx context.Context, reviewID 
 	review, err := c.reviewRepo.GetReviewByID(reviewID)
 	if err != nil {
 		fmt.Printf("GetReviewByID err: %v\n", err)
-		return nil, errors.New("không tìm thấy đánh giá")
+		return nil, errors.New("Không tìm thấy đánh giá")
 	}
 
 	if review.UserID != userID {
-		return nil, errors.New("bạn không có quyền sửa đánh giá này")
+		return nil, errors.New("Bạn không có quyền sửa đánh giá này")
 	}
 
 	if review.IsEdited {
-		return nil, errors.New("bạn đã sửa đánh giá này rồi (chỉ được sửa 1 lần)")
+		return nil, errors.New("Bạn đã sửa đánh giá này rồi (chỉ được sửa 1 lần)")
 	}
 
 	createdAt, _ := time.Parse(time.RFC3339, review.CreatedAt)
 	if time.Since(createdAt) > 48*time.Hour {
-		return nil, errors.New("đã quá 48h, không thể sửa đánh giá này nữa")
+		return nil, errors.New("Đã quá 48h, không thể sửa đánh giá này nữa")
 	}
 
 	review.Rating = req.Rating
@@ -298,12 +298,12 @@ func (c *productReviewsController) EditUserReview(ctx context.Context, reviewID 
 func (c *productReviewsController) AdminReplyToReview(ctx context.Context, reviewID int64, req model.AdminReplyReviewRequest) error {
 	review, err := c.reviewRepo.GetReviewByID(reviewID)
 	if err != nil {
-		return errors.New("không tìm thấy đánh giá")
+		return errors.New("Không tìm thấy đánh giá")
 	}
 
 	createdAt, _ := time.Parse(time.RFC3339, review.CreatedAt)
 	if time.Since(createdAt) > 48*time.Hour {
-		return errors.New("đã quá 48h kể từ khi user đánh giá, không thể phản hồi/sửa phản hồi nữa")
+		return errors.New("Đã quá 48h kể từ khi user đánh giá, không thể phản hồi/sửa phản hồi nữa")
 	}
 
 	return c.reviewRepo.UpdateSellerReply(reviewID, req.Reply)
@@ -343,7 +343,7 @@ func (c *productReviewsController) GetAllReviews(offset int, limit int) ([]model
 func (c *productReviewsController) AdminDeleteReview(ctx context.Context, reviewID int64, reason string) error {
 	review, err := c.reviewRepo.GetReviewByID(reviewID)
 	if err != nil {
-		return errors.New("không tìm thấy đánh giá")
+		return errors.New("Không tìm thấy đánh giá")
 	}
 
 	if err := c.reviewRepo.AdminSoftDeleteReview(reviewID, reason); err != nil {

@@ -66,7 +66,7 @@ func (h *productReviewHandler) CreateReviewHandler(w http.ResponseWriter, r *htt
 	resp, err := h.controller.CreateReview(r.Context(), req, productID, userID)
 	if err != nil {
 		logger.ErrorLogger.Printf("CreateReviewHandler error (productID=%d, userID=%d): %v", productID, userID, err)
-		utils.WriteError(w, http.StatusInternalServerError, "Cannot create review", nil)
+		utils.WriteError(w, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
 
