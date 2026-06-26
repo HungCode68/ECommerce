@@ -67,7 +67,7 @@ func (h *orderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	resp, err := h.OrderController.CreateOrder(r.Context(), userID, req)
 	if err != nil {
 		logger.ErrorLogger.Printf("CreateOrder error (user=%d): %v", userID, err)
-		utils.WriteError(w, http.StatusBadRequest, "Không thể tạo đơn hàng", nil)
+		utils.WriteError(w, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
 

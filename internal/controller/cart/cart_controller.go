@@ -265,7 +265,7 @@ func (c *cartController) validateAndCalculateCoupon(ctx context.Context, userID 
 		return 0, nil, errors.New("mã giảm giá đã bị vô hiệu hóa")
 	}
 
-	nowStr := time.Now().Format(time.RFC3339)
+	nowStr := time.Now().Format("2006-01-02 15:04:05")
 	if coupon.StartDate != nil && *coupon.StartDate > nowStr {
 		return 0, nil, errors.New("mã giảm giá chưa đến thời gian sử dụng")
 	}
@@ -293,7 +293,7 @@ func (c *cartController) validateAndCalculateCoupon(ctx context.Context, userID 
 		return 0, nil, errors.New("đơn hàng chưa đạt giá trị tối thiểu để áp mã")
 	}
 
-	if coupon.UserUsageLimit != nil && *coupon.UserUsageLimit > 0 {
+	if coupon.UseUsageLimit != nil && *coupon.UseUsageLimit && coupon.UserUsageLimit != nil && *coupon.UserUsageLimit > 0 {
 		usageCount, err := c.CouponRepo.CountUserUsage(ctx, coupon.ID, userID)
 		if err != nil {
 			logger.ErrorLogger.Printf("CountUserUsage failed (couponID=%d, userID=%d): %v", coupon.ID, userID, err)
@@ -354,7 +354,7 @@ func (c *cartController) findBestCouponForTypes(ctx context.Context, userID int6
 			continue
 		}
 
-		if coupon.UserUsageLimit != nil && *coupon.UserUsageLimit > 0 {
+		if coupon.UseUsageLimit != nil && *coupon.UseUsageLimit && coupon.UserUsageLimit != nil && *coupon.UserUsageLimit > 0 {
 			usageCount, err := c.CouponRepo.CountUserUsage(ctx, coupon.ID, userID)
 			if err != nil {
 				logger.ErrorLogger.Printf("CountUserUsage failed while finding best coupon (couponID=%d, userID=%d): %v", coupon.ID, userID, err)

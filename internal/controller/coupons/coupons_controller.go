@@ -206,6 +206,13 @@ func (c *couponsController) GetAvailableCoupons(ctx context.Context, req model.G
 
 	res := make([]model.AvailableCouponResponse, 0, len(coupons))
 	for _, coupon := range coupons {
+		if coupon.UseUsageLimit != nil && *coupon.UseUsageLimit && coupon.UserUsageLimit != nil && *coupon.UserUsageLimit > 0 {
+			count, err := c.CouponsRepo.CountUserUsage(ctx, coupon.ID, req.UserID)
+			if err == nil && int64(count) >= *coupon.UserUsageLimit {
+				continue
+			}
+		}
+
 		res = append(res, mapToAvailableCouponResponse(&coupon))
 	}
 	return res, nil
@@ -222,7 +229,7 @@ func (c *couponsController) ValidateCoupon(ctx context.Context, req model.Valida
 	}
 
 	// Kiểm tra Date
-	nowStr := time.Now().Format(time.RFC3339)
+	nowStr := time.Now().Format("2006-01-02 15:04:05")
 	if coupon.StartDate != nil && *coupon.StartDate > nowStr {
 		return model.ValidateCouponResponse{IsValid: false, Message: "Mã giảm giá chưa đến thời gian sử dụng"}, nil
 	}
@@ -241,7 +248,7 @@ func (c *couponsController) ValidateCoupon(ctx context.Context, req model.Valida
 	}
 
 	// Giới hạn với cá nhân user
-	if coupon.UserUsageLimit != nil && *coupon.UserUsageLimit > 0 {
+	if coupon.UseUsageLimit != nil && *coupon.UseUsageLimit && coupon.UserUsageLimit != nil && *coupon.UserUsageLimit > 0 {
 		count, err := c.CouponsRepo.CountUserUsage(ctx, coupon.ID, req.UserID)
 		if err != nil {
 			return model.ValidateCouponResponse{IsValid: false, Message: "Lỗi kiểm tra giới hạn sử dụng"}, err

@@ -184,7 +184,7 @@ func (r *CouponsRepo) GetCouponByCode(ctx context.Context, code string) (*model.
 
 func (r *CouponsRepo) GetAvailableCoupons(ctx context.Context, req model.GetAvailableCouponsRequest) ([]model.Coupons, error) {
 	// is_active=true, start_date <= now, end_date >= now (or null), usage_count < usage_limit
-	now := time.Now().Format(time.RFC3339)
+	now := time.Now().Format("2006-01-02 15:04:05")
 	query := `SELECT id, code, description, discount_type, discount_value, min_order_value, max_discount_amount, usage_limit, usage_count, user_usage_limit, use_usage_limit, is_active, start_date, end_date, created_at, updated_at 
 		FROM coupons 
 		WHERE is_active = true 
@@ -211,7 +211,7 @@ func (r *CouponsRepo) GetAvailableCoupons(ctx context.Context, req model.GetAvai
 }
 
 func (r *CouponsRepo) ApplyCoupon(ctx context.Context, tx *sql.Tx, couponID, userID, orderID int64) error {
-	now := time.Now().Format(time.RFC3339)
+	now := time.Now().Format("2006-01-02 15:04:05")
 	query := `INSERT INTO user_coupons (coupon_id, user_id, order_id, used_at) VALUES (?, ?, ?, ?)`
 	
 	if tx != nil {

@@ -307,7 +307,7 @@ func (c *orderController) validateCouponForOrder(ctx context.Context, userID int
 		return 0, 0, fmt.Errorf("mã giảm giá chưa được cấu hình đúng")
 	}
 
-	nowStr := time.Now().Format(time.RFC3339)
+	nowStr := time.Now().Format("2006-01-02 15:04:05")
 	if coupon.StartDate != nil && *coupon.StartDate > nowStr {
 		return 0, 0, fmt.Errorf("mã giảm giá chưa đến thời gian sử dụng")
 	}
@@ -330,7 +330,7 @@ func (c *orderController) validateCouponForOrder(ctx context.Context, userID int
 		return 0, 0, fmt.Errorf("đơn hàng chưa đạt giá trị tối thiểu để áp mã")
 	}
 
-	if coupon.UserUsageLimit != nil && *coupon.UserUsageLimit > 0 {
+	if coupon.UseUsageLimit != nil && *coupon.UseUsageLimit && coupon.UserUsageLimit != nil && *coupon.UserUsageLimit > 0 {
 		count, err := c.CouponRepo.CountUserUsage(ctx, coupon.ID, userID)
 		if err != nil {
 			return 0, 0, fmt.Errorf("không thể kiểm tra lượt sử dụng mã giảm giá")
@@ -383,7 +383,7 @@ func (c *orderController) findBestCouponForOrderTypes(ctx context.Context, userI
 			continue
 		}
 
-		if coupon.UserUsageLimit != nil && *coupon.UserUsageLimit > 0 {
+		if coupon.UseUsageLimit != nil && *coupon.UseUsageLimit && coupon.UserUsageLimit != nil && *coupon.UserUsageLimit > 0 {
 			count, err := c.CouponRepo.CountUserUsage(ctx, coupon.ID, userID)
 			if err != nil {
 				continue

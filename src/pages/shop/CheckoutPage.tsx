@@ -188,7 +188,11 @@ export function CheckoutPage() {
         navigate(ROUTES.PROFILE)
         return
       }
-      toast.error('Đặt hàng thất bại, vui lòng thử lại')
+      if (axios.isAxiosError(error) && error.response?.data?.message) {
+        toast.error(error.response.data.message)
+      } else {
+        toast.error('Đặt hàng thất bại, vui lòng thử lại')
+      }
     },
   })
   const handlePreSubmit = (e: React.FormEvent<HTMLFormElement>) => {

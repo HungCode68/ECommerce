@@ -44,8 +44,8 @@ func (m *mockCouponsRepo) CountUserUsage(ctx context.Context, couponID, userID i
 }
 
 func TestValidateCoupon(t *testing.T) {
-	futureStr := time.Now().Add(24 * time.Hour).Format(time.RFC3339)
-	pastStr := time.Now().Add(-24 * time.Hour).Format(time.RFC3339)
+	futureStr := time.Now().Add(24 * time.Hour).Format("2006-01-02 15:04:05")
+	pastStr := time.Now().Add(-24 * time.Hour).Format("2006-01-02 15:04:05")
 
 	tests := []struct {
 		name           string
