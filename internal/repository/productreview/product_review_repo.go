@@ -3,6 +3,7 @@ package productreview
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"golang/internal/model"
 	"time"
 )
@@ -281,6 +282,7 @@ func (pr *productReviewRepo) GetAllReviews(offset int, limit int) ([]model.Produ
 	defer rows.Close()
 
 	var reviews []model.ProductReview
+	var reviewIDs []interface{}
 	for rows.Next() {
 		var review model.ProductReview
 		var imageUrls *string
@@ -302,6 +304,42 @@ func (pr *productReviewRepo) GetAllReviews(offset int, limit int) ([]model.Produ
 			review.DeletedReason = &deletedReason.String
 		}
 		reviews = append(reviews, review)
+		reviewIDs = append(reviewIDs, review.ID)
+	}
+
+	if len(reviews) > 0 {
+		placeholders := ""
+		for i := 0; i < len(reviewIDs); i++ {
+			if i > 0 {
+				placeholders += ", "
+			}
+			placeholders += "?"
+		}
+
+		query := fmt.Sprintf(`
+			SELECT review_id, image_url
+			FROM product_review_images
+			WHERE review_id IN (%s)
+			ORDER BY review_id ASC, sort_order ASC, id ASC`, placeholders)
+
+		imageRows, err := pr.DB.Query(query, reviewIDs...)
+		if err == nil {
+			defer imageRows.Close()
+			imagesByReviewID := make(map[int64][]string)
+			for imageRows.Next() {
+				var reviewID int64
+				var imageURL string
+				if err := imageRows.Scan(&reviewID, &imageURL); err == nil {
+					imagesByReviewID[reviewID] = append(imagesByReviewID[reviewID], imageURL)
+				}
+			}
+
+			for i := range reviews {
+				if imgs, ok := imagesByReviewID[reviews[i].ID]; ok && len(imgs) > 0 {
+					reviews[i].ImageURLs = append(reviews[i].ImageURLs, imgs...)
+				}
+			}
+		}
 	}
 
 	return reviews, total, nil
