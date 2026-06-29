@@ -164,6 +164,11 @@ func (c *cartController) CalculateCheckoutPreview(ctx context.Context, userID in
 	// Lọc ra những món user chọn và tính tổng
 	for _, item := range fullCart.Items {
 		if selectedMap[item.VariantID] {
+			// Check xem sản phẩm có bị xóa không
+			if item.IsDeleted {
+				return model.CheckoutPreviewResponse{}, errors.New("một số sản phẩm đã ngừng kinh doanh, vui lòng gỡ khỏi giỏ hàng")
+			}
+
 			// Check lại tồn kho
 			if !item.StockCheck {
 				return model.CheckoutPreviewResponse{}, errors.New("một số sản phẩm đã hết hàng, vui lòng kiểm tra lại")

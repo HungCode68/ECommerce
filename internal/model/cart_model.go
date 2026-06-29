@@ -72,6 +72,7 @@ type CartItemResponse struct {
 
 	StockCheck    bool `json:"stock_check"`
 	StockQuantity int  `json:"stock_quantity"` // Tồn kho thực tế
+	IsDeleted     bool `json:"is_deleted"`     // Cờ đánh dấu sản phẩm đã bị xóa/ẩn
 }
 
 // CartResponse: Trả về toàn bộ giỏ hàng

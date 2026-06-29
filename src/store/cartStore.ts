@@ -82,9 +82,10 @@ export const useCartStore = create<CartState>()(
 
       toggleSelectAll: () => {
         const { items, selectedIds } = get()
-        const allIds = items.map((item) => item.item_id)
-        const allSelected = allIds.every((id) => selectedIds.includes(id))
-        set({ selectedIds: allSelected ? [] : allIds })
+        const validIds = items.filter((item) => !item.is_deleted).map((item) => item.item_id)
+        if (validIds.length === 0) return
+        const allSelected = validIds.every((id) => selectedIds.includes(id))
+        set({ selectedIds: allSelected ? [] : validIds })
       },
 
       clearSelected: () => {

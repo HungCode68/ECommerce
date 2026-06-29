@@ -98,7 +98,8 @@ export function CartPage() {
   const subtotal = checkedItems.reduce((acc, item) => acc + item.price * item.quantity, 0)
   const shippingFee = checkedItems.length === 0 ? 0 : subtotal >= 500_000 ? 0 : 30_000
   const total = Math.max(0, subtotal + shippingFee - discount)
-  const allSelected = items.length > 0 && checkedItems.length === items.length
+  const validItems = items.filter((item) => !item.is_deleted)
+  const allSelected = validItems.length > 0 && checkedItems.length === validItems.length
   const busy = removingOne || removingSelected || updatingQty
 
   useEffect(() => {
@@ -112,7 +113,7 @@ export function CartPage() {
       return
     }
 
-    const validIdSet = new Set(items.map((item) => item.item_id))
+    const validIdSet = new Set(items.filter((item) => !item.is_deleted).map((item) => item.item_id))
     const hasInvalidSelection = selectedIds.some((id) => !validIdSet.has(id))
 
     if (hasInvalidSelection) {
@@ -155,7 +156,8 @@ export function CartPage() {
                     type="checkbox"
                     checked={allSelected}
                     onChange={toggleSelectAll}
-                    className="h-5 w-5 rounded border-[#ccc3d8] text-[#630ed4] focus:ring-[#630ed4]"
+                    disabled={validItems.length === 0}
+                    className="h-5 w-5 rounded border-[#ccc3d8] text-[#630ed4] focus:ring-[#630ed4] disabled:cursor-not-allowed disabled:opacity-50"
                   />
                   Chọn tất cả
                 </label>

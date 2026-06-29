@@ -121,7 +121,8 @@ func (r *cartRepository) GetCartItemsWithDetails(ctx context.Context, cartID int
 			COALESCE(pv.price_override, p.min_price) as price,
 			ci.quantity,
 			pv.stock_quantity,
-			CASE WHEN pv.thumbnail_url IS NULL OR pv.thumbnail_url = '' THEN p.thumbnail_url ELSE pv.thumbnail_url END as thumbnail_url
+			CASE WHEN pv.thumbnail_url IS NULL OR pv.thumbnail_url = '' THEN p.thumbnail_url ELSE pv.thumbnail_url END as thumbnail_url,
+			CASE WHEN p.deleted_at IS NOT NULL OR p.status = 'archived' THEN true ELSE false END as is_deleted
 		FROM cart_items ci
 		JOIN products p ON ci.product_id = p.id
 		JOIN product_variants pv ON ci.variant_id = pv.id
@@ -152,6 +153,7 @@ func (r *cartRepository) GetCartItemsWithDetails(ctx context.Context, cartID int
 			&item.Quantity,
 			&stockQuantity,
 			&thumbURL,
+			&item.IsDeleted,
 		)
 		if err != nil {
 			logger.ErrorLogger.Printf("Repo: Error scanning row: %v", err)

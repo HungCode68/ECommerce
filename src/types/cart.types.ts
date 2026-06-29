@@ -10,6 +10,7 @@ export type CartItem = {
   thumbnail_url: string
   stock_quantity: number
   stock_check: boolean
+  is_deleted?: boolean
 }
 
 export type Cart = {

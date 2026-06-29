@@ -22,30 +22,37 @@ export function CartItem({
   onRemove,
   disabled,
 }: CartItemProps) {
+  const isDeleted = item.is_deleted
+
   return (
-    <article className="rounded-xl border border-[#ccc3d8] bg-white p-4 transition-all hover:shadow-md">
+    <article className={`rounded-xl border border-[#ccc3d8] p-4 transition-all hover:shadow-md ${isDeleted ? 'bg-[#f6f3f2] opacity-75' : 'bg-white'}`}>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
         <input
           type="checkbox"
-          checked={checked}
+          checked={checked && !isDeleted}
           onChange={onToggle}
-          className="h-5 w-5 shrink-0 rounded border-[#ccc3d8] text-[#630ed4] focus:ring-[#630ed4]"
+          disabled={disabled || isDeleted}
+          className="h-5 w-5 shrink-0 rounded border-[#ccc3d8] text-[#630ed4] focus:ring-[#630ed4] disabled:cursor-not-allowed disabled:opacity-50"
         />
 
         <div className="flex min-w-0 flex-1 gap-4">
-          <div className="h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-[#f6f3f2]">
+          <div className="h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-[#f6f3f2] relative">
             <ProductImage
               src={item.thumbnail_url}
               alt={formatProductName(item.product_name)}
               className="h-full w-full"
-              imgClassName="h-full w-full object-contain p-2"
+              imgClassName={`h-full w-full object-contain p-2 ${isDeleted ? 'grayscale' : ''}`}
             />
           </div>
 
           <div className="min-w-0 flex-1">
             <h3 className="line-clamp-2 text-base font-semibold text-[#1c1b1b]">{item.variant_name || formatProductName(item.product_name)}</h3>
             <p className="mt-1 text-sm text-[#4a4455]">{item.variant_name ? formatProductName(item.product_name) : 'Phiên bản tiêu chuẩn'}</p>
-            <p className="mt-2 text-base font-bold text-[#630ed4]">{formatVND(item.price)}</p>
+            {isDeleted ? (
+              <p className="mt-2 text-sm font-medium text-[#ba1a1a]">Sản phẩm này đã ngừng kinh doanh/bị xóa</p>
+            ) : (
+              <p className="mt-2 text-base font-bold text-[#630ed4]">{formatVND(item.price)}</p>
+            )}
           </div>
         </div>
 
@@ -54,7 +61,7 @@ export function CartItem({
             <button
               type="button"
               onClick={onDecrease}
-              disabled={disabled || item.quantity <= 1}
+              disabled={disabled || item.quantity <= 1 || isDeleted}
               className="border-r border-[#ccc3d8] px-3 py-2 text-[#4a4455] transition hover:bg-[#f0eded] disabled:cursor-not-allowed disabled:opacity-50"
               aria-label="Giảm số lượng"
             >
@@ -64,7 +71,7 @@ export function CartItem({
             <button
               type="button"
               onClick={onIncrease}
-              disabled={disabled || item.quantity >= item.stock_quantity}
+              disabled={disabled || item.quantity >= item.stock_quantity || isDeleted}
               className="border-l border-[#ccc3d8] px-3 py-2 text-[#4a4455] transition hover:bg-[#f0eded] disabled:cursor-not-allowed disabled:opacity-50"
               aria-label="Tăng số lượng"
             >
