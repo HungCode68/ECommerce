@@ -46,9 +46,6 @@ export function LoginPage() {
   })
 
 
-  const handleSocialClick = () => {
-    toast.info('Tính năng đang phát triển')
-  }
 
   const { mutate: loginAccount, isPending: isLoginSubmitting } = useMutation({
     mutationFn: (data: LoginFormData) => authApi.login({ identifier: data.username, password: data.password }),

@@ -85,8 +85,7 @@ export type UpdateOrderStatusRequest = {
 }
 
 export type ConfirmPaymentRequest = {
-  payment_method: string
-  transaction_id: string
+  status: 'completed' | 'failed' | 'refunded'
 }
 
 export type OrderFilterParams = {

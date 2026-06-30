@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Phone, CheckCircle, Clock, Trash2, ShieldAlert, ChevronLeft, ChevronRight, XCircle } from 'lucide-react'
+import { Phone, CheckCircle, Clock, Trash2, ChevronLeft, ChevronRight, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { callbackApi } from '@/api/callback.api'
 import { format } from 'date-fns'

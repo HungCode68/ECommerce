@@ -19,13 +19,13 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { cn } from '@/lib/utils'
 import type { Address } from '@/types/address.types'
+import provincesData from '@/data/vietnam-provinces.json'
 
 const addressSchema = z.object({
   receiver_name: z.string().min(2, 'Nhập tên người nhận'),
   receiver_phone: z.string().min(9, 'Số điện thoại không hợp lệ'),
-  province: z.string().min(2, 'Nhập tỉnh/thành phố'),
-  district: z.string().optional(),
-  ward: z.string().min(2, 'Nhập phường/xã'),
+  province: z.string().min(2, 'Chọn tỉnh/thành phố'),
+  ward: z.string().min(2, 'Chọn phường/xã'),
   address_detail: z.string().min(5, 'Nhập địa chỉ chi tiết'),
   is_default: z.boolean().optional(),
 })
@@ -33,8 +33,8 @@ const addressSchema = z.object({
 type AddressFormData = z.infer<typeof addressSchema>
 type EditState = { id: number } & Partial<AddressFormData>
 
-function formatAddress(address: Pick<Address, 'address_detail' | 'ward' | 'province'>) {
-  return [address.address_detail, address.ward, address.province]
+function formatAddress(address: Pick<Address, 'address_detail' | 'ward' | 'district' | 'province'>) {
+  return [address.address_detail, address.ward, address.district, address.province]
     .filter(Boolean)
     .join(', ')
 }
@@ -156,6 +156,7 @@ export function AddressesPage() {
     reset,
     watch,
     setError,
+    setValue,
     formState: { errors },
   } = useForm<AddressFormData>({
     resolver: zodResolver(addressSchema),
@@ -168,7 +169,7 @@ export function AddressesPage() {
         receiver_name: data.receiver_name,
         receiver_phone: data.receiver_phone,
         province: data.province,
-        district: data.district ?? '',
+        district: '',
         ward: data.ward,
         address_detail: data.address_detail,
         is_default: Boolean(data.is_default),
@@ -205,7 +206,6 @@ export function AddressesPage() {
           else if (fieldLower.includes('province') || fieldLower.includes('state')) formField = 'province'
           else if (fieldLower.includes('ward') || fieldLower.includes('city')) formField = 'ward'
           else if (fieldLower.includes('detail') || fieldLower.includes('line1')) formField = 'address_detail'
-          else if (fieldLower.includes('district')) formField = 'district'
           
           if (formField) {
             setError(formField, { type: 'server', message: String(msg) })
@@ -234,7 +234,6 @@ export function AddressesPage() {
       receiver_name: addr.receiver_name,
       receiver_phone: addr.receiver_phone,
       province: addr.province,
-      district: '',
       ward: addr.ward,
       address_detail: addr.address_detail,
       is_default: addr.is_default,
@@ -248,7 +247,6 @@ export function AddressesPage() {
       receiver_name: '',
       receiver_phone: '',
       province: '',
-      district: '',
       ward: '',
       address_detail: '',
       is_default: addresses.length === 0,
@@ -273,9 +271,13 @@ export function AddressesPage() {
   const fields = [
     { name: 'receiver_name' as const, label: 'Họ và tên người nhận', placeholder: 'Nguyễn Văn A' },
     { name: 'receiver_phone' as const, label: 'Số điện thoại', placeholder: '0901234567' },
-    { name: 'province' as const, label: 'Tỉnh / Thành phố', placeholder: 'Hồ Chí Minh' },
-    { name: 'ward' as const, label: 'Phường / Xã', placeholder: 'Phường Bến Nghé' },
   ]
+
+  const selectedProvinceName = watch('province')
+  const availableWards = useMemo(() => {
+    const province = provincesData.find((p) => p.name === selectedProvinceName)
+    return province?.wards || []
+  }, [selectedProvinceName])
 
   return (
     <div className="mx-auto max-w-[1200px] px-4 py-8 md:px-6">
@@ -324,6 +326,43 @@ export function AddressesPage() {
                 {errors[field.name] ? <p className="mt-1.5 text-xs text-red-500">{errors[field.name]?.message}</p> : null}
               </div>
             ))}
+
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-700">Tỉnh / Thành phố</label>
+              <select
+                {...register('province')}
+                className={cn(inputClass(Boolean(errors.province)), 'appearance-none')}
+                onChange={(e) => {
+                  register('province').onChange(e)
+                  setValue('ward', '', { shouldValidate: true })
+                }}
+              >
+                <option value="">Chọn Tỉnh / Thành phố</option>
+                {provincesData.map((p) => (
+                  <option key={p.code} value={p.name}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+              {errors.province ? <p className="mt-1.5 text-xs text-red-500">{errors.province?.message}</p> : null}
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-700">Phường / Xã</label>
+              <select
+                {...register('ward')}
+                disabled={!selectedProvinceName}
+                className={cn(inputClass(Boolean(errors.ward)), 'appearance-none', !selectedProvinceName && 'bg-slate-50 opacity-70')}
+              >
+                <option value="">Chọn Phường / Xã</option>
+                {availableWards.map((w) => (
+                  <option key={w.code} value={w.name}>
+                    {w.name}
+                  </option>
+                ))}
+              </select>
+              {errors.ward ? <p className="mt-1.5 text-xs text-red-500">{errors.ward?.message}</p> : null}
+            </div>
 
             <div className="md:col-span-2">
               <label className="mb-2 block text-sm font-semibold text-slate-700">Địa chỉ chi tiết</label>

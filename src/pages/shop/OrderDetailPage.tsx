@@ -7,7 +7,7 @@ import { orderApi } from '@/api/order.api'
 import { reviewApi } from '@/api/review.api'
 
 import { OrderStatusBadge } from '@/features/shop/orders/OrderStatusBadge'
-import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
+
 import { CancelOrderModal } from '@/features/shop/orders/CancelOrderModal'
 import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton'
 import { formatVND, formatDateTime, formatProductName } from '@/utils/formatters/format'
@@ -26,14 +26,12 @@ export function OrderDetailPage() {
   const isNumericId = id ? !isNaN(Number(id)) && !id.startsWith('#') : false
   const [copiedField, setCopiedField] = useState<string | null>(null)
   const [cancelModalOpen, setCancelModalOpen] = useState(false)
-  const [cancelReason, setCancelReason] = useState('')
 
   const { mutate: cancelOrder, isPending: cancelling } = useMutation({
     mutationFn: (reason: string) => orderApi.cancel(order?.id ?? 0, { reason }),
     onSuccess: () => {
       toast.success('Đã hủy đơn hàng')
       setCancelModalOpen(false)
-      setCancelReason('')
       qc.invalidateQueries({ queryKey: ['orderDetail', id] })
       qc.invalidateQueries({ queryKey: ['orders'] })
     },
@@ -148,7 +146,7 @@ export function OrderDetailPage() {
 
       {/* Hành động chính cho đơn hàng */}
       {(() => {
-        const uiStatus = order.status === 'processing' || order.status === 'confirmed' ? 'processing' : order.status === 'pending' ? 'pending' : '';
+        const uiStatus = order.status === 'processing' ? 'processing' : order.status === 'pending' ? 'pending' : '';
         if (uiStatus === 'pending' || uiStatus === 'processing') {
           return (
             <div className="mb-6 flex justify-end">

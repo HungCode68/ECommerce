@@ -18,6 +18,7 @@ import { formatProductName, formatVND } from '@/utils/formatters/format'
 import { ROUTES } from '@/utils/constants'
 import { cn } from '@/lib/utils'
 import { ProductImage } from '@/components/shared/ProductImage'
+import provincesData from '@/data/vietnam-provinces.json'
 
 const checkoutSchema = z.object({
   address_id: z.coerce.number().min(1, 'Chọn địa chỉ giao hàng'),
@@ -30,9 +31,8 @@ type CheckoutFormData = z.infer<typeof checkoutSchema>
 const addressSchema = z.object({
   receiver_name: z.string().min(2, 'Nhập tên người nhận'),
   receiver_phone: z.string().min(9, 'Số điện thoại không hợp lệ'),
-  province: z.string().min(2, 'Nhập tỉnh/thành phố'),
-  district: z.string().optional(),
-  ward: z.string().min(2, 'Nhập phường/xã'),
+  province: z.string().min(2, 'Chọn tỉnh/thành phố'),
+  ward: z.string().min(2, 'Chọn phường/xã'),
   address_detail: z.string().min(5, 'Nhập địa chỉ chi tiết'),
   is_default: z.boolean().optional(),
 })
@@ -107,6 +107,8 @@ export function CheckoutPage() {
     handleSubmit: handleSubmitAddr,
     reset: resetAddr,
     setError: setErrorAddr,
+    watch: watchAddr,
+    setValue: setValueAddr,
     formState: { errors: errorsAddr },
   } = useForm<AddressFormData>({
     resolver: zodResolver(addressSchema),
@@ -119,7 +121,7 @@ export function CheckoutPage() {
         receiver_name: data.receiver_name,
         receiver_phone: data.receiver_phone,
         province: data.province,
-        district: data.district ?? '',
+        district: '',
         ward: data.ward,
         address_detail: data.address_detail,
         is_default: Boolean(data.is_default),
@@ -147,7 +149,6 @@ export function CheckoutPage() {
           else if (fieldLower.includes('province') || fieldLower.includes('state')) formField = 'province'
           else if (fieldLower.includes('ward') || fieldLower.includes('city')) formField = 'ward'
           else if (fieldLower.includes('detail') || fieldLower.includes('line1')) formField = 'address_detail'
-          else if (fieldLower.includes('district')) formField = 'district'
           
           if (formField) {
             setErrorAddr(formField, { type: 'server', message: String(msg) })
@@ -312,26 +313,47 @@ export function CheckoutPage() {
                   </div>
                   <div>
                     <label className="mb-2 block text-xs font-semibold text-slate-600">Tỉnh / Thành phố</label>
-                    <input
+                    <select
                       {...registerAddr('province')}
-                      placeholder="Hồ Chí Minh"
                       className={cn(
-                        "w-full rounded-xl border bg-white px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2",
+                        "w-full rounded-xl border bg-white px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 appearance-none",
                         errorsAddr.province ? "border-red-300 focus:ring-red-200" : "border-slate-200 focus:border-primary focus:ring-primary/15"
                       )}
-                    />
+                      onChange={(e) => {
+                        registerAddr('province').onChange(e)
+                        setValueAddr('ward', '', { shouldValidate: true })
+                      }}
+                    >
+                      <option value="">Chọn Tỉnh / Thành phố</option>
+                      {provincesData.map((p) => (
+                        <option key={p.code} value={p.name}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
                     {errorsAddr.province && <p className="mt-1 text-[10px] text-red-500">{errorsAddr.province.message}</p>}
                   </div>
                   <div>
                     <label className="mb-2 block text-xs font-semibold text-slate-600">Phường / Xã</label>
-                    <input
+                    <select
                       {...registerAddr('ward')}
-                      placeholder="Phường Bến Nghé"
+                      disabled={!watchAddr('province')}
                       className={cn(
-                        "w-full rounded-xl border bg-white px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2",
-                        errorsAddr.ward ? "border-red-300 focus:ring-red-200" : "border-slate-200 focus:border-primary focus:ring-primary/15"
+                        "w-full rounded-xl border bg-white px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 appearance-none",
+                        errorsAddr.ward ? "border-red-300 focus:ring-red-200" : "border-slate-200 focus:border-primary focus:ring-primary/15",
+                        !watchAddr('province') && "bg-slate-50 opacity-70"
                       )}
-                    />
+                    >
+                      <option value="">Chọn Phường / Xã</option>
+                      {(() => {
+                        const province = provincesData.find((p) => p.name === watchAddr('province'))
+                        return province?.wards.map((w) => (
+                          <option key={w.code} value={w.name}>
+                            {w.name}
+                          </option>
+                        )) || []
+                      })()}
+                    </select>
                     {errorsAddr.ward && <p className="mt-1 text-[10px] text-red-500">{errorsAddr.ward.message}</p>}
                   </div>
                   <div className="md:col-span-2">

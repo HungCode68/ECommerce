@@ -197,6 +197,51 @@ func (r *OrderRepository) UpdateOrderStatus(ctx context.Context, orderID int64, 
 		return err
 	}
 
+	// [FIX] Bug #1: Hoàn lại tồn kho khi đơn hàng bị hủy
+	if newStatus == model.OrderStatusCancelled && oldStatus != model.OrderStatusCancelled {
+		queryItems := `SELECT variant_id, quantity FROM order_items WHERE order_id = ? AND variant_id IS NOT NULL`
+		rows, err := tx.QueryContext(ctx, queryItems, orderID)
+		if err != nil {
+			logger.ErrorLogger.Printf("UpdateOrderStatus: Query items for refund failed: %v", err)
+			return err
+		}
+
+		type refundItem struct {
+			variantID int64
+			quantity  int
+		}
+		var itemsToRefund []refundItem
+		for rows.Next() {
+			var item refundItem
+			if err := rows.Scan(&item.variantID, &item.quantity); err != nil {
+				rows.Close()
+				logger.ErrorLogger.Printf("UpdateOrderStatus: Scan refund item failed: %v", err)
+				return err
+			}
+			itemsToRefund = append(itemsToRefund, item)
+		}
+		rows.Close()
+
+		if len(itemsToRefund) > 0 {
+			queryRefundStock := `UPDATE product_variants SET stock_quantity = stock_quantity + ?, updated_at = NOW() WHERE id = ?`
+			stmtRefund, err := tx.PrepareContext(ctx, queryRefundStock)
+			if err != nil {
+				logger.ErrorLogger.Printf("UpdateOrderStatus: Prepare stmtRefund failed: %v", err)
+				return err
+			}
+			defer stmtRefund.Close()
+
+			for _, item := range itemsToRefund {
+				_, err = stmtRefund.ExecContext(ctx, item.quantity, item.variantID)
+				if err != nil {
+					logger.ErrorLogger.Printf("UpdateOrderStatus: Refund stock for variant %d failed: %v", item.variantID, err)
+					return err
+				}
+				logger.InfoLogger.Printf("UpdateOrderStatus: Refunded %d units for variant %d (OrderID: %d)", item.quantity, item.variantID, orderID)
+			}
+		}
+	}
+
 	queryUpdate := "UPDATE orders SET status = ?, updated_at = NOW() WHERE id = ?"
 	args := []interface{}{newStatus, orderID}
 

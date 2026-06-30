@@ -6,7 +6,6 @@ import { Loader2 } from 'lucide-react'
 import { cartApi } from '@/api/cart.api'
 import { orderApi } from '@/api/order.api'
 import { reviewApi } from '@/api/review.api'
-import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { queryKeys } from '@/lib/queryKeys'
 import { Pagination } from '@/components/shared/Pagination'
 import { TableSkeleton } from '@/components/shared/LoadingSkeleton'
@@ -28,7 +27,6 @@ export function OrdersPage() {
   const qc = useQueryClient()
   const [tab, setTab] = useState<OrderFilterTab>('all')
   const [cancelId, setCancelId] = useState<number | null>(null)
-  const [cancelReason, setCancelReason] = useState('')
 
   // Review modal state
   const [reviewedOrders, setReviewedOrders] = useState<Record<number, number>>(() => {
@@ -63,7 +61,6 @@ export function OrdersPage() {
     onSuccess: () => {
       toast.success('Đã hủy đơn hàng')
       setCancelId(null)
-      setCancelReason('')
       qc.invalidateQueries({ queryKey: queryKeys.orders.all })
     },
     onError: () => toast.error('Không thể hủy đơn hàng'),

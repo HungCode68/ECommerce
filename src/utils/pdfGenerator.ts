@@ -1,7 +1,6 @@
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { ReportDataResponse, RecentOrder } from '@/types/adminStats.types'
-import { formatCurrency } from '@/utils/adminDashboard'
 
 // Hàm chuyển đổi tiếng Việt có dấu thành không dấu và xử lý ký tự unicode
 function removeAccents(str: string) {
