@@ -21,7 +21,10 @@ import { ProductImage } from '@/components/shared/ProductImage'
 import provincesData from '@/data/vietnam-provinces.json'
 
 const checkoutSchema = z.object({
-  address_id: z.coerce.number().min(1, 'Chọn địa chỉ giao hàng'),
+  address_id: z.coerce.number({
+    invalid_type_error: 'Bạn chưa có địa chỉ giao hàng',
+    required_error: 'Bạn chưa có địa chỉ giao hàng',
+  }).min(1, 'Bạn chưa có địa chỉ giao hàng'),
   payment_method: z.enum(['cod', 'bank_transfer']),
   note: z.string().optional(),
 })
